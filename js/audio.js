@@ -1,111 +1,262 @@
-// Pixel Hunt - all sounds synthesized in code with WebAudio (no audio files).
+// Pixel Hunt - all sounds and music synthesized with the Web Audio API (no audio files, no licenses).
 'use strict';
 window.Sfx = (() => {
-  let ac = null, master = null, noiseBuf = null;
-  let muted = false;
-  try { muted = localStorage.getItem('pixelhunt.muted') === '1'; } catch (e) {}
+  let ac = null, sfxGain = null, musicGain = null, noiseBuf = null;
+  let sfxOn = true, musicOn = true;
+  try { sfxOn = localStorage.getItem('pixelhunt.muted') !== '1'; } catch (e) {}
+  try { const v = localStorage.getItem('pixelhunt.music'); if (v === '0' || v === 'off') musicOn = false; if (v === '1' || v === 'on') musicOn = true; } catch (e) {}
 
-  // Never let audio break input: any WebAudio failure (old iOS, in-app browsers, too many
-  // contexts, autoplay policy) just leaves the game silent.
-  function unlock() { // iOS only unlocks audio after a sound starts inside a touchend/click
+  let musicMode = 'menu', musicTimer = null, musicUntil = 0, musicNodes = [];
+
+  function unlock() {
     try { const b = ac.createBuffer(1, 1, 22050), s = ac.createBufferSource(); s.buffer = b; s.connect(ac.destination); s.start(0); } catch (e) {}
   }
   function init() {
     try {
-      if (ac) { if (ac.state !== 'running') { const r = ac.resume && ac.resume(); if (r && r.catch) r.catch(() => {}); unlock(); } return; }
+      if (ac) { if (ac.state !== 'running') { const r = ac.resume && ac.resume(); if (r && r.catch) r.catch(() => {}); unlock(); } pumpMusic(); return; }
       const AC = window.AudioContext || window.webkitAudioContext;
       if (!AC) return;
       ac = new AC();
-      master = ac.createGain();
-      master.gain.value = muted ? 0 : 0.45;
-      master.connect(ac.destination);
+      sfxGain = ac.createGain();
+      musicGain = ac.createGain();
+      sfxGain.gain.value = sfxOn ? 0.42 : 0;
+      musicGain.gain.value = musicOn ? 0.07 : 0;
+      sfxGain.connect(ac.destination);
+      musicGain.connect(ac.destination);
       noiseBuf = ac.createBuffer(1, ac.sampleRate * 1, ac.sampleRate);
       const d = noiseBuf.getChannelData(0);
       for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
       unlock();
       const r = ac.resume && ac.resume(); if (r && r.catch) r.catch(() => {});
-    } catch (e) { ac = null; master = null; noiseBuf = null; }
+      pumpMusic();
+    } catch (e) { ac = null; sfxGain = null; musicGain = null; noiseBuf = null; }
   }
   ['touchend', 'pointerup', 'click', 'keydown'].forEach(ev => document.addEventListener(ev, init, { capture: true, passive: true }));
-  const ok = () => ac && !muted;
 
-  function tone(type, f0, f1, dur, vol = 0.25, delay = 0) {
-    if (!ok()) return;
+  const sfxOk = () => ac && sfxOn && sfxGain;
+  const saveSfx = () => { try { localStorage.setItem('pixelhunt.muted', sfxOn ? '0' : '1'); } catch (e) {} };
+  const saveMusic = () => { try { localStorage.setItem('pixelhunt.music', musicOn ? '1' : '0'); } catch (e) {} };
+
+  function tone(type, f0, f1, dur, vol = 0.2, delay = 0, dest) {
+    if (!ac) return;
+    const bus = dest || sfxGain;
+    if (!bus || (bus === sfxGain && !sfxOn)) return;
     const t = ac.currentTime + delay;
     const o = ac.createOscillator(), g = ac.createGain();
     o.type = type;
-    o.frequency.setValueAtTime(f0, t);
+    o.frequency.setValueAtTime(Math.max(1, f0), t);
     if (f1 && f1 !== f0) o.frequency.exponentialRampToValueAtTime(Math.max(1, f1), t + dur);
     g.gain.setValueAtTime(vol, t);
     g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
-    o.connect(g); g.connect(master);
+    o.connect(g); g.connect(bus);
     o.start(t); o.stop(t + dur + 0.02);
+    return o;
   }
   function noise(dur, vol, f0, f1, delay = 0, type = 'lowpass') {
-    if (!ok()) return;
+    if (!sfxOk()) return;
     const t = ac.currentTime + delay;
     const s = ac.createBufferSource(); s.buffer = noiseBuf;
     const f = ac.createBiquadFilter(); f.type = type;
-    f.frequency.setValueAtTime(f0, t);
+    f.frequency.setValueAtTime(Math.max(20, f0), t);
     f.frequency.exponentialRampToValueAtTime(Math.max(20, f1), t + dur);
     const g = ac.createGain();
     g.gain.setValueAtTime(vol, t);
     g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
-    s.connect(f); f.connect(g); g.connect(master);
+    s.connect(f); f.connect(g); g.connect(sfxGain);
     s.start(t, Math.random() * 0.5); s.stop(t + dur + 0.02);
   }
-  const notes = (seq, type = 'square', vol = 0.15) =>
+  const notes = (seq, type = 'square', vol = 0.12) =>
     seq.forEach(([f, d, at]) => tone(type, f, f, d, vol, at));
+
+  // --- looping chiptune: short, quiet, separate menu / game patterns ---
+  const MENU_LOOP = 3.2;
+  const GAME_LOOP = 2.4;
+  const MENU_SONG = [
+    [523, 0.11, 0.00], [659, 0.11, 0.20], [784, 0.14, 0.40], [659, 0.11, 0.60],
+    [587, 0.11, 0.80], [698, 0.11, 1.00], [880, 0.14, 1.20], [698, 0.11, 1.40],
+    [523, 0.11, 1.60], [659, 0.11, 1.80], [784, 0.11, 2.00], [1047, 0.22, 2.20],
+    [784, 0.14, 2.50], [659, 0.18, 2.80],
+  ];
+  const GAME_BASS = [
+    [146, 0.18, 0.00], [146, 0.12, 0.30], [196, 0.18, 0.60], [174, 0.18, 0.90],
+    [146, 0.18, 1.20], [130, 0.18, 1.50], [196, 0.18, 1.80], [220, 0.22, 2.10],
+  ];
+  const GAME_LEAD = [
+    [294, 0.08, 0.15], [330, 0.08, 0.45], [392, 0.10, 0.75], [330, 0.08, 1.05],
+    [294, 0.08, 1.35], [246, 0.10, 1.65], [392, 0.10, 1.95],
+  ];
+  function stopMusicNodes() {
+    musicNodes.forEach(n => { try { n.stop(); } catch (e) {} });
+    musicNodes = [];
+    if (musicTimer) { clearTimeout(musicTimer); musicTimer = null; }
+  }
+  function scheduleSong(seq, type, vol, when) {
+    seq.forEach(([f, d, at]) => {
+      const o = tone(type, f, f, d, vol, Math.max(0, when + at - ac.currentTime), musicGain);
+      if (o) musicNodes.push(o);
+    });
+  }
+  function pumpMusic() {
+    try {
+      if (!ac || !musicOn || !musicGain) { stopMusicNodes(); return; }
+      if (ac.state !== 'running') return;
+      const now = ac.currentTime;
+      if (musicUntil > now + 0.12) {
+        if (!musicTimer) musicTimer = setTimeout(() => { musicTimer = null; pumpMusic(); }, Math.max(80, (musicUntil - now - 0.08) * 1000));
+        return;
+      }
+      const start = Math.max(now, musicUntil);
+      if (musicMode === 'game') {
+        scheduleSong(GAME_BASS, 'triangle', 0.55, start);
+        scheduleSong(GAME_LEAD, 'square', 0.28, start);
+        musicUntil = start + GAME_LOOP;
+      } else {
+        scheduleSong(MENU_SONG, 'square', 0.42, start);
+        musicUntil = start + MENU_LOOP;
+      }
+      if (musicTimer) clearTimeout(musicTimer);
+      musicTimer = setTimeout(() => { musicTimer = null; pumpMusic(); }, Math.max(80, (musicUntil - ac.currentTime - 0.08) * 1000));
+    } catch (e) { stopMusicNodes(); }
+  }
+  function setMusicMode(mode) {
+    const next = mode === 'game' ? 'game' : 'menu';
+    if (musicMode !== next) { musicMode = next; musicUntil = 0; stopMusicNodes(); }
+    pumpMusic();
+  }
+
+  function cryBird(hi) {
+    const f = hi || 800;
+    tone('sawtooth', f, f * 0.35, 0.16, 0.09);
+    tone('square', f * 0.8, f * 0.28, 0.14, 0.05, 0.03);
+  }
 
   const api = {
     init,
-    get muted() { return muted; },
-    setMuted(m) {
-      muted = m;
-      try { localStorage.setItem('pixelhunt.muted', m ? '1' : '0'); } catch (e) {}
-      if (master) master.gain.value = m ? 0 : 0.45;
+    get muted() { return !sfxOn; },
+    get sfxOn() { return sfxOn; },
+    get musicOn() { return musicOn; },
+    setMuted(m) { // backward compatible: this is the Sound (SFX) mute
+      sfxOn = !m;
+      saveSfx();
+      if (sfxGain) sfxGain.gain.value = sfxOn ? 0.42 : 0;
     },
-    shot() { noise(0.45, 1.0, 4000, 150); tone('square', 140, 35, 0.18, 0.35); noise(0.08, 0.6, 9000, 3000, 0, 'highpass'); },
-    empty() { tone('square', 1800, 1700, 0.03, 0.12); tone('square', 900, 850, 0.03, 0.1, 0.04); },
-    reloadStart() { noise(0.05, 0.4, 3000, 1500); tone('square', 300, 200, 0.05, 0.12, 0.02); },
-    reloadDone() { noise(0.06, 0.5, 2500, 800); tone('square', 220, 120, 0.07, 0.18); noise(0.07, 0.5, 2000, 700, 0.09); tone('square', 180, 90, 0.08, 0.18, 0.09); },
-    hit() { tone('square', 600, 1200, 0.08, 0.15); },
-    squawk() { tone('sawtooth', 900, 300, 0.22, 0.12, 0.03); tone('square', 700, 250, 0.2, 0.06, 0.05); },
-    fall() { tone('triangle', 900, 120, 0.7, 0.12, 0.05); },
-    thud() { noise(0.12, 0.5, 400, 60); },
-    gold() { notes([[1047, .08, 0], [1319, .08, .07], [1568, .08, .14], [2093, .16, .21]], 'square', 0.12); },
-    deer() { tone('sawtooth', 220, 110, 0.35, 0.12, 0.03); noise(0.2, 0.3, 600, 100, 0.05); },
-    bad() { tone('square', 300, 150, 0.2, 0.15); tone('square', 200, 100, 0.25, 0.15, 0.15); },
-    escape() { tone('triangle', 700, 200, 0.5, 0.18); tone('square', 350, 120, 0.5, 0.05, 0.05); },
-    streak(n) { tone('square', 500 + n * 90, 700 + n * 120, 0.1, 0.1, 0.06); },
-    roundStart() { notes([[523, .1, 0], [659, .1, .1], [784, .1, .2], [1047, .2, .3]]); },
-    clear() { notes([[784, .1, 0], [659, .1, .1], [784, .1, .2], [1047, .1, .3], [1319, .3, .4]]); },
-    gameOver() { notes([[392, .2, 0], [330, .2, .22], [262, .2, .44], [196, .5, .66]], 'square', 0.16); },
-    buy() { notes([[988, .06, 0], [1319, .14, .06]], 'square', 0.12); },
-    focus() { tone('sine', 300, 80, 0.6, 0.25); },
-    pistol() { noise(0.18, 0.7, 6000, 400); tone('square', 320, 90, 0.08, 0.22); },
-    rifle() { noise(0.6, 1.0, 5000, 90); tone('square', 110, 30, 0.3, 0.4); noise(0.1, 0.5, 9000, 4000, 0, 'highpass'); },
-    bolt() { noise(0.05, 0.5, 3500, 1200); tone('square', 260, 180, 0.04, 0.14); noise(0.06, 0.5, 2500, 900, 0.18); tone('square', 200, 140, 0.05, 0.15, 0.2); },
-    bowDraw() { tone('sawtooth', 120, 220, 0.35, 0.05); },
-    bowShot() { noise(0.18, 0.5, 2500, 600, 0, 'bandpass'); tone('triangle', 420, 160, 0.12, 0.15); },
-    arrowHit() { noise(0.05, 0.4, 1500, 500); tone('square', 500, 900, 0.05, 0.1); },
-    mg() { noise(0.07, 0.6, 5000, 500); tone('square', 180, 70, 0.04, 0.16); },
-    laser() { tone('sawtooth', 1400 + Math.random() * 200, 1200, 0.07, 0.05); tone('sine', 2200, 2000, 0.07, 0.04); },
-    overheat() { tone('sawtooth', 800, 100, 0.5, 0.15); noise(0.5, 0.4, 6000, 2000, 0, 'highpass'); },
-    vent() { noise(0.6, 0.5, 8000, 1500, 0, 'highpass'); },
-    zap() { tone('sawtooth', 2000, 300, 0.18, 0.12); noise(0.15, 0.5, 9000, 3000, 0, 'highpass'); },
-    pellet() { noise(0.06, 0.35, 5000, 800); tone('square', 420, 200, 0.04, 0.08); },
-    missile() { noise(0.4, 0.4, 1500, 400, 0, 'bandpass'); tone('sawtooth', 200, 600, 0.3, 0.06); },
-    boom() { noise(0.7, 1.0, 1800, 50); tone('square', 90, 25, 0.4, 0.35); },
-    lure() { notes([[880, .08, 0], [660, .12, .1], [880, .08, .3], [660, .16, .4]], 'triangle', 0.14); },
-    swap() { noise(0.05, 0.4, 3000, 900); tone('square', 400, 300, 0.05, 0.1, 0.05); },
-    boss() { notes([[196, .18, 0], [185, .18, .2], [175, .18, .4], [165, .5, .6]], 'sawtooth', 0.14); noise(0.8, 0.5, 400, 60, 0.6); },
-    bossHit() { tone('square', 300, 150, 0.08, 0.16); noise(0.08, 0.4, 2000, 400); },
-    bossDown() { notes([[523, .12, 0], [659, .12, .12], [784, .12, .24], [1047, .12, .36], [1319, .12, .48], [1568, .4, .6]], 'square', 0.14); noise(0.8, 0.8, 1500, 60); },
-    letter() { tone('square', 880, 880, 0.03, 0.08); },
-    click() { tone('square', 660, 660, 0.03, 0.08); },
+    setSfxOn(on) { api.setMuted(!on); },
+    setMusicOn(on) {
+      musicOn = !!on;
+      saveMusic();
+      if (musicGain) musicGain.gain.value = musicOn ? 0.07 : 0;
+      if (musicOn) { musicUntil = 0; pumpMusic(); } else stopMusicNodes();
+    },
+    setMusic(mode) { setMusicMode(mode); },
+
+    // --- weapons ---
+    shot() { noise(0.28, 0.7, 3500, 180); tone('square', 150, 40, 0.12, 0.22); noise(0.06, 0.4, 8000, 2500, 0, 'highpass'); },
+    pistol() { noise(0.10, 0.5, 6500, 500); tone('square', 380, 110, 0.05, 0.16); noise(0.04, 0.25, 9000, 4000, 0, 'highpass'); },
+    rifle() { noise(0.32, 0.7, 4500, 80); tone('square', 120, 32, 0.16, 0.28); noise(0.07, 0.35, 9000, 3500, 0, 'highpass'); },
+    bowDraw() { tone('sawtooth', 110, 240, 0.28, 0.04); },
+    bowShot() { noise(0.12, 0.32, 2400, 500, 0, 'bandpass'); tone('triangle', 520, 180, 0.10, 0.12); tone('square', 880, 400, 0.06, 0.04); },
+    arrowHit() { noise(0.04, 0.28, 1600, 500); tone('square', 520, 900, 0.04, 0.08); },
+    mg() { noise(0.05, 0.42, 5200, 600); tone('square', 200, 80, 0.03, 0.12); },
+    laser() { tone('sawtooth', 1500 + Math.random() * 180, 1100, 0.05, 0.04); tone('sine', 2400, 1800, 0.05, 0.03); },
+    overheat() { tone('sawtooth', 700, 120, 0.35, 0.10); noise(0.35, 0.25, 5000, 1600, 0, 'highpass'); },
+    vent() { noise(0.4, 0.32, 7000, 1200, 0, 'highpass'); },
+    pellet() { noise(0.05, 0.28, 4800, 800); tone('square', 400, 180, 0.03, 0.07); },
+    zap() { tone('sawtooth', 1800, 280, 0.12, 0.09); noise(0.10, 0.28, 8000, 2500, 0, 'highpass'); },
+    missile() { noise(0.28, 0.28, 1400, 350, 0, 'bandpass'); tone('sawtooth', 180, 520, 0.2, 0.05); },
+    boom() { noise(0.45, 0.7, 1600, 50); tone('square', 80, 28, 0.28, 0.22); },
+
+    // --- reload / empty ---
+    empty() { tone('square', 1900, 1700, 0.03, 0.10); tone('square', 950, 850, 0.03, 0.08, 0.035); },
+    shellInsert() { noise(0.04, 0.28, 2800, 900); tone('square', 280, 200, 0.04, 0.10, 0.02); },
+    pump() { noise(0.05, 0.35, 2200, 700); tone('square', 200, 110, 0.06, 0.14); noise(0.05, 0.3, 1800, 500, 0.08); tone('square', 160, 90, 0.07, 0.12, 0.08); },
+    magOut() { noise(0.04, 0.28, 2400, 800); tone('square', 320, 240, 0.04, 0.09); },
+    magIn() { tone('square', 240, 180, 0.05, 0.11); noise(0.05, 0.3, 2000, 600, 0.04); tone('square', 200, 140, 0.05, 0.10, 0.06); },
+    nock() { noise(0.05, 0.2, 1800, 700, 0, 'bandpass'); tone('triangle', 360, 280, 0.07, 0.08); },
+    nockDone() { tone('triangle', 280, 220, 0.06, 0.08); noise(0.04, 0.18, 1400, 500, 0, 'bandpass'); },
+    reloadStart() { api.magOut(); },
+    reloadDone() { api.magIn(); },
+    bolt() { noise(0.04, 0.32, 3200, 1000); tone('square', 250, 170, 0.04, 0.11); noise(0.05, 0.32, 2200, 800, 0.14); tone('square', 190, 130, 0.05, 0.11, 0.16); },
+
+    // --- hits / animals ---
+    hit() { tone('square', 620, 1100, 0.06, 0.10); },
+    squawk() { cryBird(880); },
+    cry(kind) {
+      const k = kind || 'bird';
+      if (k === 'deer') {
+        // "buah" bleat / grunt
+        tone('sawtooth', 280, 160, 0.10, 0.11);
+        tone('sawtooth', 190, 120, 0.16, 0.10, 0.08);
+        tone('triangle', 140, 100, 0.18, 0.06, 0.10);
+        noise(0.12, 0.12, 500, 90, 0.08);
+      } else if (k === 'wolf') {
+        tone('sawtooth', 420, 260, 0.18, 0.09);
+        tone('triangle', 300, 180, 0.22, 0.07, 0.06);
+      } else if (k === 'coyote') {
+        tone('square', 640, 480, 0.07, 0.08);
+        tone('square', 720, 500, 0.08, 0.07, 0.08);
+        tone('sawtooth', 500, 300, 0.10, 0.05, 0.14);
+      } else if (k === 'rabbit') {
+        tone('square', 1400, 900, 0.06, 0.07);
+        tone('triangle', 1100, 700, 0.07, 0.05, 0.04);
+      } else if (k === 'goose' || k === 'swimgoose') {
+        tone('sawtooth', 360, 240, 0.08, 0.10);
+        tone('sawtooth', 300, 200, 0.10, 0.09, 0.07);
+        tone('square', 220, 160, 0.10, 0.05, 0.09);
+      } else if (k === 'owl') {
+        tone('sine', 420, 380, 0.10, 0.08);
+        tone('sine', 280, 260, 0.16, 0.09, 0.14);
+      } else if (k === 'vulture') {
+        tone('sawtooth', 500, 180, 0.20, 0.08);
+        noise(0.14, 0.12, 2000, 400, 0.04, 'bandpass');
+      } else if (k === 'roadrunner') {
+        tone('square', 980, 980, 0.04, 0.07);
+        tone('square', 1240, 1240, 0.04, 0.07, 0.06);
+        tone('square', 880, 880, 0.05, 0.06, 0.12);
+      } else if (k === 'bat') {
+        tone('square', 2400, 1800, 0.05, 0.06);
+        tone('sine', 2800, 2000, 0.06, 0.04, 0.03);
+      } else if (k === 'eyes') {
+        tone('sine', 760, 200, 0.22, 0.07);
+        tone('triangle', 500, 140, 0.2, 0.04, 0.04);
+      } else if (k === 'gold') {
+        cryBird(1100);
+      } else if (k === 'blue') {
+        cryBird(980);
+      } else if (k === 'decoy') {
+        api.bad();
+      } else if (k === 'boss') {
+        api.bossRoar();
+      } else {
+        cryBird(k === 'bird' ? 860 : 800);
+      }
+    },
+    deer() { api.cry('deer'); },
+    rustle() { noise(0.12, 0.18, 900, 200); },
+    fall() { tone('triangle', 800, 140, 0.45, 0.08, 0.04); },
+    thud() { noise(0.10, 0.35, 350, 60); },
+    gold() { notes([[1047, .07, 0], [1319, .07, .06], [1568, .07, .12], [2093, .12, .18]], 'square', 0.09); },
+    bad() { tone('square', 280, 140, 0.14, 0.11); tone('square', 180, 90, 0.18, 0.11, 0.12); },
+    escape() { tone('triangle', 640, 200, 0.32, 0.12); tone('square', 320, 120, 0.32, 0.04, 0.04); },
+    streak(n) { tone('square', 500 + n * 80, 680 + n * 100, 0.08, 0.08, 0.04); },
+    roundStart() { notes([[523, .08, 0], [659, .08, .08], [784, .08, .16], [1047, .14, .24]], 'square', 0.10); },
+    clear() { notes([[784, .08, 0], [659, .08, .08], [784, .08, .16], [1047, .08, .24], [1319, .2, .32]], 'square', 0.10); },
+    gameOver() { notes([[392, .16, 0], [330, .16, .18], [262, .16, .36], [196, .36, .54]], 'square', 0.12); },
+    buy() { notes([[988, .05, 0], [1319, .11, .05]], 'square', 0.10); },
+    focus() { tone('sine', 280, 80, 0.45, 0.16); },
+    lure() { notes([[880, .07, 0], [660, .10, .09], [880, .07, .26], [660, .12, .35]], 'triangle', 0.10); },
+    swap() { noise(0.04, 0.25, 2800, 800); tone('square', 380, 280, 0.04, 0.08, 0.04); },
+    boss() { notes([[196, .14, 0], [185, .14, .16], [175, .14, .32], [165, .36, .48]], 'sawtooth', 0.11); noise(0.5, 0.28, 350, 60, 0.45); },
+    bossHit() { tone('square', 280, 140, 0.07, 0.12); noise(0.07, 0.28, 1800, 350); },
+    bossRoar() {
+      tone('sawtooth', 180, 90, 0.35, 0.16);
+      tone('square', 140, 70, 0.4, 0.10, 0.04);
+      noise(0.4, 0.35, 500, 50, 0.05);
+      tone('sawtooth', 220, 80, 0.28, 0.08, 0.18);
+    },
+    bossDown() { notes([[523, .09, 0], [659, .09, .1], [784, .09, .2], [1047, .09, .3], [1319, .09, .4], [1568, .28, .5]], 'square', 0.11); noise(0.5, 0.45, 1200, 50); },
+    letter() { tone('square', 880, 880, 0.03, 0.06); },
+    click() { tone('square', 700, 700, 0.025, 0.07); },
   };
-  // wrap every sound so an audio exception can never abort a tap handler
   Object.keys(api).forEach(k => {
     const d = Object.getOwnPropertyDescriptor(api, k);
     if (typeof d.value === 'function') { const f = d.value; api[k] = function () { try { return f.apply(api, arguments); } catch (e) {} }; }

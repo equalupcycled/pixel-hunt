@@ -59,12 +59,23 @@
       <button id="btn-missions" class="pbtn">MISSIONS</button>
     </div>
     <div class="row"><button id="btn-board" class="pbtn small">LEADERBOARD</button></div>
-    <div class="row">
+    <div class="row" id="title-audio">
+      <button type="button" id="btn-sfx-t" class="icon-btn sfx-btn" aria-label="Sound on" aria-pressed="true"><span class="ico-sfx" aria-hidden="true"></span></button>
+      <button type="button" id="btn-music-t" class="icon-btn music-btn" aria-label="Music on" aria-pressed="true"><span class="ico-music" aria-hidden="true"></span></button>
       <button id="btn-how" class="pbtn small">HOW TO PLAY</button>
-      <button id="btn-mute-t" class="pbtn small mute-btn">SOUND: ON</button>
       <button id="btn-daily" class="pbtn small gold-btn hidden">DAILY!</button>
     </div>
     <div class="tiny">SHOOT &middot; RELOAD BY HAND &middot; DON'T LET 3 GET AWAY</div>
+    <div class="title-legal">
+      <div>&copy; 2026 Cache Brands LLC</div>
+      <div class="title-legal-links">
+        <a href="privacy.html" data-tap="1">Privacy</a>
+        <span>&middot;</span>
+        <a href="terms.html" data-tap="1">Terms</a>
+        <span>&middot;</span>
+        <button type="button" id="btn-about" class="linkish">Credits</button>
+      </div>
+    </div>
   </div>
 
   <div id="ov-how" class="overlay has-x hidden">
@@ -113,7 +124,11 @@
     <div class="panel">
       <h2>PAUSED</h2>
       <button id="btn-resume" class="pbtn big">RESUME</button>
-      <button id="btn-mute-p" class="pbtn mute-btn">SOUND: ON</button>
+      <div class="row audio-row">
+        <button type="button" id="btn-sfx-p" class="icon-btn sfx-btn" aria-label="Sound on" aria-pressed="true"><span class="ico-sfx" aria-hidden="true"></span></button>
+        <button type="button" id="btn-music-p" class="icon-btn music-btn" aria-label="Music on" aria-pressed="true"><span class="ico-music" aria-hidden="true"></span></button>
+      </div>
+      <p class="tiny audio-hint">SOUND &middot; MUSIC</p>
       <button id="btn-quit" class="pbtn">QUIT TO TITLE</button>
     </div>
   </div>
@@ -203,6 +218,18 @@
       <div id="board-src" class="shop-sub"></div>
       <div id="board-list"></div>
       <button id="btn-board-share" class="pbtn fb">SHARE TO FACEBOOK</button>
+    </div>
+  </div>
+
+  <div id="ov-about" class="overlay has-x hidden">
+    <button type="button" class="x-close" id="btn-about-close" aria-label="Close"><span class="x-art" aria-hidden="true"></span></button>
+    <div class="panel scroll">
+      <h2>CREDITS</h2>
+      <p><b>PIXEL HUNT</b></p>
+      <p>&copy; 2026 Cache Brands LLC</p>
+      <p>A retro pixel hunting game. All art is drawn in code. All sound and music are synthesized in your browser with the Web Audio API &mdash; no licensed samples or audio files.</p>
+      <p>Cache Brands LLC<br>P.O. Box 425<br>Ullin, IL 62992<br><a href="mailto:dowdyboy1992-qhj8xm@mail.grokbot.com">dowdyboy1992-qhj8xm@mail.grokbot.com</a></p>
+      <p class="tiny"><a href="privacy.html" data-tap="1">Privacy Policy</a> &middot; <a href="terms.html" data-tap="1">Terms of Use</a></p>
     </div>
   </div>
 

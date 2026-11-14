@@ -586,7 +586,7 @@ function spawn(kind) {
     const sp = diff.deerSpeed * (K.spd || 1) * rand(0.9, 1.15) / Math.sqrt(eyeMult);
     const y = K.m === 'swim' ? GROUND - 6 : groundY(set, sc);
     targets.push(Object.assign(base, { x: dir > 0 ? -20 : W + 20, y, y0: y, vx: dir * sp, vy: 0, sc, life: 99, hop: 0, hopT: 0 }));
-    if (kind === 'deer' || kind === 'wolf' || kind === 'coyote') Sfx.deer();
+    if (kind === 'deer' || kind === 'wolf' || kind === 'coyote' || kind === 'rabbit' || kind === 'roadrunner') Sfx.rustle();
     return;
   }
   targets.push(makeFlyer(kind, K, set, base));
@@ -641,7 +641,7 @@ function kill(t, src, info = {}) {
   if (t.kind === 'boss') {
     pts = Math.round(20000 * (round / ECON.BOSS_EVERY) * M.pts / 10) * 10;
     cash = ECON.bossCash(round) * moneyMult * M.cash;
-    bossKilled = true; Meta.event('boss'); Sfx.bossDown(); shake = 8; whiteFlash = 0.15; bossT = null;
+    bossKilled = true; Meta.event('boss'); Sfx.bossRoar(); Sfx.bossDown(); shake = 8; whiteFlash = 0.15; bossT = null;
     float('BOSS DOWN!', W / 2, H * 0.32, '#ffd23f', 2.2, 2);
     for (let k = 0; k < 40; k++) parts.push({ x: t.x, y: t.y, vx: rand(-90, 90), vy: rand(-110, 20), c: ['#ffd23f', '#fff', '#ff9a3d'][k % 3], t: 0, life: rand(0.6, 1.4), g: 120, s: 2 });
   } else {
@@ -663,9 +663,9 @@ function kill(t, src, info = {}) {
   float('+$' + fmt(cash) + (byYou ? '' : ' AUTO'), t.x, t.y - 8 - yo, '#7dff7a', 1, 1.1);
   if (t.kind === 'gold') { float('GOLDEN!', t.x, t.y - 24 - yo, '#fff2a0', 1.5, 1.2); Sfx.gold(); }
   if (byYou && streak >= 2) { float('STREAK X' + mult, W / 2, SKY_TOP + 14, '#ff9a3d', 1.6, 1); Sfx.streak(mult); }
-  if (t.kind === 'eyes') { for (let k = 0; k < 10; k++) parts.push({ x: t.x, y: t.y, vx: rand(-40, 40), vy: rand(-60, -10), c: '#ffe066', t: 0, life: rand(0.3, 0.7), g: 200, s: 1 }); Sfx.hit(); }
-  else if (t.g && t.kind !== 'swimgoose') { Sfx.deer(); const pal = APAL[t.set] || DEER_PAL; for (let k = 0; k < 14; k++) parts.push({ x: t.x, y: t.y, vx: rand(-40, 40), vy: rand(-70, -10), c: Math.random() < 0.5 ? (pal.D || pal.W || '#b06a2c') : (pal.L || '#f0d2a0'), t: 0, life: rand(0.4, 0.8), g: 220, s: 1.5 }); }
-  else if (t.kind !== 'boss') { feathers(t.x, t.y, APAL[t.set] || PAL[t.set] || PAL.bird, 16); Sfx.hit(); Sfx.squawk(); }
+  if (t.kind === 'eyes') { for (let k = 0; k < 10; k++) parts.push({ x: t.x, y: t.y, vx: rand(-40, 40), vy: rand(-60, -10), c: '#ffe066', t: 0, life: rand(0.3, 0.7), g: 200, s: 1 }); Sfx.hit(); Sfx.cry('eyes'); }
+  else if (t.g && t.kind !== 'swimgoose') { Sfx.hit(); Sfx.cry(t.kind); const pal = APAL[t.set] || DEER_PAL; for (let k = 0; k < 14; k++) parts.push({ x: t.x, y: t.y, vx: rand(-40, 40), vy: rand(-70, -10), c: Math.random() < 0.5 ? (pal.D || pal.W || '#b06a2c') : (pal.L || '#f0d2a0'), t: 0, life: rand(0.4, 0.8), g: 220, s: 1.5 }); }
+  else if (t.kind !== 'boss') { feathers(t.x, t.y, APAL[t.set] || PAL[t.set] || PAL.bird, 16); Sfx.hit(); Sfx.cry(t.kind); }
 }
 function feathers(x, y, pal, n) {
   const cols = [pal.B || pal.O || pal.M || pal.W, pal.W || pal.L || pal.K, pal.G || pal.K, pal.B || pal.O || pal.M];
@@ -700,7 +700,7 @@ function escaped(t) {
 }
 function die() {
   state = 'dying'; dieT = 1.6; banner = 'GAME OVER'; banner2 = missRun + ' GOT AWAY';
-  shake = 6; holding = false; drawing = null; Sfx.gameOver(); showGameButtons(false);
+  shake = 6; holding = false; drawing = null; Sfx.gameOver(); Sfx.setMusic('menu'); showGameButtons(false);
 }
 
 // ---------------- weapons ----------------
@@ -715,13 +715,19 @@ function startReload() {
   const w = wpn; if (w.reloading) return;
   if (w.id === 'laser' ? w.heat <= 0.01 : w.ammo >= w.cap) return;
   w.reloading = true; w.reloadT = w.reload; holding = holding && w.id !== 'laser';
-  if (w.id === 'laser') Sfx.vent(); else Sfx.reloadStart();
+  if (w.id === 'laser') Sfx.vent();
+  else if (w.id === 'shotgun') Sfx.shellInsert();
+  else if (w.id === 'bow') Sfx.nock();
+  else Sfx.magOut();
   drawing = null;
 }
 function finishReload(w) {
   w.reloading = false;
   if (w.id === 'laser') { w.heat = 0; w.overheated = false; } else w.ammo = w.cap;
-  if (w.id === 'rifle') Sfx.bolt(); else Sfx.reloadDone();
+  if (w.id === 'shotgun') Sfx.pump();
+  else if (w.id === 'rifle') Sfx.bolt();
+  else if (w.id === 'bow') Sfx.nockDone();
+  else Sfx.magIn();
 }
 function useFocus() {
   if (paused || state !== 'play' || focusCharges <= 0 || focusT > 0) return;
@@ -1611,18 +1617,20 @@ function updateTitle() {
   renderNext('title-next');
 }
 function toTitle() {
-  ['ov-over', 'ov-pause', 'ov-shop', 'ov-continue', 'ov-board', 'ov-name'].forEach(id => show(id, false));
+  ['ov-over', 'ov-pause', 'ov-shop', 'ov-continue', 'ov-board', 'ov-name', 'ov-how', 'ov-about', 'ov-missions', 'ov-daily'].forEach(id => show(id, false));
   paused = false; state = 'title'; targets = []; projs = []; holding = false; drawing = null; showGameButtons(false); Meta.persist();
   Meta.setMode('campaign'); shopInf = false;
   if (!curMap || curMap.id !== Meta.save.equip.map) buildBg();
+  Sfx.setMusic('menu');
   updateTitle(); show('ov-title', true); maybeDaily();
 }
 function newGame(fromRound, opts) {
   Sfx.init(); Sfx.click(); Ads.init();
-  ['ov-title', 'ov-over', 'ov-pause', 'ov-shop', 'ov-daily', 'ov-board'].forEach(id => show(id, false));
+  ['ov-title', 'ov-over', 'ov-pause', 'ov-shop', 'ov-daily', 'ov-board', 'ov-how', 'ov-about', 'ov-missions'].forEach(id => show(id, false));
   infinity = !!(opts && opts.infinity);
   Meta.setMode(infinity ? 'infinity' : 'campaign');
   shopInf = !!infinity;
+  Sfx.setMusic('game');
   targets = []; resetRun();
   const ck = fromRound > 1 ? fromRound : 0;
   Meta.startRun({ base: ck ? ck - 1 : 0 });
@@ -1652,8 +1660,23 @@ function togglePause() {
 $('btn-pause').addEventListener('click', togglePause);
 $('btn-resume').addEventListener('click', togglePause);
 $('btn-quit').addEventListener('click', () => { Sfx.click(); toTitle(); });
-function syncMute() { document.querySelectorAll('.mute-btn').forEach(b => b.textContent = 'SOUND: ' + (Sfx.muted ? 'OFF' : 'ON')); }
-document.querySelectorAll('.mute-btn').forEach(b => b.addEventListener('click', () => { Sfx.init(); Sfx.setMuted(!Sfx.muted); syncMute(); Sfx.click(); }));
+function syncAudio() {
+  document.querySelectorAll('.sfx-btn').forEach(b => {
+    const on = Sfx.sfxOn; b.classList.toggle('off', !on);
+    b.setAttribute('aria-pressed', on ? 'true' : 'false');
+    b.setAttribute('aria-label', on ? 'Sound on' : 'Sound off');
+  });
+  document.querySelectorAll('.music-btn').forEach(b => {
+    const on = Sfx.musicOn; b.classList.toggle('off', !on);
+    b.setAttribute('aria-pressed', on ? 'true' : 'false');
+    b.setAttribute('aria-label', on ? 'Music on' : 'Music off');
+  });
+}
+document.querySelectorAll('.sfx-btn').forEach(b => b.addEventListener('click', () => { Sfx.init(); Sfx.setSfxOn(!Sfx.sfxOn); syncAudio(); if (Sfx.sfxOn) Sfx.click(); }));
+document.querySelectorAll('.music-btn').forEach(b => b.addEventListener('click', () => { Sfx.init(); Sfx.setMusicOn(!Sfx.musicOn); syncAudio(); if (Sfx.sfxOn) Sfx.click(); }));
+syncAudio();
+$('btn-about').addEventListener('click', () => { Sfx.init(); Sfx.click(); show('ov-about', true); });
+$('btn-about-close').addEventListener('click', () => { Sfx.click(); show('ov-about', false); });
 const press = (id, fn) => { const el = $(id); el.dataset.press = '1'; el.addEventListener('pointerdown', e => { e.preventDefault(); e.stopPropagation(); Sfx.init(); fn(); }); };
 press('btn-reload', startReload); press('btn-focus', useFocus); press('btn-swap', swapWeapon);
 press('btn-flak', () => useGadget('flak')); press('btn-call', () => useGadget('call')); press('btn-decoy', () => useGadget('decoy'));
@@ -1929,7 +1952,7 @@ function frame(now) {
   try { update(dt); render(); frameErrs = 0; }
   catch (e) { if (++frameErrs === 1 || frameErrs % 300 === 0) { console.error(e); window.PH_ERR && PH_ERR(e); } }
 }
-resize(); resetRun(); syncMute(); toTitle();
+resize(); resetRun(); syncAudio(); toTitle();
 requestAnimationFrame(frame);
 
 // debug/test hooks (used by tools/test_playwright.py)

@@ -11,14 +11,15 @@ Any static host works (Render static site, GitHub Pages, Netlify, Cloudflare Pag
 Live: https://pixel-hunt-o4vw.onrender.com/ (Render static site, auto-deploys from `main` of https://github.com/equalupcycled/pixel-hunt).
 
 ## Files
-- `index.html` - layout + overlays (title + map select, how-to, upgrades, pause, continue, game over, name entry, leaderboard, ad layer) + Open Graph tags
+- `index.html` - layout + overlays (title + map select, how-to, upgrades, pause, continue, game over, name entry, leaderboard, credits, ad layer) + Open Graph tags
+- `privacy.html`, `terms.html` - Privacy Policy and Terms of Use (Cache Brands LLC)
 - `css/style.css` - pixel UI styling
 - `js/game.js` - game loop, sprites, pixel font, maps/backgrounds, weapons, turrets, gadgets, bosses, upgrades UI, input
 - `js/economy.js` - weapons, turrets, gear, maps, cosmetics, price formula, difficulty curve, payouts (shared with the simulator)
 - `js/meta.js` - persistent save (schema v4: Classic bank/upgrades/equipment, plus a shared Infinity wallet + upgrade tree, missions, achievements, daily calendar, stats, per-map Classic and Infinity bests, map clears); migrates v1–v3 saves
 - `js/leaderboard.js` - local top-10 per map for Classic and Infinity (`map:inf`) + stubbed online provider
 - `js/share.js` - "Share to Facebook" (Web Share API -> Facebook sharer fallback); `SHARE_CONFIG.GAME_URL`
-- `js/audio.js` - WebAudio synth sound effects (each weapon has its own)
+- `js/audio.js` - Web Audio synth: per-weapon shots, reloads, animal hit cries, boss roar, and quiet looping chiptune (menu and gameplay). Separate Sound and Music toggles are saved in localStorage.
 - `js/ads.js` - ad abstraction (web placeholder / AdMob on native)
 - `tools/econ-sim.js` - Monte Carlo economy simulator: `node tools/econ-sim.js --table`, `--fit` (refits the price CURVE), `--balance`; also prints an Infinity early-game re-upgrade pace
 - `tools/test_playwright.py` - headless test + screenshots (serve the folder on :8799 first)
@@ -104,6 +105,9 @@ To go live:
    `<meta-data android:name="com.google.android.gms.ads.APPLICATION_ID" android:value="ca-app-pub-XXXX~YYYY"/>`;
    iOS `ios/App/App/Info.plist` -> `GADApplicationIdentifier` = `ca-app-pub-XXXX~YYYY` (+ SKAdNetworkItems per AdMob docs).
 4. Test on a device; for iOS also add the App Tracking Transparency prompt if you use personalized ads.
+
+## Legal
+`privacy.html` and `terms.html` are linked from the title screen footer (also in Credits). Owner: **Cache Brands LLC**, P.O. Box 425, Ullin, IL 62992, dowdyboy1992-qhj8xm@mail.grokbot.com. Last updated Nov 14, 2026. A **© 2026 Cache Brands LLC** line appears on the title screen.
 
 ## Debug hooks
 `window.PH` (state, targets, weapon, turrets, boss, `jumpRound(n)`, `forceClear()`, `forceDie()`, `setMoney(n)`, `grantAll()`, `makeCard(o)`) for headless tests.

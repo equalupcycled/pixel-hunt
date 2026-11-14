@@ -181,9 +181,9 @@ SPR.coyote = [makeSprite(WOLF_A, APAL.coyote), makeSprite(WOLF_B, APAL.coyote)];
 SPR.buck = [makeSprite(DEER_A, APAL.buck), makeSprite(DEER_B, APAL.buck)];
 
 const ICONS = {
-  shotgun: ['................', '................', '.KKKKKKKKKKKK...', 'KSSSSSSSSSSSSKKK', '.KKKKKKKKWWWWWWK', '.........KWWKWWK', '..........KK.KWK', '..............KK'],
-  gun: ['................', '................', '.KKKKKKKKKKKK...', 'KSSSSSSSSSSSSKKK', '.KKKKKKKKWWWWWWK', '.........KWWKWWK', '..........KK.KWK', '..............KK'],
-  handgun: ['................', '..KKKKKKKKK.....', '.KSSSSSSSSSK....', '.KSSSSSSSSSK....', '..KKKKWWWKK.....', '......KWWK......', '......KWWK......', '......KKKK......'],
+  shotgun: ['................', '................', '...KKKKKKKKKKKK.', 'KKKSSSSSSSSSSSSK', 'KWWWWWWKKKKKKKK.', 'KWWKWWK.........', 'KWK.KK..........', 'KK..............'],
+  gun: ['................', '................', '...KKKKKKKKKKKK.', 'KKKSSSSSSSSSSSSK', 'KWWWWWWKKKKKKKK.', 'KWWKWWK.........', 'KWK.KK..........', 'KK..............'],
+  handgun: ['................', '.....KKKKKKKKK..', '....KSSSSSSSSSK.', '....KSSSSSSSSSK.', '.....KKWWWKKKK..', '......KWWK......', '......KWWK......', '......KKKK......'],
   rifle: ['................', '..............KK', 'KKKKKKKKKKKKKKSK', 'KWWWWWSSSSSSSSSK', '.KWWWKKKKKKKKKK.', '.KWWK...........', 'KWWK............', 'KKK.............'],
   bow: ['....KK..........', '...KWK..........', '..KWKS..........', '.KWK..S.........', '.KWK...SKKKKKKKY', '.KWK..S.........', '..KWKS..........', '...KWK..........', '....KK..........'],
   mg: ['................', '...KK...........', 'KKKKKKKKKKKKKKKK', 'KSSSSSSSSSSSSSSK', 'KKKKSSSKKKKKKKKK', '..KYYK.KWWK.....', '..KYYK.KWWK.....', '...KK..KKKK.....'],
@@ -438,7 +438,16 @@ let shake = 0, hitStop = 0, skyFlash = 0, whiteFlash = 0, cursor = null, lastTou
 let weapons = [], wi = 0, wpn = null, turrets = [], gadgets = { flak: 0, call: 0, decoy: 0 }, armed = false, decoyObj = null;
 let holding = false, drawing = null, aim = { x: W / 2, y: 150 }, lightPos = null, shotKills = 0, laserSnd = 0, mgSnd = 0;
 const HUNTER_X = W / 2;
-const muzzle = () => ({ x: HUNTER_X + 3, y: H - BAR - 22 });
+// The gun pivots at the hunter's right shoulder; shots leave from the barrel tip along the (clamped) aim.
+const PIVOT_Y = () => H - BAR - 13;
+function aimAngle() {
+  let a = Math.atan2(aim.y - PIVOT_Y(), aim.x - HUNTER_X);
+  if (a > -0.12 && a <= Math.PI / 2) a = -0.12; else if (a > Math.PI / 2 || a < -Math.PI + 0.12) a = -Math.PI + 0.12; // never into the ground
+  return a;
+}
+// shoulder slides smoothly toward the side you aim at (right shoulder when aiming right, left when aiming left)
+const gunPivot = () => ({ x: HUNTER_X + clamp(Math.cos(aimAngle()) * 8, -4, 4), y: PIVOT_Y() });
+const muzzle = () => { const p = gunPivot(), a = aimAngle(); return { x: p.x + Math.cos(a) * 10, y: p.y + Math.sin(a) * 10 }; };
 const TURRET_X = [62, 118, 40];
 
 function makeWeapon(id) {
@@ -537,8 +546,10 @@ function spawn(kind) {
   if (kind === 'boss') {
     const id = bossIdFor(round), b = BOSSES[id], hp = ECON.bossHp(round), tm = ECON.bossTime(round) * eyeMult;
     const t = { kind: 'boss', boss: id, name: b.name, set: b.set, sc: b.sc, m: b.m, crown: b.crown, hp, hp0: hp, timer: tm, timer0: tm, state: 'fly', anim: 0, ph: rand(0, 6), risen: false, hurt: 0, life: 99 };
-    if (b.m === 'brun') { t.g = 1; t.x = -30; t.vx = 55 * M.speed; t.y = groundY(b.set, b.sc); t.risen = true; }
-    else { t.x = W / 2; t.y = GROUND + 10; t.vx = 1; }
+    // Bosses make ONE left-to-right pass that lasts the boss timer (Hunter's Eye already stretches tm).
+    t.x0 = -12 * b.sc; t.x1 = W + 12 * b.sc; t.x = t.x0; t.vx = (t.x1 - t.x0) / tm; t.risen = true;
+    if (b.m === 'brun') { t.g = 1; t.y = groundY(b.set, b.sc); }
+    else { t.y = SKY_TOP + 60; t.y0 = t.y; }
     targets.push(t); bossT = t; shake = 5; Sfx.deer();
     return;
   }
@@ -551,19 +562,27 @@ function spawn(kind) {
     return;
   }
   if (K.g) {
-    const dir = Math.random() < 0.5 ? 1 : -1, sc = K.size * (kind === 'swimgoose' ? 1 : Math.max(0.85, diff.scale));
+    const dir = 1, sc = K.size * (kind === 'swimgoose' ? 1 : Math.max(0.85, diff.scale));
     const sp = diff.deerSpeed * (K.spd || 1) * rand(0.9, 1.15) / Math.sqrt(eyeMult);
     const y = K.m === 'swim' ? GROUND - 6 : groundY(set, sc);
-    targets.push(Object.assign(base, { x: dir > 0 ? -20 : W + 20, y, y0: y, vx: dir * sp, vy: 0, sc, life: 99, hop: 0, hopT: 0, rev: Math.random() < 0.35 }));
+    targets.push(Object.assign(base, { x: dir > 0 ? -20 : W + 20, y, y0: y, vx: dir * sp, vy: 0, sc, life: 99, hop: 0, hopT: 0 }));
     if (kind === 'deer' || kind === 'wolf' || kind === 'coyote') Sfx.deer();
     return;
   }
-  const sp = diff.speed * rand(0.85, 1.15) * (K.spd || 1);
-  const ang = rand(-Math.PI * 0.8, -Math.PI * 0.2);
-  const t = Object.assign(base, { x: rand(24, W - 24), y: GROUND + 16, vx: Math.cos(ang) * sp, vy: Math.sin(ang) * sp, sp,
-    sc: diff.scale * (K.size || 1), life: diff.life * eyeMult * (K.life || 1), erratic: Math.random() < diff.erratic || K.m === 'flutter', turnT: rand(0.4, 1), risen: false, ph: rand(0, 6) });
-  if (K.m === 'circle') { t.cx = rand(50, W - 50); t.cy = rand(SKY_TOP + 50, SKY_BOT - 50); t.R = rand(22, 38); t.w = (sp / 30) * (Math.random() < 0.5 ? 1 : -1); t.ang = Math.PI / 2; }
-  targets.push(t);
+  targets.push(makeFlyer(kind, K, set, base));
+}
+// Flyers always enter on the LEFT edge and leave on the RIGHT edge (that exit is the only way to escape).
+// Crossing time = linger time (+0.7s, the old fly-away window) x Hunter's Eye -> Eye slows horizontal speed.
+function crossTime(K) { return (diff.life * (K.life || 1) + 0.7) * eyeMult / Math.sqrt(K.spd || 1); }
+function makeFlyer(kind, K, set, base) {
+  const sc = diff.scale * (K.size || 1), T = crossTime(K) * rand(0.9, 1.1);
+  const x0 = -10, vx = (W + 22) / T;                 // from just off-left to just off-right
+  const lowBand = K.m === 'skim', yTop = lowBand ? SKY_BOT - 70 : SKY_TOP + 14, yBot = lowBand ? SKY_BOT - 6 : SKY_BOT - 10;
+  const y = rand(yTop + 6, yBot - 6), vsp = diff.speed * rand(0.85, 1.15) * (K.spd || 1); // vertical zig speed
+  const t = Object.assign(base, { x: x0, y, y0: y, vx, vx0: vx, vy: (Math.random() < 0.5 ? -1 : 1) * vsp * 0.5, sp: vsp, sc, yTop, yBot,
+    erratic: Math.random() < diff.erratic || K.m === 'flutter', turnT: rand(0.4, 1), risen: true, ph: rand(0, 6), life: T });
+  if (K.m === 'circle') { t.R = rand(10, 16); t.w = 2.2 * (Math.random() < 0.5 ? 1 : -1); t.ang = 0; }
+  return t;
 }
 const live = t => t.state === 'fly' || t.state === 'flee';
 const hittable = t => live(t) && (t.kind !== 'eyes' || t.vis);
@@ -780,9 +799,8 @@ function dangerOf(t) {
   if (t.kind === 'boss') return 2;
   if (t.state === 'flee') return 1.5;
   if (t.kind === 'eyes') return t.peeks <= 1 ? 1.2 : -1;
-  if (t.g) { const p = t.vx > 0 ? t.x / W : 1 - t.x / W; return p > 0.55 ? p : -1; }
-  const k = 1 - t.life / Math.max(0.01, diff.life * eyeMult);
-  return k > 0.55 ? k : -1;
+  const p = t.x / W; // everything crosses left -> right; the further right, the closer to escaping
+  return p > 0.55 ? p : -1;
 }
 function updTurrets(dt) {
   for (const tu of turrets) {
@@ -927,9 +945,9 @@ function update(dt) {
 
   if (state === 'title') {
     if (targets.length < 3 && Math.random() < 0.02) {
-      const sp = rand(25, 45), a = rand(0, Math.PI * 2), fl = MAP_SET[curMap.id].fly[0][0];
+      const sp = rand(25, 45), fl = MAP_SET[curMap.id].fly[0][0];
       const k = Math.random() < 0.2 ? 'gold' : fl, K = KIND[k];
-      targets.push({ kind: k, set: k === 'owl' && curMap.id === 'snow' ? 'snowowl' : K.set, m: 'fly', x: rand(20, W - 20), y: rand(SKY_TOP + 60, SKY_BOT), vx: Math.cos(a) * sp, vy: Math.sin(a) * sp * 0.5, sp, sc: 1.2, state: 'fly', anim: 0, life: 1e9, risen: true, erratic: true, turnT: 1, attract: true, hp: 1, hurt: 0 });
+      targets.push({ kind: k, set: k === 'owl' && curMap.id === 'snow' ? 'snowowl' : K.set, m: 'fly', x: -10, y: rand(SKY_TOP + 60, SKY_BOT - 20), vx: sp, vx0: sp, vy: rand(-1, 1) * sp * 0.4, sp: sp * 0.6, sc: 1.2, yTop: SKY_TOP + 40, yBot: SKY_BOT - 10, state: 'fly', anim: 0, life: 1e9, risen: true, erratic: true, turnT: 1, attract: true, hp: 1, hurt: 0 });
     }
   } else if (state === 'intro') {
     introT -= dt; if (introT <= 0) state = 'play';
@@ -1016,46 +1034,33 @@ function updTarget(t, dt) {
       if (t.m === 'hop') {
         t.hopT += dt * slow; const cyc = t.hopT % 0.7;
         if (cyc < 0.45) { t.x += t.vx * dt * slow * 1.5; t.hop = Math.sin(cyc / 0.45 * Math.PI) * 9; } else t.hop = 0;
-        if (t.rev && Math.abs(t.x - W / 2) < 20) { t.vx = -t.vx; t.rev = false; }
       } else if (t.m === 'swim') {
         t.x += t.vx * dt * slow; t.hop = Math.sin(t.anim * 3) * 0.8;
       } else {
         t.x += t.vx * dt * slow; t.hop = Math.abs(Math.sin(t.anim * 12)) * 3;
-        if (t.rev && t.kind === 'roadrunner' && Math.abs(t.x - W / 2) < 10) { t.vx = -t.vx; t.rev = false; }
       }
-      if ((t.vx > 0 && t.x > W + 24) || (t.vx < 0 && t.x < -24)) escaped(t);
+      if (t.x > W + 24) escaped(t);
     } else if (t.state === 'hit') { t.hitT -= dt; if (t.hitT <= 0) { t.state = 'fall'; t.fallT = 0.9; } }
     else if (t.state === 'fall') { t.fallT -= dt; t.x += t.vx * 0.15 * dt; if (t.fallT <= 0) t.state = 'gone'; }
     return;
   }
   if (t.state === 'fly') {
     t.life -= dt;
-    const top = SKY_TOP + 8, low = t.m === 'skim' ? SKY_BOT - 80 : top;
-    if (t.m === 'circle' && t.risen && !t.attract) {
-      t.ang += t.w * dt * slow; t.cx += Math.sin(t.anim * 0.7) * 8 * dt;
-      const nx = t.cx + Math.cos(t.ang) * t.R, ny = t.cy + Math.sin(t.ang) * t.R * 0.6;
-      t.vx = (nx - t.x) / Math.max(dt, 0.001); t.vy = (ny - t.y) / Math.max(dt, 0.001);
-      t.x = nx; t.y = ny;
-    } else {
-      if (t.erratic) {
-        t.turnT -= dt;
-        if (t.turnT <= 0) { const a = rand(0, Math.PI * 2); t.vx = Math.cos(a) * t.sp; t.vy = Math.sin(a) * t.sp * 0.8; t.turnT = t.m === 'flutter' ? rand(0.15, 0.4) : rand(0.35, 0.9); }
-      }
-      if (t.m === 'glide' && t.risen) t.vy = Math.cos(t.anim * 1.6 + t.ph) * t.sp * 0.45;
-      if (decoyObj) { const dx = decoyObj.x - t.x, dy = decoyObj.y - t.y, d = Math.hypot(dx, dy) || 1; t.vx += (dx / d * t.sp - t.vx) * Math.min(1, dt * 2); t.vy += (dy / d * t.sp - t.vy) * Math.min(1, dt * 2); }
-      t.x += t.vx * dt * slow; t.y += t.vy * dt * slow;
-      if (t.m === 'circle' && t.y < t.cy) { t.risen = true; t.ang = Math.atan2((t.y - t.cy) / 0.6, t.x - t.cx); t.R = clamp(Math.hypot(t.x - t.cx, (t.y - t.cy) / 0.6), 18, 40); }
+    // horizontal: always rightward. Zig-zaggers vary pace (never below 55% of base); decoy only slows them.
+    if (t.erratic) {
+      t.turnT -= dt;
+      if (t.turnT <= 0) { t.vx = t.vx0 * rand(0.7, 1.35); t.vy = (Math.random() < 0.5 ? -1 : 1) * t.sp * rand(0.5, 1); t.turnT = t.m === 'flutter' ? rand(0.15, 0.4) : rand(0.35, 0.9); }
     }
-    if (t.y < SKY_BOT) t.risen = true;
-    if (t.x < 10) t.vx = Math.abs(t.vx);
-    if (t.x > W - 10) t.vx = -Math.abs(t.vx);
-    if (t.y < (t.risen ? low : top)) t.vy = Math.abs(t.vy);
-    if (t.risen && t.y > SKY_BOT) t.vy = -Math.abs(t.vy);
-    if (!t.risen && t.vy > -5) t.vy = -t.sp * 0.6;
-    if (t.life <= 0 && !t.attract) { t.state = 'flee'; t.vy = -Math.max(60, t.sp * 1.6); t.vx *= 0.3; }
-  } else if (t.state === 'flee') {
-    t.x += t.vx * dt; t.y += t.vy * dt;
-    if (t.y < -20) escaped(t);
+    let vy = t.vy;
+    if (t.m === 'glide') vy = Math.cos(t.anim * 1.6 + t.ph) * t.sp * 0.45;
+    if (decoyObj) { const dy = decoyObj.y - t.y; t.vy += (Math.sign(dy) * t.sp - t.vy) * Math.min(1, dt * 2); vy = t.vy; }
+    t.x += Math.max(t.vx0 * 0.55, t.vx) * dt * slow;
+    t.y += vy * dt * slow;
+    if (t.m === 'circle') { t.ang += t.w * dt * slow; t.y += Math.cos(t.ang) * t.R * t.w * 0.6 * dt * slow; } // soaring loops, still drifting right
+    if (t.y < t.yTop) { t.y = t.yTop; t.vy = Math.abs(t.vy); }
+    if (t.y > t.yBot) { t.y = t.yBot; t.vy = -Math.abs(t.vy); }
+    if (!t.erratic && t.m !== 'glide' && Math.random() < dt * 0.8) t.vy = -t.vy; // gentle zig-zag
+    if (t.x > W + 12) { if (t.attract) t.state = 'gone'; else escaped(t); }
   } else if (t.state === 'hit') {
     t.hitT -= dt;
     if (t.hitT <= 0) { t.state = 'fall'; t.vy = 20; Sfx.fall(); }
@@ -1067,20 +1072,13 @@ function updTarget(t, dt) {
 function updBoss(t, dt, rdt) {
   if (t.state === 'fly') {
     t.ph += dt;
-    if (t.m === 'brun') {
-      t.x += t.vx * dt; t.hop = Math.abs(Math.sin(t.anim * 9)) * 3;
-      if (t.x > W - 26 && t.vx > 0 && t.timer > 0) t.vx = -Math.abs(t.vx) * 1.05;
-      if (t.x < 26 && t.vx < 0 && t.timer > 0 && t.anim > 1) t.vx = Math.abs(t.vx) * 1.05;
-    } else {
-      const tx = W / 2 + Math.sin(t.ph * 0.8) * (W / 2 - 34), ty = SKY_TOP + 60 + Math.sin(t.ph * 1.7) * 34 + Math.sin(t.ph * 0.5) * 16;
-      if (!t.risen) { t.y -= 120 * dt; t.x += (tx - t.x) * Math.min(1, dt * 2); if (t.y <= ty) t.risen = true; }
-      else { const ox = t.x; t.x += (tx - t.x) * Math.min(1, dt * 3); t.y += (ty - t.y) * Math.min(1, dt * 3); t.vx = t.x - ox || t.vx; }
-    }
-    if (t.risen && state === 'play') t.timer -= rdt;
-    if (t.timer <= 0) { t.state = 'flee'; Sfx.escape(); float('IT\'S GETTING AWAY!', W / 2, H * 0.3, '#ff5a5a', 1.3, 1.2); if (t.m === 'brun') t.vx = Math.sign(t.vx || 1) * 110; else t.vy = -90; }
-  } else if (t.state === 'flee') {
-    if (t.m === 'brun') { t.x += t.vx * dt; if (t.x < -40 || t.x > W + 40) escaped(t); }
-    else { t.y += t.vy * dt; t.vy -= 40 * dt; if (t.y < -40) escaped(t); }
+    // one slow pass left -> right; it surges and slows but never turns back. Timer = time left to reach the right edge.
+    const surge = 1 + 0.45 * Math.sin(t.ph * 1.3);
+    if (state === 'play') t.x += t.vx * surge * dt;
+    t.timer = Math.max(0, (t.x1 - t.x) / t.vx);
+    if (t.m === 'brun') t.hop = Math.abs(Math.sin(t.anim * 9)) * 3;
+    else t.y = t.y0 + Math.sin(t.ph * 1.7) * 34 + Math.sin(t.ph * 0.5) * 16;
+    if (t.x >= t.x1) escaped(t);
   } else if (t.state === 'hit') { t.hitT -= rdt; if (t.hitT <= 0) { t.state = 'fall'; t.vy = 10; t.fallT = 1.2; Sfx.fall(); } }
   else if (t.state === 'fall') {
     if (t.m === 'brun') { t.fallT -= rdt; if (t.fallT <= 0) t.state = 'gone'; }
@@ -1274,7 +1272,7 @@ $('btn-revive').addEventListener('click', () => {
 function revive() {
   missRun = 0; streak = 0;
   targets = targets.filter(t => t.state === 'fall' || t.state === 'hit' || t === bossT);
-  if (bossT) { bossT.state = 'fly'; bossT.timer = Math.max(bossT.timer, 5); }
+  if (bossT) { bossT.state = 'fly'; bossT.x = Math.min(bossT.x, bossT.x1 - 5 * bossT.vx); bossT.timer = (bossT.x1 - bossT.x) / bossT.vx; } // at least 5s more
   weapons.forEach(w => { w.ammo = w.id === 'laser' ? 0 : w.cap; w.heat = 0; w.overheated = false; w.reloading = false; });
   state = 'intro'; introT = 1.4; banner = 'SECOND CHANCE!'; banner2 = 'ROUND ' + round;
   Sfx.roundStart(); showGameButtons(true);
@@ -1555,7 +1553,9 @@ function drawHunter() {
   const hx = HUNTER_X, feet = H - BAR - 1;
   ctx.drawImage(hunterSprite(Meta.save.equip.skin), hx - 7.5, feet - 21, 15, 21);
   if (!wpn) return;
-  const m = muzzle(), a = Math.atan2(aim.y - m.y, aim.x - m.x), img = WSPR[wpn.id] || WSPR.gun;
+  const m = gunPivot(), img = WSPR[wpn.id] || WSPR.gun, a = aimAngle();
+  // Sprites point RIGHT with the stock/grip at the left end and their underside (+y) down. Rotate to the aim and
+  // mirror vertically when aiming left, so the stock stays at the shoulder and the grip underneath - never upside down.
   ctx.save(); ctx.translate(m.x, m.y); ctx.rotate(a); if (Math.cos(a) < 0) ctx.scale(1, -1);
   const pull = drawing ? Math.min(1, drawing.t / wpn.draw) : 0;
   ctx.drawImage(img, -3, -img.height * 0.4, img.width * 0.8, img.height * 0.8);

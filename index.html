@@ -60,8 +60,14 @@
     </div>
     <div class="row"><button id="btn-board" class="pbtn small">LEADERBOARD</button></div>
     <div class="row" id="title-audio">
-      <button type="button" id="btn-sfx-t" class="icon-btn sfx-btn" aria-label="Sound on" aria-pressed="true"><span class="ico-sfx" aria-hidden="true"></span></button>
-      <button type="button" id="btn-music-t" class="icon-btn music-btn" aria-label="Music on" aria-pressed="true"><span class="ico-music" aria-hidden="true"></span></button>
+      <div class="audio-toggle">
+        <button type="button" id="btn-sfx-t" class="icon-btn sfx-btn" aria-label="Sound on" aria-pressed="true"><span class="icon-face">S</span></button>
+        <span class="audio-lbl">SOUND</span>
+      </div>
+      <div class="audio-toggle">
+        <button type="button" id="btn-music-t" class="icon-btn music-btn" aria-label="Music on" aria-pressed="true"><span class="icon-face">M</span></button>
+        <span class="audio-lbl">MUSIC</span>
+      </div>
       <button id="btn-how" class="pbtn small">HOW TO PLAY</button>
       <button id="btn-daily" class="pbtn small gold-btn hidden">DAILY!</button>
     </div>
@@ -125,10 +131,15 @@
       <h2>PAUSED</h2>
       <button id="btn-resume" class="pbtn big">RESUME</button>
       <div class="row audio-row">
-        <button type="button" id="btn-sfx-p" class="icon-btn sfx-btn" aria-label="Sound on" aria-pressed="true"><span class="ico-sfx" aria-hidden="true"></span></button>
-        <button type="button" id="btn-music-p" class="icon-btn music-btn" aria-label="Music on" aria-pressed="true"><span class="ico-music" aria-hidden="true"></span></button>
+        <div class="audio-toggle">
+          <button type="button" id="btn-sfx-p" class="icon-btn sfx-btn" aria-label="Sound on" aria-pressed="true"><span class="icon-face">S</span></button>
+          <span class="audio-lbl">SOUND</span>
+        </div>
+        <div class="audio-toggle">
+          <button type="button" id="btn-music-p" class="icon-btn music-btn" aria-label="Music on" aria-pressed="true"><span class="icon-face">M</span></button>
+          <span class="audio-lbl">MUSIC</span>
+        </div>
       </div>
-      <p class="tiny audio-hint">SOUND &middot; MUSIC</p>
       <button id="btn-quit" class="pbtn">QUIT TO TITLE</button>
     </div>
   </div>

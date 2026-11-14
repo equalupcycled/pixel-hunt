@@ -252,40 +252,34 @@ h2.gold, #go-title.gold { color: #ffe066; }
 #ov-how .panel { max-height: 100%; }
 #ov-how ul.how { overflow-y: auto; min-height: 0; flex: 1; -webkit-overflow-scrolling: touch; touch-action: pan-y; }
 
-/* Sound / Music icon toggles — 44px hit target, always easy to reach on title and pause */
-#title-audio { align-items: center; justify-content: center; flex-wrap: wrap; gap: 8px; }
+/* Sound / Music toggles: 38px pixel-letter face, 44px tap target via padding */
+#title-audio { align-items: flex-end; justify-content: center; flex-wrap: wrap; gap: 8px; }
+.audio-toggle { display: flex; flex-direction: column; align-items: center; gap: 2px; }
 .icon-btn {
   width: 44px; height: 44px; min-width: 44px; min-height: 44px;
-  padding: 0; margin: 0; border: 0; cursor: pointer;
-  background: #2b4f8f; color: #fff;
-  box-shadow: 0 -3px 0 0 #000 inset, 0 0 0 3px #000, 3px 3px 0 0 rgba(0,0,0,.35);
+  padding: 3px; margin: 0; border: 0; cursor: pointer;
+  background: transparent; box-shadow: none;
   display: inline-flex; align-items: center; justify-content: center;
   touch-action: manipulation; position: relative;
 }
-.icon-btn:active { transform: translate(2px, 2px); box-shadow: 0 -1px 0 0 #000 inset, 0 0 0 3px #000; }
-.icon-btn.off { background: #4a2a2a; }
-.icon-btn.off::after {
-  content: ""; position: absolute; left: 8px; right: 8px; top: 50%; height: 3px;
+.icon-btn:active { transform: none; box-shadow: none; }
+.icon-btn:active .icon-face { transform: translate(2px, 2px); box-shadow: 0 0 0 2px #000; }
+.icon-face {
+  width: 38px; height: 38px;
+  background: #2b4f8f; color: #ffe066;
+  font: 900 20px/38px "Courier New", ui-monospace, Menlo, monospace;
+  letter-spacing: 0; text-align: center;
+  box-shadow: 0 -2px 0 0 #000 inset, 0 0 0 2px #000, 2px 2px 0 0 rgba(0,0,0,.35);
+  display: flex; align-items: center; justify-content: center;
+  position: relative; image-rendering: pixelated;
+}
+.icon-btn.off .icon-face { background: #3a2a2a; color: #8a8080; }
+.icon-btn.off .icon-face::after {
+  content: ""; position: absolute; left: 4px; right: 4px; top: 50%; height: 3px;
   background: #ff5a5a; box-shadow: 0 0 0 1px #000; transform: rotate(-28deg);
 }
-.ico-sfx, .ico-music {
-  width: 22px; height: 22px; display: block; position: relative;
-  image-rendering: pixelated; pointer-events: none;
-}
-/* pixel speaker */
-.ico-sfx { background:
-  linear-gradient(#ffe066,#ffe066) 2px 8px / 6px 6px no-repeat,
-  linear-gradient(#ffe066,#ffe066) 6px 5px / 5px 12px no-repeat;
-  box-shadow: 14px 4px 0 0 #ffe066, 14px 15px 0 0 #ffe066, 18px 8px 0 0 #ffe066, 18px 11px 0 0 #ffe066;
-}
-/* pixel music note */
-.ico-music { background:
-  linear-gradient(#ffe066,#ffe066) 12px 2px / 3px 12px no-repeat,
-  linear-gradient(#ffe066,#ffe066) 8px 2px / 8px 3px no-repeat;
-  box-shadow: 5px 14px 0 0 #ffe066, 4px 15px 0 0 #ffe066, 8px 14px 0 0 #ffe066, 9px 15px 0 0 #ffe066;
-}
-.audio-row { justify-content: center; gap: 16px; }
-.audio-hint { margin: 0; opacity: .85; }
+.audio-lbl { font-size: 9px; font-weight: 900; letter-spacing: 0.6px; line-height: 1; color: #cfe0ff; text-shadow: 1px 1px 0 #000; }
+.audio-row { justify-content: center; gap: 20px; align-items: flex-end; }
 .title-legal { font-size: 10px; line-height: 1.35; text-shadow: 1px 1px 0 #000; opacity: .9; letter-spacing: 0.4px; }
 .title-legal-links { display: flex; gap: 8px; justify-content: center; align-items: center; margin-top: 2px; flex-wrap: wrap; }
 .title-legal a, .title-legal .linkish, #ov-about a {

@@ -15,13 +15,29 @@ Any static host works (Render static site, GitHub Pages, Netlify, Cloudflare Pag
 - `js/game.js` - game loop, sprites, pixel font, difficulty, shop, input
 - `js/audio.js` - WebAudio synth sound effects (mute persisted in localStorage)
 - `js/ads.js` - ad abstraction (web placeholder / AdMob on native)
+- `js/economy.js` - upgrade tracks, price formula, difficulty curve, payouts (shared with the simulator)
+- `js/meta.js` - persistent save (bank, upgrades, missions, achievements, daily calendar, stats, 2x-ad cap)
+- `tools/econ-sim.js` - Monte Carlo economy simulator: `node tools/econ-sim.js --table`
+- `tools/test_playwright.py` - headless smoke test + screenshots (serve the folder on :8799 first)
 - `manifest.webmanifest`, `sw.js`, `icons/` - PWA (installable, works offline)
 
 ## Rules
 - Tap to shoot. Gun starts with 1 shell; tap RELOAD (or swipe down, or R/Space on desktop). You can't shoot while reloading.
 - Lose: 3 targets escape **in a row** (birds flying away or deer running off-screen). Any hit resets the counter.
 - Pink lovebirds are protected: shooting one costs cash + points and breaks your streak; letting them go is free.
-- Earn $ per hit; spend it in the shop between rounds. High score saved in localStorage (`pixelhunt.best`).
+- Earn $ per hit. **Money and upgrades persist** across runs (localStorage `pixelhunt.save.v1`); high score in `pixelhunt.best`.
+- Shop ("Armory") is available from the title, game over, and between rounds whenever you can afford something.
+
+## Economy (tuned with tools/econ-sim.js)
+- 7 upgrade tracks, 52 levels: Shotgun (Single -> Double Barrel -> Pump -> Lever -> Semi-Auto -> Combat 12 -> Drum Mag),
+  Quick Hands (12), Wide Choke (9), Hunter's Eye (8), Focus Scope (6), Lucky Feather (2), Bounty Hunter (9).
+- Price = 3100 x trackWeight x (1 + 0.03 x trackLevel) x 1.6 x 1.05^(upgrades owned) (first upgrade = 3100).
+  Every purchase raises all prices (Vampire Survivors-style), so purchase order can't break the curve.
+- Simulated average player: a run earns ~18-29% of the next upgrade; each upgrade takes ~3-5 runs
+  (avg ~3.8 incl. missions + daily), ~200 runs / ~10 hours of play to max everything.
+- Side income scales with the cheapest next upgrade: missions 10%, daily calendar 8-35% (day 7 big),
+  achievements fixed one-time rewards. Rewarded "2x run earnings" on game over is capped at 3/day.
+- Tweak `BASE`, `GROW`, `EARLY`, `PER_LEVEL`, track weights in `js/economy.js`, then re-run the sim.
 
 ## Ads / AdMob
 `js/ads.js` exposes `Ads.showInterstitial()` (shown on every death before Game Over) and `Ads.showRewarded()`

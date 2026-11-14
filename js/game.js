@@ -250,29 +250,22 @@ function resize() {
 window.addEventListener('resize', resize);
 
 // ---------------- upgrades ----------------
-const UPG = [
-  { id: 'gun', name: 'Shotgun', icon: 'gun', names: ['Single Shot', 'Double Barrel', 'Pump Action', 'Semi-Auto', 'Drum Mag'],
-    val: [1, 2, 4, 6, 8], cost: [40, 140, 350, 800], desc: v => `${v} shell${v > 1 ? 's' : ''} per load` },
-  { id: 'reload', name: 'Quick Hands', icon: 'hand', val: [1.4, 1.15, 0.9, 0.7, 0.55, 0.4], cost: [30, 65, 120, 210, 360], desc: v => `Reload in ${v}s` },
-  { id: 'choke', name: 'Wide Choke', icon: 'choke', val: [5, 7, 9, 11.5, 14], cost: [35, 80, 160, 300], desc: v => `Shot spread ${v}px` },
-  { id: 'focus', name: 'Focus Scope', icon: 'scope', val: [0, 1, 2, 3], cost: [90, 230, 480], desc: v => v ? `${v} slow-mo/round` : 'Slow-mo ability' },
-  { id: 'luck', name: 'Lucky Feather', icon: 'feather', val: [3, 4, 5], cost: [220, 550], desc: v => `${v} misses in a row allowed` },
-  { id: 'bounty', name: 'Bounty Hunter', icon: 'coin', val: [1, 1.25, 1.5, 1.75, 2], cost: [50, 110, 200, 360], desc: v => `x${v} money` },
-];
+const UPG = ECON.TRACKS;
 const ICONS = {
   gun: ['................', '................', '.KKKKKKKKKKKK...', 'KSSSSSSSSSSSSKKK', '.KKKKKKKKWWWWWWK', '.........KWWKWWK', '..........KK.KWK', '..............KK'],
   hand: ['....KK.KK.......', '...KYYKYYK......', '...KYYKYYKKK....', '.KKKYYKYYKYYK...', 'KYYKYYYYYKYYK...', 'KYYYYYYYYYYYK...', '.KYYYYYYYYYK....', '..KKYYYYYYK.....', '....KKKKKK......'],
   choke: ['......KKKK......', '....KK....KK....', '...K..K..K..K...', '..K....KK....K..', '..K...KRRK...K..', '..K....KK....K..', '...K..K..K..K...', '....KK....KK....', '......KKKK......'],
   scope: ['.....KKKKKK.....', '...KKCCCCCCKK...', '..KCCCCKCCCCCK..', '..KCCCCKCCCCCK..', '..KKKKKKKKKKKK..', '..KCCCCKCCCCCK..', '...KKCCKCCCKK...', '.....KKKKKK.....'],
   feather: ['...........KK...', '.........KKWWK..', '.......KKWWWWK..', '.....KKWWWWWK...', '....KWWWWWKK....', '...KWWWWKK......', '..KWWKKK........', '.KKK............', 'K...............'],
+  eye: ['................', '....KKKKKKKK....', '..KKWWWWWWWWKK..', '.KWWWWKKKKWWWWK.', 'KWWWWKCCCCKWWWWK', '.KWWWWKKKKWWWWK.', '..KKWWWWWWWWKK..', '....KKKKKKKK....'],
   coin: ['.....KKKKK......', '...KKYYYYYKK....', '..KYYYKKKYYYK...', '..KYYKYYYYYYK...', '..KYYYKKKYYYK...', '..KYYYYYYKYYK...', '..KYYYKKKYYYK...', '...KKYYYYYKK....', '.....KKKKK......'],
 };
-const ICON_PAL = { K: '#000', S: '#8d97a8', W: '#8a4b1c', Y: '#ffd23f', R: '#ff3b3b', C: '#8fd3ff' };
+const ICON_PAL = { K: '#000', S: '#8d97a8', W: '#8a4b1c', E: '#fff', Y: '#ffd23f', R: '#ff3b3b', C: '#8fd3ff' };
 
 // ---------------- game state ----------------
 let state = 'title', paused = false;
 let best = store.get('best', 0);
-let score, money, round, lv, shells, maxShells, reloading, reloadT, reloadTime, radius, maxMiss, moneyMult;
+let score, runCash = 0, focusDur = 3, eyeMult = 1, round, shells, maxShells, reloading, reloadT, reloadTime, radius, maxMiss, moneyMult;
 let focusCharges, focusMax, focusT, missRun, streak, bestStreak, reviveUsed;
 let shots, hits, roundHits, roundEsc, roundTotal, queue, spawnT, spawnInt, conc, diff;
 let introT = 0, clearT = 0, dieT = 0, banner = '', banner2 = '';
@@ -280,31 +273,18 @@ let targets = [], parts = [], floats = [], flashes = [];
 let shake = 0, hitStop = 0, skyFlash = 0, whiteFlash = 0, cursor = null, lastTouch = 0, contTimer = null;
 
 function resetRun() {
-  score = 0; money = 0; round = 0; shots = 0; hits = 0; streak = 0; bestStreak = 0;
-  lv = {}; UPG.forEach(u => lv[u.id] = 0);
+  score = 0; runCash = 0; round = 0; shots = 0; hits = 0; streak = 0; bestStreak = 0;
   applyUpgrades(); shells = maxShells; reloading = false; missRun = 0; reviveUsed = false;
   targets = []; parts = []; floats = [];
 }
 function applyUpgrades() {
-  const v = id => UPG.find(u => u.id === id).val[lv[id]];
+  const v = Meta.val;
   maxShells = v('gun'); reloadTime = v('reload'); radius = v('choke'); focusMax = v('focus'); maxMiss = v('luck'); moneyMult = v('bounty');
+  eyeMult = v('eye'); focusDur = ECON.TRACKS.find(t => t.id === 'focus').dur[Meta.save.lv.focus] || 3;
 }
+function addCash(n) { Meta.save.bank = Math.max(0, Meta.save.bank + n); runCash += n; }
 
-function difficulty(r) {
-  return {
-    count: Math.min(3 + r, 22),
-    speed: Math.min(26 + (r - 1) * 5.5, 115),
-    conc: r < 3 ? 1 : r < 6 ? 2 : r < 10 ? 3 : 4,
-    life: Math.max(2.4, 6.5 - (r - 1) * 0.3),
-    erratic: clamp((r - 2) * 0.09, 0, 0.75),
-    scale: Math.max(0.85, 1.5 - (r - 1) * 0.05),
-    gold: Math.min(0.05 + r * 0.01, 0.16),
-    decoy: r >= 3 ? Math.min(0.05 + (r - 3) * 0.02, 0.2) : 0,
-    deer: r >= 4 ? Math.min(0.14 + (r - 4) * 0.025, 0.32) : 0,
-    deerSpeed: Math.min(48 + (r - 4) * 8, 150),
-    interval: Math.max(0.55, 1.5 - r * 0.07),
-  };
-}
+const difficulty = ECON.difficulty;
 
 function startRound() {
   round++;
@@ -328,12 +308,13 @@ function startRound() {
   banner2 = round === 1 ? 'TAP TO SHOOT' : round === 4 ? 'DEER IN THE WOODS!' : round === 3 ? "DON'T SHOOT PINK BIRDS" : '';
   Sfx.roundStart();
   showGameButtons(true);
+  Meta.event('roundStart', { round }); notify();
 }
 
 function spawn(kind) {
   if (kind === 'deer') {
     const dir = Math.random() < 0.5 ? 1 : -1;
-    const sp = diff.deerSpeed * rand(0.9, 1.15);
+    const sp = diff.deerSpeed * rand(0.9, 1.15) / Math.sqrt(eyeMult);
     targets.push({ kind, x: dir > 0 ? -20 : W + 20, y: GROUND + 1, vx: dir * sp, vy: 0, sc: 1.6, state: 'fly', anim: 0, life: 99, hop: 0 });
     Sfx.deer();
     return;
@@ -341,7 +322,7 @@ function spawn(kind) {
   const sp = diff.speed * rand(0.85, 1.15) * (kind === 'gold' ? 1.35 : 1);
   const ang = rand(-Math.PI * 0.8, -Math.PI * 0.2);
   targets.push({ kind, x: rand(24, W - 24), y: GROUND + 16, vx: Math.cos(ang) * sp, vy: Math.sin(ang) * sp, sp,
-    sc: diff.scale * (kind === 'gold' ? 0.85 : 1), state: 'fly', anim: rand(0, 1), life: diff.life * (kind === 'gold' ? 0.8 : 1),
+    sc: diff.scale * (kind === 'gold' ? 0.85 : 1), state: 'fly', anim: rand(0, 1), life: diff.life * eyeMult * (kind === 'gold' ? 0.8 : 1),
     erratic: Math.random() < diff.erratic, turnT: rand(0.4, 1), risen: false });
 }
 
@@ -377,7 +358,8 @@ window.addEventListener('keydown', e => {
   if (e.code === 'KeyF') useFocus();
   if (e.code === 'KeyP' || e.code === 'Escape') togglePause();
 });
-document.addEventListener('visibilitychange', () => { if (document.hidden && !paused && (state === 'play' || state === 'intro')) togglePause(); });
+document.addEventListener('visibilitychange', () => { if (document.hidden) Meta.persist();
+  if (document.hidden && !paused && (state === 'play' || state === 'intro')) togglePause(); });
 
 function startReload() {
   if (paused || !(state === 'play' || state === 'intro')) return;
@@ -386,14 +368,14 @@ function startReload() {
 }
 function useFocus() {
   if (paused || state !== 'play' || focusCharges <= 0 || focusT > 0) return;
-  focusCharges--; focusT = 3; Sfx.focus();
+  focusCharges--; focusT = focusDur; Sfx.focus();
   floats.push({ text: 'FOCUS!', x: W / 2, y: H / 2 - 40, t: 0, life: 1, color: '#c9a7ff', sz: 2 });
 }
 
 function shoot(x, y) {
   if (reloading) { Sfx.empty(); floats.push({ text: 'RELOADING', x, y: y - 8, t: 0, life: 0.5, color: '#ccc', sz: 1 }); return; }
   if (shells <= 0) { Sfx.empty(); floats.push({ text: 'RELOAD!', x, y: y - 8, t: 0, life: 0.6, color: '#ff9a3d', sz: 1.2 }); return; }
-  shells--; shots++;
+  shells--; shots++; Meta.event('shot');
   Sfx.shot();
   shake = Math.max(shake, 3); whiteFlash = 0.06;
   flashes.push({ x, y, t: 0 });
@@ -414,12 +396,13 @@ function shoot(x, y) {
       const b = 1000 * good.length * round;
       score += b;
       floats.push({ text: (good.length === 2 ? 'DOUBLE!' : 'MULTI X' + good.length) + ' +' + fmt(b), x: W / 2, y: H / 2 - 60, t: 0, life: 1.3, color: '#7dff7a', sz: 1.5 });
+      Meta.event('multi', { n: good.length, score });
     }
   }
   bad.forEach(t => {
     t.state = 'hit'; t.hitT = 0.3; t.vy = 0;
-    const pen = Math.min(money, 15 + round * 5);
-    money -= pen; streak = 0;
+    const pen = Math.min(Meta.save.bank, ECON.decoyPenalty(round));
+    addCash(-pen); streak = 0; Meta.event('decoy');
     const sp = Math.min(score, 1000 * round); score -= sp;
     floats.push({ text: 'LOVEBIRD! -$' + pen, x: t.x, y: t.y - 14, t: 0, life: 1.4, color: '#ff8fc8', sz: 1.2 });
     feathers(t.x, t.y, PAL.decoy, 14);
@@ -435,11 +418,10 @@ function shoot(x, y) {
 function kill(t, i) {
   hits++; roundHits++; missRun = 0; streak++; bestStreak = Math.max(bestStreak, streak);
   const mult = Math.min(streak, 5);
-  const base = t.kind === 'gold' ? 2500 : t.kind === 'deer' ? 1500 : t.kind === 'blue' ? 750 : 500;
-  const cash = t.kind === 'gold' ? 25 : t.kind === 'deer' ? 15 : t.kind === 'blue' ? 7 : 5;
-  const pts = Math.round(base * (1 + (round - 1) * 0.25) * mult / 10) * 10;
-  const m = Math.round(cash * moneyMult * (1 + 0.1 * (mult - 1)));
-  score += pts; money += m;
+  const pts = ECON.killPts(t.kind, round, mult);
+  const m = ECON.killCash(t.kind, round, moneyMult, mult);
+  score += pts; addCash(m);
+  Meta.event('kill', { kind: t.kind, streak, score }); setTimeout(notify, 400);
   t.state = 'hit'; t.hitT = t.kind === 'deer' ? 0.2 : 0.35;
   const yo = i * 10;
   floats.push({ text: 'HIT! +' + fmt(pts), x: t.x, y: t.y - 16 - yo, t: 0, life: 1.1, color: t.kind === 'gold' ? '#ffd23f' : '#ffe066', sz: 1.3 });
@@ -492,7 +474,7 @@ function update(dt) {
     if (spawnT <= 0 && queue.length && alive() < diff.conc) { spawn(queue.shift()); spawnT = diff.interval * rand(0.8, 1.2); }
     if (!queue.length && targets.length === 0) roundClear();
   } else if (state === 'clear') {
-    clearT -= dt; if (clearT <= 0) openShop();
+    clearT -= dt; if (clearT <= 0) { if (Meta.anyAffordable()) openShop(); else startRound(); }
   } else if (state === 'dying') {
     dieT -= dt; if (dieT <= 0) { state = 'ad'; onDeath(); }
   }
@@ -547,12 +529,13 @@ function updTarget(t, dt) {
 function roundClear() {
   state = 'clear'; clearT = 2.0;
   const perfect = roundHits === roundTotal;
-  const bonusCash = 10 + round * 5 + (perfect ? 10 + round * 3 : 0);
-  money += bonusCash;
+  const bonusCash = ECON.roundBonus(round, perfect);
+  addCash(bonusCash);
   banner = perfect ? 'PERFECT!' : 'ROUND CLEAR';
   banner2 = '+$' + bonusCash + (perfect ? '  +' + fmt(5000 * round) : '');
   if (perfect) score += 5000 * round;
   Sfx.clear(); showGameButtons(false);
+  Meta.event('roundClear', { perfect, score }); Meta.persist(); notify();
 }
 
 // ---------------- overlays / UI ----------------
@@ -564,34 +547,41 @@ function showGameButtons(on) {
 function iconCanvas(key) {
   const c = makeSprite(ICONS[key], ICON_PAL); return c;
 }
-function openShop() {
-  state = 'shop';
-  $('shop-money').textContent = fmt(money);
-  $('shop-sub').textContent = `ROUND ${round} CLEARED \u00b7 NEXT: ROUND ${round + 1}` + (round + 1 === 4 ? ' (DEER!)' : '');
+let shopFrom = 'round';
+function openShop(from = 'round') {
+  shopFrom = from;
+  if (from === 'round') state = 'shop';
+  $('shop-money').textContent = fmt(Meta.save.bank);
+  const nx = Meta.cheapestNext();
+  $('shop-sub').textContent = from === 'round' ? `ROUND ${round} CLEARED \u00b7 NEXT: ROUND ${round + 1}` + (round + 1 === 4 ? ' (DEER!)' : '')
+    : `UPGRADES ARE PERMANENT \u00b7 ${Meta.totalBought()}/${ECON.TOTAL_LEVELS} OWNED`;
+  $('btn-next').innerHTML = from === 'round' ? 'NEXT ROUND &#9654;' : 'BACK';
   const list = $('shop-list'); list.innerHTML = '';
   UPG.forEach(u => {
-    const l = lv[u.id], maxed = l >= u.cost.length;
-    const cur = u.names ? u.names[l] : u.desc(u.val[l]);
-    const next = maxed ? 'MAXED' : 'Next: ' + (u.names ? u.names[l + 1] + ' (' + u.desc(u.val[l + 1]) + ')' : u.desc(u.val[l + 1]));
-    const el = document.createElement('div'); el.className = 'item';
-    const ic = iconCanvas(u.icon);
+    const l = Meta.save.lv[u.id], maxed = Meta.maxed(u), c = maxed ? 0 : Meta.costOf(u);
+    const cur = u.names ? u.names[l] : u.desc(u.val[l], l);
+    const next = maxed ? 'MAXED' : 'Next: ' + (u.names ? u.names[l + 1] + ' (' + u.desc(u.val[l + 1], l + 1) + ')' : u.desc(u.val[l + 1], l + 1));
+    const el = document.createElement('div'); el.className = 'item' + (!maxed && Meta.save.bank >= c ? ' can' : '');
+    const ic = makeSprite(ICONS[u.icon], ICON_PAL);
+    const pct = maxed ? 100 : Math.min(100, Math.floor(Meta.save.bank / c * 100));
     const mid = document.createElement('div');
-    mid.innerHTML = `<div class="nm">${u.name.toUpperCase()}</div><div class="ds">${cur}</div><div class="ds" style="opacity:.75">${next}</div>
-      <div class="pips">${u.val.map((_, i) => `<i class="${i <= l ? 'on' : ''}"></i>`).join('')}</div>`;
+    mid.innerHTML = `<div class="nm">${u.name.toUpperCase()} <span class="lvl">LV ${l}/${u.val.length - 1}</span></div><div class="ds">${cur}</div><div class="ds dim">${next}</div>
+      <div class="pips">${u.val.slice(1).map((_, i) => `<i class="${i < l ? 'on' : ''}"></i>`).join('')}</div>
+      ${maxed ? '' : `<div class="prog"><i style="width:${pct}%"></i></div>`}`;
     const b = document.createElement('button'); b.className = 'pbtn' + (maxed ? ' max' : '');
-    b.textContent = maxed ? 'MAX' : '$' + fmt(u.cost[l]);
-    b.disabled = !maxed && money < u.cost[l];
-    if (maxed) b.disabled = true;
+    b.textContent = maxed ? 'MAX' : '$' + fmt(c);
+    b.disabled = maxed || Meta.save.bank < c;
     b.dataset.id = u.id;
     b.addEventListener('click', () => {
-      if (maxed || money < u.cost[l]) return;
-      money -= u.cost[l]; lv[u.id]++; applyUpgrades(); shells = maxShells; Sfx.buy(); openShop();
+      if (!Meta.buy(u.id)) return;
+      applyUpgrades(); shells = maxShells; Sfx.buy(); notify(); openShop(shopFrom);
+      toast('UPGRADED!', u.name + ' LV ' + Meta.save.lv[u.id], 0);
     });
     el.append(ic, mid, b); list.appendChild(el);
   });
   show('ov-shop', true);
 }
-$('btn-next').addEventListener('click', () => { Sfx.click(); show('ov-shop', false); startRound(); });
+$('btn-next').addEventListener('click', () => { Sfx.click(); show('ov-shop', false); if (shopFrom === 'round') startRound(); else if (shopFrom === 'over') show('ov-over', true); else toTitle(); });
 
 function onDeath() {
   if (!reviveUsed && Ads.rewardedAvailable()) {
@@ -620,25 +610,118 @@ function revive() {
   state = 'intro'; introT = 1.4; banner = 'SECOND CHANCE!'; banner2 = 'ROUND ' + round;
   Sfx.roundStart(); showGameButtons(true);
 }
+let earnedShown = 0;
 function gameOver() {
   state = 'over';
   const isBest = score > best;
   if (isBest) { best = score; store.set('best', best); }
+  Meta.endRun({ score, round, earned: runCash });
   $('go-score').textContent = fmt(score); $('go-best').textContent = fmt(best);
   $('go-round').textContent = round; $('go-hits').textContent = hits;
   $('go-acc').textContent = shots ? Math.round(hits / shots * 100) + '%' : '0%';
+  earnedShown = Math.max(0, runCash);
+  $('go-earned').textContent = '+$' + fmt(earnedShown);
   show('newbest', isBest && score > 0);
-  show('ov-over', true);
+  const dbl = $('btn-double'), left = Meta.doublesLeft();
+  dbl.classList.toggle('hidden', earnedShown <= 0);
+  dbl.disabled = left <= 0;
+  dbl.innerHTML = left > 0 ? `&#9654; WATCH AD: 2X EARNINGS<br><small>+$${fmt(earnedShown)} MORE \u00b7 ${left} LEFT TODAY</small>` : '2X USED UP TODAY<br><small>COMES BACK TOMORROW</small>';
+  renderNext('go-next'); renderMissions('go-missions');
+  show('ov-over', true); notify();
+}
+function renderNext(id) {
+  const nx = Meta.cheapestNext(), el = $(id);
+  if (!nx.t) { el.innerHTML = '<div class="nx-t">ALL UPGRADES MAXED!</div>'; return; }
+  const pct = Math.min(100, Math.floor(Meta.save.bank / nx.c * 100));
+  el.innerHTML = `<div class="nx-t${pct >= 100 ? ' ready' : ''}">${pct >= 100 ? 'READY TO BUY: ' : 'BANK $' + fmt(Meta.save.bank) + ' \u00b7 NEXT: '}${nx.t.name.toUpperCase()} $${fmt(nx.c)}</div><div class="prog big"><i style="width:${pct}%"></i><span>${pct}%</span></div>`;
+}
+function renderMissions(id) {
+  $(id).innerHTML = Meta.save.missions.map(m => {
+    const p = Math.min(m.n, Meta.MT[m.type].scope === 'run' ? m.p : m.p);
+    return `<div class="ms"><div class="ms-t">${Meta.missionText(m)}</div><div class="ms-r">$${fmt(Meta.missionReward())}</div>
+      <div class="prog"><i style="width:${Math.floor(p / m.n * 100)}%"></i></div><div class="ms-p">${fmt(p)}/${fmt(m.n)}${Meta.MT[m.type].scope === 'run' ? ' (one run)' : ''}</div></div>`;
+  }).join('');
+}
+$('btn-double').addEventListener('click', () => {
+  Sfx.click();
+  Ads.showRewarded().then(ok => {
+    if (ok && Meta.useDouble(earnedShown)) { $('go-earned').textContent = '+$' + fmt(earnedShown * 2) + ' (2X!)'; Sfx.gold(); toast('EARNINGS DOUBLED!', '+$' + fmt(earnedShown), 0); }
+    $('btn-double').classList.add('hidden'); renderNext('go-next');
+  });
+});
+$('btn-go-shop').addEventListener('click', () => { Sfx.click(); show('ov-over', false); openShop('over'); });
+
+// ---------- toasts / notices ----------
+const toastQ = []; let toastBusy = false;
+function toast(title, sub, reward) {
+  toastQ.push({ title, sub, reward }); if (!toastBusy) nextToast();
+}
+function nextToast() {
+  const t = toastQ.shift(); const el = $('toast');
+  if (!t) { toastBusy = false; el.classList.add('hidden'); return; }
+  toastBusy = true;
+  el.innerHTML = `<b>${t.title}</b><div>${t.sub || ''}</div>${t.reward ? `<i>+$${fmt(t.reward)}</i>` : ''}`;
+  el.classList.remove('hidden'); el.classList.remove('pop'); void el.offsetWidth; el.classList.add('pop');
+  setTimeout(nextToast, 2200);
+}
+function notify() {
+  Meta.takeNotices().forEach(n => { toast(n.text, n.sub, n.reward); Sfx.gold(); });
+}
+
+// ---------- daily reward ----------
+function maybeDaily() {
+  const st = Meta.dailyStatus();
+  $('btn-daily').classList.toggle('hidden', !st.available);
+  if (!st.available) return false;
+  const cal = $('daily-cal'); cal.innerHTML = '';
+  ECON.DAILY_PCT.forEach((_, d) => {
+    const c = document.createElement('div');
+    c.className = 'dc' + (d < st.day ? ' got' : d === st.day ? ' now' : '') + (d === 6 ? ' big' : '');
+    c.innerHTML = `<span>DAY ${d + 1}</span><b>$${fmt(Meta.dailyAmount(d))}</b>`;
+    cal.appendChild(c);
+  });
+  $('daily-amt').textContent = '$' + fmt(Meta.dailyAmount(st.day));
+  show('ov-daily', true);
+  return true;
+}
+function claimDaily(mult) {
+  const amt = Meta.claimDaily(mult);
+  show('ov-daily', false); $('btn-daily').classList.add('hidden');
+  if (amt) { Sfx.buy(); toast('DAILY REWARD', mult > 1 ? 'DOUBLED WITH AD!' : 'COME BACK TOMORROW', amt); }
+  updateTitle();
+}
+$('btn-daily-claim').addEventListener('click', () => { Sfx.init(); claimDaily(1); });
+$('btn-daily-2x').addEventListener('click', () => { Sfx.init(); Ads.showRewarded().then(ok => claimDaily(ok ? 2 : 1)); });
+$('btn-daily').addEventListener('click', () => { Sfx.init(); Sfx.click(); maybeDaily(); });
+
+// ---------- missions / achievements / stats panel ----------
+function openMissions() {
+  renderMissions('ms-list');
+  const s = Meta.save.stats;
+  $('ach-list').innerHTML = Meta.ACH.map(a => `<div class="ach ${Meta.save.ach[a.id] ? 'done' : ''}"><b>${a.name}</b><span>${a.txt}</span><i>${Meta.save.ach[a.id] ? '\u2713' : a.r ? '$' + fmt(a.r) : 'BADGE'}</i></div>`).join('');
+  $('ach-count').textContent = Object.keys(Meta.save.ach).length + '/' + Meta.ACH.length;
+  $('stats-list').innerHTML = [['RUNS', s.runs], ['TARGETS HIT', s.kills], ['GOLDEN BIRDS', s.gold], ['DEER', s.deer], ['BEST ROUND', s.bestRound], ['BEST STREAK', s.bestStreak],
+    ['ACCURACY', s.shots ? Math.round(s.hits / s.shots * 100) + '%' : '-'], ['TOTAL EARNED', '$' + fmt(s.earned)], ['UPGRADES', Meta.totalBought() + '/' + ECON.TOTAL_LEVELS], ['MISSIONS DONE', Meta.save.mDone]]
+    .map(([k, v]) => `<div><span>${k}</span><b>${typeof v === 'number' ? fmt(v) : v}</b></div>`).join('');
+  show('ov-missions', true);
+}
+$('btn-missions').addEventListener('click', () => { Sfx.init(); Sfx.click(); openMissions(); });
+$('btn-missions-close').addEventListener('click', () => { Sfx.click(); show('ov-missions', false); });
+$('btn-armory').addEventListener('click', () => { Sfx.init(); Sfx.click(); show('ov-title', false); openShop('title'); });
+function updateTitle() {
+  $('title-best').textContent = fmt(best);
+  $('title-bank').textContent = '$' + fmt(Meta.save.bank);
+  renderNext('title-next');
 }
 function toTitle() {
   ['ov-over', 'ov-pause', 'ov-shop', 'ov-continue'].forEach(id => show(id, false));
-  paused = false; state = 'title'; targets = []; showGameButtons(false);
-  $('title-best').textContent = fmt(best); show('ov-title', true);
+  paused = false; state = 'title'; targets = []; showGameButtons(false); Meta.persist();
+  updateTitle(); show('ov-title', true); maybeDaily();
 }
 function newGame() {
   Sfx.init(); Sfx.click(); Ads.init();
-  ['ov-title', 'ov-over', 'ov-pause'].forEach(id => show(id, false));
-  targets = []; resetRun(); startRound();
+  ['ov-title', 'ov-over', 'ov-pause', 'ov-shop', 'ov-daily'].forEach(id => show(id, false));
+  targets = []; resetRun(); Meta.startRun(); startRound();
 }
 $('btn-play').addEventListener('click', newGame);
 $('btn-again').addEventListener('click', newGame);
@@ -749,7 +832,7 @@ function drawHud() {
   text(fmt(Math.max(best, score)), W / 2 + 6, 10, 1.5, '#ffe066', 'center');
   text('ROUND', W - 4, 3, 1, '#9fc4ff', 'right', null);
   text(round, W - 4, 10, 1.5, '#fff', 'right');
-  text('$' + fmt(money), 4, 20, 1, '#7dff7a');
+  text('$' + fmt(Meta.save.bank), 4, 20, 1, '#7dff7a');
   // miss slots
   const mx = W - 4 - maxMiss * 8;
   text('MISS', mx - 3, 20, 1, '#ff9a9a', 'right', null);
@@ -804,8 +887,8 @@ requestAnimationFrame(frame);
 // debug/test hooks
 window.PH = {
   get state() { return state; }, get targets() { return targets; }, get score() { return score; },
-  get money() { return money; }, get missRun() { return missRun; }, get round() { return round; }, get shells() { return shells; },
-  setMoney(m) { money = m; }, toLogical: (x, y) => ({ x: x / W, y: y / H }),
+  get money() { return Meta.save.bank; }, Meta, get missRun() { return missRun; }, get round() { return round; }, get shells() { return shells; },
+  setMoney(m) { Meta.save.bank = m; Meta.persist(); }, toLogical: (x, y) => ({ x: x / W, y: y / H }),
   forceClear() { queue = []; targets = []; }, forceDie() { missRun = maxMiss; die(); },
   jumpRound(r) { round = r - 1; targets = []; startRound(); },
 };

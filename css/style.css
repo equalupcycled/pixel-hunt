@@ -43,7 +43,7 @@ body { display: flex; align-items: center; justify-content: center;
 .row { display: flex; gap: 12px; }
 .tiny { font-size: 11px; opacity: .85; text-shadow: 1px 1px 0 #000; }
 
-.panel { background: #1b2a44; border: 4px solid #000; box-shadow: 0 0 0 4px #f5c542, 0 0 0 8px #000, 8px 8px 0 8px rgba(0,0,0,.4);
+.panel { overflow-y: auto; -webkit-overflow-scrolling: touch; touch-action: pan-y; background: #1b2a44; border: 4px solid #000; box-shadow: 0 0 0 4px #f5c542, 0 0 0 8px #000, 8px 8px 0 8px rgba(0,0,0,.4);
   padding: 16px; width: min(92%, 380px); display: flex; flex-direction: column; align-items: stretch; gap: 12px; max-height: 92%; }
 .panel h2 { margin: 0; font-size: 26px; color: #ffe066; text-shadow: 3px 3px 0 #000; letter-spacing: 2px; }
 .panel p { margin: 0; font-size: 14px; }
@@ -86,3 +86,47 @@ ul.how li { margin-bottom: 6px; }
 .ad-art { width: 96px; height: 96px; image-rendering: pixelated; }
 .ad-bar { width: 80%; height: 10px; background: #000; border: 2px solid #fff; }
 .ad-bar i { display: block; height: 100%; width: 0; background: #7dff7a; }
+
+.title-best .cashc, .cashc { color: #7dff7a; }
+.gold-btn { background: #e0a800 !important; color: #000 !important; animation: pulse2 .6s steps(2) infinite; }
+@keyframes pulse2 { 50% { background: #ffd23f; } }
+.nextbox { width: min(92%, 360px); font-size: 11px; color: #cfe0ff; text-shadow: 1px 1px 0 #000; }
+.nx-t { margin-bottom: 4px; }
+.prog { position: relative; height: 6px; background: #0a1220; border: 2px solid #000; margin-top: 4px; }
+.prog i { display: block; height: 100%; background: #7dff7a; }
+.prog.big { height: 14px; }
+.prog.big span { position: absolute; inset: 0; font-size: 10px; line-height: 10px; color: #fff; text-shadow: 1px 1px 0 #000; }
+.item.can { border-color: #7dff7a; }
+.item .lvl { color: #9fc4ff; font-size: 10px; margin-left: 4px; }
+.item .dim { opacity: .75; }
+.item .pips { flex-wrap: wrap; }
+.item .pips i { width: 7px; }
+.earned { font-size: 18px; color: #9fc4ff; }
+.earned b { color: #7dff7a; }
+.sec { font-size: 13px; color: #ffe066; text-align: left; border-top: 2px solid #34507a; padding-top: 6px; }
+.mslist { display: flex; flex-direction: column; gap: 6px; }
+.ms { background: #0f1a2e; border: 3px solid #000; padding: 6px; text-align: left; display: grid; grid-template-columns: 1fr auto; gap: 2px 8px; font-size: 12px; }
+.ms .ms-r { color: #7dff7a; }
+.ms .prog { grid-column: 1 / -1; }
+.ms .ms-p { grid-column: 1 / -1; font-size: 10px; color: #9fc4ff; }
+.achlist { display: flex; flex-direction: column; gap: 4px; }
+.ach { display: grid; grid-template-columns: 1fr auto; text-align: left; font-size: 12px; background: #0f1a2e; border: 2px solid #000; padding: 4px 6px; opacity: .6; }
+.ach span { grid-column: 1; font-size: 10px; color: #9fc4ff; }
+.ach i { grid-row: 1 / 3; grid-column: 2; align-self: center; font-style: normal; color: #7dff7a; }
+.ach.done { opacity: 1; border-color: #ffd23f; }
+.stats.small { font-size: 12px; }
+.row2 { display: flex; gap: 10px; } .row2 .pbtn { flex: 1; }
+.cal { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+.dc { background: #0f1a2e; border: 3px solid #000; padding: 6px 2px; font-size: 10px; display: flex; flex-direction: column; gap: 2px; }
+.dc b { color: #7dff7a; font-size: 12px; }
+.dc.got { opacity: .45; } .dc.now { border-color: #ffd23f; background: #3a2f0a; }
+.dc.big { grid-column: span 2; background: #2a1f4a; }
+#toast { position: absolute; bottom: calc(var(--u) * 36); left: 50%; transform: translateX(-50%); z-index: 60; pointer-events: none;
+  background: #0f1a2e; border: 3px solid #ffd23f; box-shadow: 0 0 0 3px #000; padding: 8px 12px; text-align: center; min-width: 60%; font-size: 12px; }
+#toast b { color: #ffe066; font-size: 14px; display: block; } #toast i { color: #7dff7a; font-style: normal; font-size: 16px; }
+#toast.pop { animation: pop .25s steps(3); }
+@keyframes pop { from { transform: translateX(-50%) scale(.6); } to { transform: translateX(-50%) scale(1); } }
+.title-spacer { height: 30%; }
+.overlay { justify-content: safe center; }
+.panel { min-height: 0; flex-shrink: 1; }
+.nx-t.ready { color: #7dff7a; }

@@ -27,11 +27,17 @@
   <!-- title -->
   <div id="ov-title" class="overlay clear">
     <div class="title-spacer"></div>
-    <div class="title-best">HIGH SCORE <b id="title-best">0</b></div>
+    <div class="title-best">HIGH SCORE <b id="title-best">0</b> &middot; <span class="cashc" id="title-bank">$0</span></div>
+    <div id="title-next" class="nextbox"></div>
     <button id="btn-play" class="pbtn big">PLAY</button>
+    <div class="row">
+      <button id="btn-armory" class="pbtn">ARMORY</button>
+      <button id="btn-missions" class="pbtn">MISSIONS</button>
+    </div>
     <div class="row">
       <button id="btn-how" class="pbtn small">HOW TO PLAY</button>
       <button id="btn-mute-t" class="pbtn small mute-btn">SOUND: ON</button>
+      <button id="btn-daily" class="pbtn small gold-btn hidden">DAILY!</button>
     </div>
     <div class="tiny">TAP TO SHOOT &middot; RELOAD BY HAND</div>
   </div>
@@ -46,7 +52,8 @@
         <li>Hit streaks multiply your score. <span class="gold">GOLDEN BIRDS</span> pay big.</li>
         <li><span class="pink">PINK LOVEBIRDS</span> are protected &mdash; shooting one costs cash. Letting them go is fine.</li>
         <li>From round 4, <b>DEER</b> dash along the treeline. Worth a lot &mdash; and they count as a miss if they escape.</li>
-        <li>Spend <b>$</b> in the shop between rounds on guns and gear.</li>
+        <li>Your <b>$</b> and upgrades are <b>saved forever</b>. Big upgrades take a few runs to afford &mdash; keep hunting!</li>
+        <li>Complete <b>missions</b>, unlock <b>achievements</b> and claim your <b>daily reward</b> for bonus cash.</li>
       </ul>
       <button id="btn-how-close" class="pbtn">GOT IT</button>
     </div>
@@ -91,6 +98,9 @@
     <div class="panel">
       <h2 class="red">GAME OVER</h2>
       <div id="newbest" class="newbest hidden">NEW HIGH SCORE!</div>
+      <div class="earned">EARNED <b id="go-earned">+$0</b></div>
+      <button id="btn-double" class="pbtn green">&#9654; WATCH AD: 2X EARNINGS</button>
+      <div id="go-next" class="nextbox"></div>
       <div class="stats">
         <div><span>SCORE</span><b id="go-score">0</b></div>
         <div><span>BEST</span><b id="go-best">0</b></div>
@@ -98,16 +108,46 @@
         <div><span>HITS</span><b id="go-hits">0</b></div>
         <div><span>ACCURACY</span><b id="go-acc">0%</b></div>
       </div>
+      <div class="sec">MISSIONS</div>
+      <div id="go-missions" class="mslist"></div>
       <button id="btn-again" class="pbtn big">PLAY AGAIN</button>
-      <button id="btn-menu" class="pbtn">TITLE</button>
+      <div class="row2"><button id="btn-go-shop" class="pbtn">ARMORY</button><button id="btn-menu" class="pbtn">TITLE</button></div>
     </div>
   </div>
+
+  <!-- daily reward -->
+  <div id="ov-daily" class="overlay hidden">
+    <div class="panel">
+      <h2>DAILY REWARD</h2>
+      <p>Log in every day &mdash; day 7 is the big one!</p>
+      <div id="daily-cal" class="cal"></div>
+      <button id="btn-daily-claim" class="pbtn big">CLAIM <span id="daily-amt">$0</span></button>
+      <button id="btn-daily-2x" class="pbtn green">&#9654; WATCH AD: CLAIM 2X</button>
+    </div>
+  </div>
+
+  <!-- missions / achievements / stats -->
+  <div id="ov-missions" class="overlay hidden">
+    <div class="panel scroll">
+      <h2>MISSIONS</h2>
+      <div id="ms-list" class="mslist"></div>
+      <div class="sec">ACHIEVEMENTS <span id="ach-count"></span></div>
+      <div id="ach-list" class="achlist"></div>
+      <div class="sec">STATS</div>
+      <div id="stats-list" class="stats small"></div>
+      <button id="btn-missions-close" class="pbtn big">BACK</button>
+    </div>
+  </div>
+
+  <div id="toast" class="hidden"></div>
 
   <!-- ad layer (managed by js/ads.js) -->
   <div id="ov-ad" class="overlay hidden"></div>
 </div>
 <script src="js/audio.js"></script>
 <script src="js/ads.js"></script>
+<script src="js/economy.js"></script>
+<script src="js/meta.js"></script>
 <script src="js/game.js"></script>
 <script>
 if ('serviceWorker' in navigator && /^https?:/.test(location.protocol)) {

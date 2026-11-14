@@ -166,16 +166,18 @@ ul.how li { margin-bottom: 6px; }
 .item canvas { object-fit: contain; }
 .pbtn.fb { background: #1877f2; font-size: 13px; }
 .rank { color: #7dff7a; font-size: 14px; }
-#ini-cols { display: flex; justify-content: center; gap: 14px; }
-.ini-col { display: flex; flex-direction: column; gap: 6px; align-items: center; }
-.ini-l { font-size: 40px; width: 54px; background: #0f1a2e; border: 3px solid #000; color: #ffe066; text-shadow: 3px 3px 0 #000; cursor: pointer; }
-.ini-col.on .ini-l { border-color: #f5c542; animation: blink .8s steps(2) infinite; }
 #board-tabs { display: flex; flex-wrap: wrap; gap: 4px; justify-content: center; }
 #board-tabs .pbtn { font-size: 10px; padding: 6px 6px; }
 #board-list { display: flex; flex-direction: column; gap: 3px; }
-.brow { display: grid; grid-template-columns: 24px 44px 1fr 34px 70px; gap: 4px; align-items: center; font-size: 13px; background: #0f1a2e; border: 2px solid #000; padding: 4px 6px; text-align: left; }
-.brow .rk { color: #9fc4ff; } .brow b { color: #ffe066; letter-spacing: 2px; } .brow .sc { text-align: right; }
-.brow .rd { color: #9fc4ff; font-size: 10px; text-align: right; } .brow .wp { font-size: 9px; color: #cfe0ff; text-align: right; }
+.brow { display: grid; grid-template-columns: 22px 1fr auto 34px; gap: 4px; align-items: center; font-size: 13px; background: #0f1a2e; border: 2px solid #000; padding: 4px 6px; text-align: left; }
+.brow .rk { color: #9fc4ff; } .brow b { color: #ffe066; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } .brow b small { display: block; font-size: 8px; color: #9fc4ff; letter-spacing: 0; } .brow .sc { text-align: right; }
+.brow .rd { color: #9fc4ff; font-size: 10px; text-align: right; }
 .brow.me { border-color: #7dff7a; background: #183a1a; } .brow.empty { opacity: .4; }
 .brow:nth-child(1) .rk { color: #ffd23f; }
 .overlay.clear { gap: 10px; }
+
+#ov-name label { font-size: 13px; color: #9fc4ff; }
+#name-input { font: inherit; font-weight: 900; font-size: 22px; text-align: center; padding: 10px 8px; width: 100%;
+  background: #0f1a2e; color: #ffe066; border: 3px solid #000; box-shadow: 0 0 0 3px #f5c542; outline: none;
+  -webkit-user-select: text; user-select: text; touch-action: manipulation; }
+#name-input::placeholder { color: #55607a; }

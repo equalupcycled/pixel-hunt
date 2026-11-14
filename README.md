@@ -11,7 +11,7 @@ Any static host works (Render static site, GitHub Pages, Netlify, Cloudflare Pag
 (Not deployed yet - waiting on John's OK.)
 
 ## Files
-- `index.html` - layout + overlays (title + map select, how-to, armory, pause, continue, game over, initials, leaderboard, ad layer) + Open Graph tags
+- `index.html` - layout + overlays (title + map select, how-to, armory, pause, continue, game over, name entry, leaderboard, ad layer) + Open Graph tags
 - `css/style.css` - pixel UI styling
 - `js/game.js` - game loop, sprites, pixel font, maps/backgrounds, weapons, turrets, gadgets, bosses, armory UI, input
 - `js/economy.js` - weapons, turrets, gear, maps, cosmetics, price formula, difficulty curve, payouts (shared with the simulator)
@@ -66,11 +66,11 @@ Cosmetics: 5 hunter skins, 6 crosshair colors (fixed prices, no gameplay effect)
 - Side income scales with the cheapest next upgrade: missions 10%, daily calendar 8-35%, achievements one-time.
 
 ## Leaderboard
-`js/leaderboard.js`: `Leaderboard.submitScore(map, {initials, score, round, weapon})`, `Leaderboard.fetchTop(map)`, `Leaderboard.qualifies(map, score)`.
-Today: local top 10 per map (`pixelhunt.board.v1`), arcade 3-letter initials after a qualifying run.
+`js/leaderboard.js`: `Leaderboard.submitScore(map, {name, score, round, weapon})`, `Leaderboard.fetchTop(map)`, `Leaderboard.qualifies(map, score)`.
+Today: local top 10 per map (`pixelhunt.board.v1`), after a qualifying run the player types a name (free text, up to 12 characters; letters, digits, spaces and . - _ ' ! - cleaned by `Leaderboard.cleanName`, remembered for next time). Old initials entries still display.
 Online later: set `LEADERBOARD_CONFIG.online = { enabled: true, url: 'https://<api>' }`. Expected API (e.g. a Render web service + Postgres):
-`POST /scores` `{map, initials, score, round, weapon, ts}` -> `{rank}`; `GET /scores?map=lake&limit=10` -> `[{initials, score, round, weapon, ts}]`.
-Validate scores server-side (rate limit, sanity caps per round) before trusting them.
+`POST /scores` `{map, name, score, round, weapon, ts}` -> `{rank}`; `GET /scores?map=lake&limit=10` -> `[{name, score, round, weapon, ts}]`.
+Validate scores and names server-side (length, profanity filter) (rate limit, sanity caps per round) before trusting them.
 
 ## Share to Facebook
 Game over and leaderboard have **SHARE TO FACEBOOK**. `js/share.js`:

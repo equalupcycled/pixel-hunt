@@ -890,6 +890,7 @@ function pointerEnd(e) {
 cvs.addEventListener('pointerup', pointerEnd);
 cvs.addEventListener('pointercancel', pointerEnd);
 window.addEventListener('keydown', e => {
+  if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA')) return;
   if (e.code === 'KeyR' || e.code === 'Space') { e.preventDefault(); startReload(); }
   if (e.code === 'KeyF') useFocus();
   if (e.code === 'KeyQ' || e.code === 'Tab') { e.preventDefault(); swapWeapon(); }
@@ -1282,7 +1283,7 @@ function gameOver() {
   if (isAll) { best = score; store.set('best', best); }
   Meta.endRun({ score, round, earned: runCash });
   lastRun = { score, round, map: M.id, mapName: M.name, weapon: wpn.id, isBest: isBest && score > 0, isAll: isAll && score > 0 };
-  if (window.Leaderboard && Leaderboard.qualifies(M.id, score)) openInitials();
+  if (window.Leaderboard && Leaderboard.qualifies(M.id, score)) openNameEntry();
   else showOver(null);
 }
 function showOver(rank) {
@@ -1326,40 +1327,27 @@ $('btn-double').addEventListener('click', () => {
 });
 $('btn-go-shop').addEventListener('click', () => { Sfx.click(); show('ov-over', false); openShop('over'); });
 
-// ---------------- arcade initials ----------------
-const LETTERS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-let ini = ['A', 'A', 'A'], iniPos = 0;
-function openInitials() {
-  ini = (store.get('initials', 'AAA') + 'AAA').slice(0, 3).split(''); iniPos = 0;
-  $('ini-score').textContent = fmt(lastRun.score);
-  $('ini-map').textContent = lastRun.mapName.toUpperCase() + ' \u00b7 ROUND ' + lastRun.round;
-  renderInitials(); show('ov-initials', true); Sfx.gold();
-}
-function renderInitials() {
-  const box = $('ini-cols'); box.innerHTML = '';
-  ini.forEach((ch, i) => {
-    const col = document.createElement('div'); col.className = 'ini-col' + (i === iniPos ? ' on' : '');
-    const up = btn('\u25B2', 'small', () => { iniPos = i; bump(i, 1); }), dn = btn('\u25BC', 'small', () => { iniPos = i; bump(i, -1); });
-    const l = document.createElement('div'); l.className = 'ini-l'; l.textContent = ch; l.addEventListener('click', () => { iniPos = i; renderInitials(); });
-    col.append(up, l, dn); box.appendChild(col);
-  });
-}
-function bump(i, d) { const k = LETTERS.indexOf(ini[i]); ini[i] = LETTERS[(k + d + LETTERS.length) % LETTERS.length]; Sfx.letter(); renderInitials(); }
-window.addEventListener('keydown', e => {
-  if ($('ov-initials').classList.contains('hidden')) return;
-  const k = e.key.toUpperCase();
-  if (LETTERS.includes(k) && k.length === 1) { ini[iniPos] = k; iniPos = Math.min(2, iniPos + 1); Sfx.letter(); renderInitials(); }
-  else if (e.key === 'ArrowUp') bump(iniPos, 1); else if (e.key === 'ArrowDown') bump(iniPos, -1);
-  else if (e.key === 'ArrowLeft') { iniPos = Math.max(0, iniPos - 1); renderInitials(); } else if (e.key === 'ArrowRight') { iniPos = Math.min(2, iniPos + 1); renderInitials(); }
-  else if (e.key === 'Enter') submitInitials();
-});
+// ---------------- leaderboard name entry (free text, max 12 chars) ----------------
 let lastEntryTs = 0;
-function submitInitials() {
-  const s = ini.join(''); store.set('initials', s); show('ov-initials', false); Sfx.buy();
-  const ts = Date.now(); lastEntryTs = ts;
-  Leaderboard.submitScore(lastRun.map, { initials: s, score: lastRun.score, round: lastRun.round, weapon: lastRun.weapon, ts }).then(r => showOver(r.rank));
+function openNameEntry() {
+  const inp = $('name-input');
+  inp.value = store.get('playerName', '');
+  $('name-score').textContent = fmt(lastRun.score);
+  $('name-map').textContent = lastRun.mapName.toUpperCase() + ' \u00b7 ROUND ' + lastRun.round;
+  syncNameCount(); show('ov-name', true); Sfx.gold();
+  setTimeout(() => { try { inp.focus(); inp.select(); } catch (e) {} }, 50);
 }
-$('btn-ini-ok').addEventListener('click', () => { Sfx.click(); submitInitials(); });
+function syncNameCount() { $('name-count').textContent = Array.from($('name-input').value).length + '/' + Leaderboard.NAME_MAX; }
+$('name-input').addEventListener('input', syncNameCount);
+$('name-input').addEventListener('keydown', e => { e.stopPropagation(); if (e.key === 'Enter') submitName(); });
+function submitName() {
+  if ($('ov-name').classList.contains('hidden')) return;
+  const name = Leaderboard.cleanName($('name-input').value);
+  store.set('playerName', name); show('ov-name', false); $('name-input').blur(); Sfx.buy();
+  const ts = Date.now(); lastEntryTs = ts;
+  Leaderboard.submitScore(lastRun.map, { name, score: lastRun.score, round: lastRun.round, weapon: lastRun.weapon, ts }).then(r => showOver(r.rank));
+}
+$('btn-name-ok').addEventListener('click', () => { Sfx.click(); submitName(); });
 
 // ---------------- leaderboard ----------------
 let boardMap = 'meadow', boardFrom = 'title';
@@ -1374,8 +1362,8 @@ function openBoard(map, from) {
     const rows = [];
     for (let i = 0; i < 10; i++) {
       const e = list[i];
-      rows.push(e ? `<div class="brow${e.ts === lastEntryTs ? ' me' : ''}"><span class="rk">${i + 1}</span><b>${esc(e.initials)}</b><span class="sc">${fmt(e.score)}</span><span class="rd">R${e.round || 0}</span><span class="wp">${esc(((WDEF(e.weapon) || {}).name || '').toUpperCase())}</span></div>`
-        : `<div class="brow empty"><span class="rk">${i + 1}</span><b>---</b><span class="sc">0</span><span class="rd"></span><span class="wp"></span></div>`);
+      rows.push(e ? `<div class="brow${e.ts === lastEntryTs ? ' me' : ''}"><span class="rk">${i + 1}</span><b>${esc(Leaderboard.nameOf(e))}<small>${esc(((WDEF(e.weapon) || {}).name || '').toUpperCase())}</small></b><span class="sc">${fmt(e.score)}</span><span class="rd">R${e.round || 0}</span></div>`
+        : `<div class="brow empty"><span class="rk">${i + 1}</span><b>---</b><span class="sc">0</span><span class="rd"></span></div>`);
     }
     $('board-list').innerHTML = rows.join('');
     $('btn-board-share').disabled = !list.length;
@@ -1505,7 +1493,7 @@ function updateTitle() {
   renderNext('title-next');
 }
 function toTitle() {
-  ['ov-over', 'ov-pause', 'ov-shop', 'ov-continue', 'ov-board', 'ov-initials'].forEach(id => show(id, false));
+  ['ov-over', 'ov-pause', 'ov-shop', 'ov-continue', 'ov-board', 'ov-name'].forEach(id => show(id, false));
   paused = false; state = 'title'; targets = []; projs = []; holding = false; drawing = null; showGameButtons(false); Meta.persist();
   if (!curMap || curMap.id !== Meta.save.equip.map) buildBg();
   updateTitle(); show('ov-title', true); maybeDaily();

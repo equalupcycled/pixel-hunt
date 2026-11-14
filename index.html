@@ -164,14 +164,15 @@
     </div>
   </div>
 
-  <!-- arcade initials -->
-  <div id="ov-initials" class="overlay hidden">
+  <!-- leaderboard name entry -->
+  <div id="ov-name" class="overlay hidden">
     <div class="panel">
       <h2>NEW TOP 10!</h2>
-      <p><b id="ini-score" class="gold">0</b><br><small id="ini-map"></small></p>
-      <p>ENTER YOUR INITIALS</p>
-      <div id="ini-cols"></div>
-      <button id="btn-ini-ok" class="pbtn big">OK</button>
+      <p><b id="name-score" class="gold">0</b><br><small id="name-map"></small></p>
+      <label for="name-input">YOUR NAME (UP TO 12)</label>
+      <input id="name-input" type="text" maxlength="12" autocomplete="nickname" autocapitalize="words" spellcheck="false" enterkeyhint="done" placeholder="HUNTER">
+      <div id="name-count" class="tiny">0/12</div>
+      <button id="btn-name-ok" class="pbtn big">SAVE SCORE</button>
     </div>
   </div>
 

@@ -1,13 +1,14 @@
 // Pixel Hunt - leaderboard abstraction.
-// Local provider: top-10 per map in localStorage (arcade 3-letter initials). Works offline today.
+// Local provider: top-10 per map in localStorage, with a free-text player name (max 12 chars). Works offline today.
 // Online provider: STUB. When hosting is approved, set LEADERBOARD_CONFIG.online.url to a small backend
 // (e.g. Render web service + Postgres) exposing:
-//   POST {url}/scores        body {map, initials, score, round, weapon, ts}   -> 200 {rank}
-//   GET  {url}/scores?map=meadow&limit=10                                    -> 200 [{initials, score, round, weapon, ts}]
+//   POST {url}/scores        body {map, name, score, round, weapon, ts}   -> 200 {rank}
+//   GET  {url}/scores?map=meadow&limit=10                                    -> 200 [{name, score, round, weapon, ts}]
 // See README "Leaderboard". Until then online calls are no-ops and the game uses local scores only.
 'use strict';
 window.LEADERBOARD_CONFIG = {
   size: 10,
+  nameMax: 12,
   online: { enabled: false, url: '', timeoutMs: 4000 },
 };
 
@@ -50,12 +51,20 @@ window.Leaderboard = (() => {
     },
   };
 
+  /** Clean a player name: letters/digits/space and . - _ ' ! only, collapsed spaces, max 12 chars. */
+  function cleanName(n) {
+    let s = String(n == null ? '' : n).normalize('NFC').replace(/[^\p{L}\p{N} ._'!-]/gu, '').replace(/\s+/g, ' ').trim();
+    s = Array.from(s).slice(0, cfg.nameMax).join('').trim();
+    return s || 'HUNTER';
+  }
+  const nameOf = e => e.name || e.initials || 'HUNTER'; // old entries used 3-letter initials
   return {
-    local: LocalProvider, online: OnlineProvider,
+    local: LocalProvider, online: OnlineProvider, cleanName, nameOf, NAME_MAX: cfg.nameMax,
     qualifies: (map, score) => LocalProvider.qualifies(map, score),
     /** Save locally (always) and online (if configured). Resolves {rank, online}. */
     async submitScore(map, entry) {
-      const e = Object.assign({ ts: Date.now() }, entry, { initials: String(entry.initials || 'AAA').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 3).padEnd(3, 'A') });
+      const e = Object.assign({ ts: Date.now() }, entry, { name: cleanName(entry.name != null ? entry.name : entry.initials) });
+      delete e.initials;
       const local = await LocalProvider.submitScore(map, e);
       const online = await OnlineProvider.submitScore(map, e);
       return { rank: local.rank, online };

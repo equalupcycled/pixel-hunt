@@ -11,7 +11,7 @@ def watch(pg, tag=''):
     pg.on('console', lambda m: m.type == 'error' and errs.append(tag + 'console: ' + m.text))
 
 async def part_a(b):
-    """Original flow: daily, first hits, reload, shop, pause, revive ad, death ad, initials, game over, missions."""
+    """Original flow: daily, first hits, reload, shop, pause, revive ad, death ad, name entry, game over, missions."""
     ctx = await b.new_context(viewport={'width': 390, 'height': 844}, device_scale_factor=2, is_mobile=True, has_touch=True)
     pg = await ctx.new_page(); watch(pg)
     await pg.goto(URL); await pg.evaluate('localStorage.clear()'); await pg.reload()
@@ -58,12 +58,12 @@ async def part_a(b):
     await pg.wait_for_selector('#ov-ad:not(.hidden)', timeout=5000); await pg.wait_for_timeout(1200)
     await pg.screenshot(path=OUT + '11-interstitial-ad.png')
     await pg.wait_for_timeout(4500); await pg.click('.ad-close')
-    await pg.wait_for_selector('#ov-initials:not(.hidden)', timeout=3000); await pg.wait_for_timeout(300)
-    for _ in range(9): await pg.click('.ini-col >> nth=0 >> button >> nth=0')   # A -> J
-    await pg.click('.ini-col >> nth=1 >> button >> nth=1'); await pg.click('.ini-col >> nth=1 >> button >> nth=1')  # A -> 8
-    await pg.click('.ini-col >> nth=2 >> button >> nth=0'); await pg.click('.ini-col >> nth=2 >> button >> nth=0'); await pg.click('.ini-col >> nth=2 >> button >> nth=0')  # D
-    await pg.screenshot(path=OUT + '12-initials.png')
-    await pg.click('#btn-ini-ok')
+    await pg.wait_for_selector('#ov-name:not(.hidden)', timeout=3000); await pg.wait_for_timeout(300)
+    await pg.fill('#name-input', 'John D <b>Hunter</b> 2026')
+    print('A: typed name length capped at', await pg.evaluate("document.getElementById('name-input').value.length"))
+    await pg.fill('#name-input', 'John Dowdy'); await pg.wait_for_timeout(100)
+    await pg.screenshot(path=OUT + '12-name-entry.png')
+    await pg.click('#btn-name-ok')
     await pg.wait_for_selector('#ov-over:not(.hidden)', timeout=3000); await pg.wait_for_timeout(2600)
     await pg.screenshot(path=OUT + '13-game-over.png')
     print('A: rank text', await pg.text_content('#go-rank'))
@@ -219,9 +219,10 @@ async def part_b(b):
     await quit()
 
     # leaderboard + share
-    await pg.evaluate("""(async()=>{const L=Leaderboard; const rows=[['ACE',182300,22,'laser'],['JD',151550,19,'rifle'],['BOB',98200,15,'shotgun'],['ZZZ',64000,12,'bow'],['KIM',51550,14,'handgun'],['MAX',23800,9,'mg']];
-       for (const [i,s,r,w] of rows) await L.submitScore('lake',{initials:i,score:s,round:r,weapon:w,ts:Date.now()+s});
-       await L.submitScore('meadow',{initials:'JDD',score:77700,round:12,weapon:'shotgun'});})()""")
+    await pg.evaluate("""(async()=>{const L=Leaderboard; const rows=[['DuckSlayer99',182300,22,'laser'],['John Dowdy',151550,19,'rifle'],['Big Bob',98200,15,'shotgun'],['<script>x',64000,12,'bow'],['Kim',51550,14,'handgun'],['A very long name indeed',23800,9,'mg']];
+       for (const [n,s,r,w] of rows) await L.submitScore('lake',{name:n,score:s,round:r,weapon:w,ts:Date.now()+s});
+       await L.submitScore('meadow',{name:'JD',score:77700,round:12,weapon:'shotgun'});})()""")
+    print('B: stored names', await pg.evaluate("JSON.stringify((JSON.parse(localStorage.getItem('pixelhunt.board.v1')).lake||[]).map(e=>e.name))"))
     await pg.evaluate("PH.openBoard('lake')"); await pg.wait_for_timeout(400)
     await pg.screenshot(path=OUT + '60-leaderboard-lake.png')
     # Web Share API path (stubbed)
@@ -244,7 +245,7 @@ async def part_b(b):
     await pg.wait_for_selector('#ov-continue:not(.hidden)', timeout=5000); await pg.click('#btn-norevive')
     await pg.wait_for_selector('#ov-ad:not(.hidden)', timeout=5000); await pg.wait_for_timeout(1300); await pg.click('.ad-close')
     await pg.wait_for_timeout(500)
-    if await pg.is_visible('#ov-initials'): await pg.click('#btn-ini-ok')
+    if await pg.is_visible('#ov-name'): await pg.click('#btn-name-ok')
     await pg.wait_for_selector('#ov-over:not(.hidden)', timeout=3000); await pg.wait_for_timeout(2600)
     await pg.screenshot(path=OUT + '62-game-over-share.png')
     # title with map selector

@@ -1326,46 +1326,148 @@ function syncGadgets() {
 }
 const iconEl = key => makeSprite(ICONS[key] || ICONS.gun, ICON_PAL);
 const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
-let shopFrom = 'title', shopTab = 'weapons', shopSel = {}, shopInf = false;
+let shopFrom = 'title', shopTab = 'weapons', shopSel = {}, shopInf = false, shopBoughtId = null;
 function lockText(u) {
   const tb = Meta.totalBought();
-  if (tb < (u.req || 0)) return `LOCKED: own ${u.req} upgrades (${tb}/${u.req})`;
-  if (u.needs) { const n = Meta.track(u.needs); return 'LOCKED: ' + (n ? n.name : 'unlock first'); }
-  return 'LOCKED';
+  if (tb < (u.req || 0)) return `Own ${u.req} upgrades (you have ${tb})`;
+  if (u.needs) { const n = Meta.track(u.needs); return 'Need ' + (n ? n.name : 'another upgrade') + ' first'; }
+  return 'Locked';
+}
+function isGadgetTrack(t) { return t && (t.id || '').startsWith('gadget.'); }
+function isGearOnly(t) { return t && t.group === 'gear' && !isGadgetTrack(t) && t.id !== 'loadout' && t.id !== 'turret.slots'; }
+function trackAffordable(t) {
+  return t && !Meta.maxed(t) && Meta.eligible(t) && Meta.costOf(t) <= Meta.bank();
+}
+function tabCanFor(tab) {
+  if (tab === 'gadgets') return ECON.TRACKS.some(t => isGadgetTrack(t) && trackAffordable(t));
+  if (tab === 'gear') return ECON.TRACKS.some(t => isGearOnly(t) && trackAffordable(t));
+  if (tab === 'weapons') return ECON.TRACKS.some(t => (t.group === 'weapon' || t.id === 'loadout') && trackAffordable(t));
+  if (tab === 'turrets') return ECON.TRACKS.some(t => (t.group === 'turret' || t.id === 'turret.slots') && trackAffordable(t));
+  if (tab === 'perks') return ECON.TRACKS.some(t => t.group === 'perk' && trackAffordable(t));
+  if (tab === 'maps') return !shopInf && ECON.TRACKS.some(t => t.group === 'map' && trackAffordable(t));
+  if (tab === 'style' && !shopInf) {
+    const eq = Meta.activeEquip();
+    return ECON.SKINS.some(s => !Meta.save.cosm.includes(s.id) && Meta.bank() >= s.cost)
+      || ECON.CROSSHAIRS.some(s => !Meta.save.cosm.includes(s.id) && Meta.bank() >= s.cost);
+  }
+  return false;
+}
+function buyLabel(u, maxed, ok, c) {
+  if (maxed) return u.unlock ? 'OWNED' : 'MAX';
+  if (!ok) return 'LOCKED';
+  return 'BUY $' + fmt(c);
+}
+function fillBuyButton(b, u, maxed, ok, c) {
+  const can = !maxed && ok && Meta.bank() >= c;
+  b.className = 'pbtn buy-btn' + (maxed ? ' max' : (ok && !can ? ' need-btn' : ''));
+  b.textContent = buyLabel(u, maxed, ok, c);
+  b.disabled = maxed || !ok || Meta.bank() < c;
+  b.dataset.id = u.id;
+}
+function onBuyTrack(u) {
+  if (!Meta.buy(u.id)) return false;
+  shopBoughtId = u.id;
+  Sfx.buy(); afterBuy();
+  toast(u.unlock ? 'UNLOCKED!' : 'UPGRADED!', u.name + (u.unlock ? '' : ' LV ' + Meta.levelOf(u.id)), 0);
+  if (u.group === 'weapon' && u.unlock) { Meta.equipWeapon(u.of, 'primary'); toast('EQUIPPED', WDEF(u.of).name, 0); }
+  if (u.group === 'map') { Meta.selectMap(u.of); buildBg(); }
+  if (u.group === 'turret' && u.unlock) Meta.mountTurret(u.of, true);
+  closeShopDetail();
+  openShop(shopFrom, true);
+  return true;
+}
+function trackEffect(u, l) { return u.desc(ECON.infVal(u, l), l); }
+function trackLabel(u, l) {
+  const nm = u.names ? (u.names[Math.min(l, u.names.length - 1)] || u.names[u.names.length - 1]) : '';
+  const fx = trackEffect(u, l);
+  if (nm && fx && nm !== fx) return nm + ' · ' + fx;
+  return fx || nm || u.name;
 }
 function trackItem(u) {
   const l = Meta.levelOf(u.id), maxed = Meta.maxed(u), ok = Meta.eligible(u), c = maxed ? 0 : Meta.costOf(u);
-  const el = document.createElement('div'); el.className = 'item' + (!maxed && ok && Meta.bank() >= c ? ' can' : '') + (ok ? '' : ' locked');
-  const curDesc = () => u.names ? (u.names[Math.min(l, u.names.length - 1)] || u.names[u.names.length - 1]) : u.desc(Meta.val(u.id), l);
-  const nextDesc = () => {
-    const nl = l + 1;
-    if (u.names) { const nm = u.names[Math.min(nl, u.names.length - 1)]; return 'Next: ' + nm + ' (' + u.desc(ECON.infVal(u, nl), nl) + ')'; }
-    return 'Next: ' + u.desc(ECON.infVal(u, nl), nl);
-  };
-  const cur = curDesc();
-  const next = !ok ? lockText(u) : maxed ? 'MAXED' : nextDesc();
-  const pct = maxed ? 100 : Math.min(100, Math.floor(Meta.bank() / c * 100));
-  const mid = document.createElement('div');
+  const can = !maxed && ok && Meta.bank() >= c;
+  const el = document.createElement('div');
+  el.className = 'item shop-card' + (can ? ' can' : '') + (ok ? '' : ' locked') + (ok && !maxed && !can ? ' short' : '');
+  el.dataset.id = u.id;
+  const cur = trackLabel(u, l);
+  const nxt = trackLabel(u, l + 1);
   const uncapped = Meta.isInf() && !ECON.cappedTrack(u);
   const lv = u.unlock ? '' : `<span class="lvl">${uncapped || Meta.isInf() ? 'LV ' + l : 'LV ' + l + '/' + (u.val.length - 1)}</span>`;
   const pips = u.unlock ? '' : (uncapped && l >= u.val.length
     ? `<div class="pips"><i class="on"></i><span class="lvl">+${l - (u.val.length - 1)}</span></div>`
     : `<div class="pips">${u.val.slice(1).map((_, i) => `<i class="${i < l ? 'on' : ''}"></i>`).join('')}</div>`);
-  mid.innerHTML = `<div class="nm">${esc(u.name.toUpperCase())} ${lv}</div>${u.unlock ? '' : `<div class="ds">${esc(cur)}</div>`}<div class="ds dim">${esc(next)}</div>
-    ${pips}
-    ${maxed || !ok ? '' : `<div class="prog"><i style="width:${pct}%"></i></div>`}`;
-  const b = document.createElement('button'); b.className = 'pbtn' + (maxed ? ' max' : '');
-  b.textContent = maxed ? (u.unlock ? 'OWNED' : 'MAX') : !ok ? 'LOCKED' : '$' + fmt(c);
-  b.disabled = maxed || !ok || Meta.bank() < c; b.dataset.id = u.id;
-  b.addEventListener('click', () => {
-    if (!Meta.buy(u.id)) return;
-    Sfx.buy(); afterBuy(); toast(u.unlock ? 'UNLOCKED!' : 'UPGRADED!', u.name + (u.unlock ? '' : ' LV ' + Meta.levelOf(u.id)), 0);
-    if (u.group === 'weapon' && u.unlock) { Meta.equipWeapon(u.of, 'primary'); toast('EQUIPPED', WDEF(u.of).name, 0); }
-    if (u.group === 'map') { Meta.selectMap(u.of); buildBg(); }
-    if (u.group === 'turret' && u.unlock) Meta.mountTurret(u.of, true);
-    openShop(shopFrom, true);
-  });
-  el.append(iconEl(u.icon), mid, b); return el;
+  const top = document.createElement('div'); top.className = 'item-top';
+  const mid = document.createElement('div'); mid.className = 'item-mid';
+  mid.innerHTML = `<div class="nm">${esc(u.name.toUpperCase())} ${lv}</div>`
+    + `<div class="blurb">${esc(cur)}</div>`
+    + pips;
+  top.append(iconEl(u.icon), mid);
+  el.appendChild(top);
+  if (!ok) {
+    const msg = document.createElement('div'); msg.className = 'lock-msg'; msg.textContent = 'Locked · ' + lockText(u); el.appendChild(msg);
+  } else if (maxed) {
+    const msg = document.createElement('div'); msg.className = 'ds dim'; msg.textContent = u.unlock ? 'Owned' : 'Maxed'; el.appendChild(msg);
+  } else {
+    const sl = document.createElement('div'); sl.className = 'statline';
+    sl.innerHTML = (u.unlock ? '' : `<div class="now">Now: ${esc(cur)}</div>`) + `<div class="nxt">Next: ${esc(nxt)}</div>`;
+    el.appendChild(sl);
+
+    if (Meta.bank() < c) {
+      const need = document.createElement('div'); need.className = 'need';
+      need.textContent = 'Need $' + fmt(c - Meta.bank()) + ' more';
+      el.appendChild(need);
+    }
+  }
+  const b = document.createElement('button');
+  fillBuyButton(b, u, maxed, ok, c);
+  b.addEventListener('click', e => { e.stopPropagation(); onBuyTrack(u); });
+  el.appendChild(b);
+  el.addEventListener('click', e => { if (e.target.closest('button')) return; openTrackDetail(u); });
+  return el;
+}
+function closeShopDetail() { const d = $('shop-detail'); if (d) d.classList.add('hidden'); }
+function openTrackDetail(u) {
+  const body = $('shop-detail-body'); if (!body) return;
+  body.innerHTML = '';
+  const l = Meta.levelOf(u.id), maxed = Meta.maxed(u), ok = Meta.eligible(u), c = maxed ? 0 : Meta.costOf(u);
+  const cur = trackLabel(u, l);
+  const nxt = maxed ? '' : trackLabel(u, l + 1);
+  const uncapped = Meta.isInf() && !ECON.cappedTrack(u);
+  const lv = u.unlock ? '' : (uncapped || Meta.isInf() ? 'LV ' + l : 'LV ' + l + '/' + (u.val.length - 1));
+  const head = document.createElement('div'); head.style.display = 'flex'; head.style.gap = '10px'; head.style.alignItems = 'center';
+  head.appendChild(iconEl(u.icon));
+  const htxt = document.createElement('div');
+  htxt.innerHTML = `<div class="nm">${esc(u.name.toUpperCase())}</div><div class="ds">${esc(lv)}</div>`;
+  head.appendChild(htxt);
+  body.appendChild(head);
+  const p = document.createElement('p'); p.textContent = cur || u.name; body.appendChild(p);
+  if (!ok) { const m = document.createElement('p'); m.className = 'lock-msg'; m.textContent = 'Locked · ' + lockText(u); body.appendChild(m); }
+  else if (!maxed) {
+    const sl = document.createElement('div'); sl.className = 'statline';
+    sl.innerHTML = `<div class="now">Now: ${esc(cur)}</div><div class="nxt">Next: ${esc(nxt)}</div>`;
+    body.appendChild(sl);
+    if (Meta.bank() < c) { const need = document.createElement('p'); need.className = 'need'; need.textContent = 'Need $' + fmt(c - Meta.bank()) + ' more'; body.appendChild(need); }
+  } else { const m = document.createElement('p'); m.textContent = u.unlock ? 'Owned' : 'Maxed'; body.appendChild(m); }
+  const b = document.createElement('button');
+  fillBuyButton(b, u, maxed, ok, c);
+  b.addEventListener('click', e => { e.stopPropagation(); onBuyTrack(u); });
+  body.appendChild(b);
+  $('shop-detail').classList.remove('hidden');
+}
+function openWeaponDetail(w, owned, eq) {
+  const body = $('shop-detail-body'); if (!body) return;
+  body.innerHTML = '';
+  const head = document.createElement('div'); head.style.display = 'flex'; head.style.gap = '10px'; head.style.alignItems = 'center';
+  head.appendChild(iconEl(w.id));
+  const htxt = document.createElement('div');
+  const badge = eq.primary === w.id ? 'Equipped' : (eq.secondary === w.id && Meta.val('loadout') ? 'On the sling' : (owned ? 'Owned' : 'Locked'));
+  htxt.innerHTML = `<div class="nm">${esc(w.name.toUpperCase())}</div><div class="ds">${esc(w.role)} · ${esc(badge)}</div>`;
+  head.appendChild(htxt);
+  body.appendChild(head);
+  const p = document.createElement('p'); p.textContent = owned ? 'Upgrade this gun below, or equip it as your primary or sling weapon.' : 'Buy this gun to add it to your loadout.'; body.appendChild(p);
+  if (!owned) body.appendChild(trackItem(Meta.track('own.' + w.id)));
+  else w.tracks.forEach(tr => body.appendChild(trackItem(Meta.track(w.id + '.' + tr.k))));
+  $('shop-detail').classList.remove('hidden');
 }
 function afterBuy() { notify(); }
 function card(iconKey, title, sub, badge, expanded, onToggle) {
@@ -1374,16 +1476,37 @@ function card(iconKey, title, sub, badge, expanded, onToggle) {
   const ic = typeof iconKey === 'string' ? iconEl(iconKey) : iconKey;
   const mid = document.createElement('div'); mid.innerHTML = `<div class="nm">${esc(title)}${badge ? ` <span class="badge">${badge}</span>` : ''}</div><div class="ds">${esc(sub)}</div>`;
   h.append(ic, mid);
-  if (onToggle) { const ch = document.createElement('div'); ch.className = 'chev'; ch.textContent = expanded ? '\u25B2' : '\u25BC'; h.appendChild(ch); h.dataset.tap = '1'; h.addEventListener('click', onToggle); }
+  h.dataset.tap = '1';
+  if (onToggle) h.addEventListener('click', onToggle);
   c.appendChild(h); return c;
 }
 function btn(label, cls, fn, disabled) { const b = document.createElement('button'); b.className = 'pbtn ' + (cls || ''); b.innerHTML = label; b.disabled = !!disabled; b.addEventListener('click', e => { e.stopPropagation(); Sfx.click(); fn(); }); return b; }
 function tabCan(group) {
   return ECON.TRACKS.some(t => t.group === group && !Meta.maxed(t) && Meta.eligible(t) && Meta.costOf(t) <= Meta.bank());
 }
+function ensureShopTabIcons() {
+  if (ensureShopTabIcons.done) return;
+  ensureShopTabIcons.done = true;
+  const icons = { weapons: 'gun', gear: 'eye', turrets: 'turret', gadgets: 'flak', perks: 'auto', maps: 'map', style: 'coin' };
+  document.querySelectorAll('#shop-tabs button').forEach(b => {
+    const key = icons[b.dataset.tab];
+    if (!key || b.querySelector('canvas')) return;
+    const cv = iconEl(key);
+    cv.className = 'tab-ico';
+    b.insertBefore(cv, b.firstChild);
+  });
+}
+function flashBought() {
+  if (!shopBoughtId) return;
+  const id = shopBoughtId; shopBoughtId = null;
+  const el = document.querySelector('#shop-list [data-id="' + id + '"]');
+  if (el) { el.classList.add('bought'); try { el.scrollIntoView({ block: 'nearest' }); } catch (e) {} }
+}
 function openShop(from = 'title', keep) {
   shopFrom = from === 'round' ? 'title' : from; // upgrades are only between runs (title / game over)
   Meta.setMode(shopInf ? 'infinity' : 'campaign');
+  closeShopDetail();
+  ensureShopTabIcons();
   if (!keep) $('shop-list').scrollTop = 0;
   const scroll = $('shop-list').scrollTop;
   $('shop-money').textContent = fmt(Meta.bank());
@@ -1404,8 +1527,7 @@ function openShop(from = 'title', keep) {
     const hide = shopInf && (b.dataset.tab === 'maps' || b.dataset.tab === 'style');
     b.classList.toggle('hidden', hide);
     b.classList.toggle('on', b.dataset.tab === shopTab);
-    const g = { weapons: 'weapon', turrets: 'turret', gear: 'gear', maps: 'map', perks: 'perk' }[b.dataset.tab];
-    b.classList.toggle('can', !hide && !!g && tabCan(g));
+    b.classList.toggle('can', !hide && tabCanFor(b.dataset.tab));
   });
   const list = $('shop-list'); list.innerHTML = '';
 
@@ -1415,18 +1537,18 @@ function openShop(from = 'title', keep) {
   if (shopTab === 'weapons') {
     const sel = shopSel.weapon || eq.primary;
     ECON.WEAPONS.forEach(w => {
-      const owned = Meta.owns(w.id), open = sel === w.id;
-      const badge = eq.primary === w.id ? 'EQUIPPED' : eq.secondary === w.id && Meta.val('loadout') ? 'SLOT 2' : owned ? '' : 'LOCKED';
-      const c = card(w.id, w.name.toUpperCase(), w.role, badge, open, () => { shopSel.weapon = open ? '-' : w.id; openShop(shopFrom, true); });
-      if (open) {
-        if (owned) {
-          const row = document.createElement('div'); row.className = 'row3';
-          row.appendChild(btn(eq.primary === w.id ? 'PRIMARY \u2713' : 'EQUIP', 'small', () => { Meta.equipWeapon(w.id, 'primary'); openShop(shopFrom, true); }, midRun || eq.primary === w.id));
-          if (Meta.val('loadout')) row.appendChild(btn(eq.secondary === w.id ? 'SLOT 2 \u2713' : 'SLOT 2', 'small', () => { Meta.equipWeapon(w.id, 'secondary'); openShop(shopFrom, true); }, midRun || eq.secondary === w.id));
-          c.appendChild(row);
-        } else c.appendChild(trackItem(Meta.track('own.' + w.id)));
-        if (owned) w.tracks.forEach(t => c.appendChild(trackItem(Meta.track(w.id + '.' + t.k))));
-      }
+      const owned = Meta.owns(w.id), open = true;
+      const badge = eq.primary === w.id ? 'EQUIPPED' : eq.secondary === w.id && Meta.val('loadout') ? 'SLING' : owned ? '' : 'LOCKED';
+      const badgeCls = eq.primary === w.id ? 'equip' : (eq.secondary === w.id ? 'sling' : (owned ? '' : 'dim'));
+      const c = card(w.id, w.name.toUpperCase(), w.role, badge, eq.primary === w.id, () => openWeaponDetail(w, owned, eq));
+      if (badge && c.querySelector('.badge') && badgeCls) c.querySelector('.badge').classList.add(badgeCls);
+      if (owned) {
+        const row = document.createElement('div'); row.className = 'row3';
+        row.appendChild(btn(eq.primary === w.id ? 'EQUIPPED' : 'EQUIP', 'small' + (eq.primary === w.id ? ' on' : ''), () => { Meta.equipWeapon(w.id, 'primary'); openShop(shopFrom, true); }, midRun || eq.primary === w.id));
+        if (Meta.val('loadout')) row.appendChild(btn(eq.secondary === w.id ? 'ON SLING' : 'SLING SLOT', 'small' + (eq.secondary === w.id ? ' on' : ''), () => { Meta.equipWeapon(w.id, 'secondary'); openShop(shopFrom, true); }, midRun || eq.secondary === w.id));
+        c.appendChild(row);
+        w.tracks.forEach(tr => c.appendChild(trackItem(Meta.track(w.id + '.' + tr.k))));
+      } else c.appendChild(trackItem(Meta.track('own.' + w.id)));
       list.appendChild(c);
     });
     list.appendChild(trackItem(Meta.track('loadout')));
@@ -1437,20 +1559,27 @@ function openShop(from = 'title', keep) {
     n.textContent = `Turrets fire on their own at targets about to escape. Limited shots per round; kills pay ${Math.round(ECON.TURRET_CASH * 100)}% and don't reset your miss counter. Mounted: ${eq.turrets.length}/${slots}`;
     list.appendChild(n);
     ECON.TURRETS.forEach(tu => {
-      const owned = Meta.hasTurret(tu.id), open = (shopSel.turret || ECON.TURRETS[0].id) === tu.id, mounted = eq.turrets.includes(tu.id);
-      const ic = makeSprite(['............'], {}); const cv = document.createElement('canvas'); cv.width = 12; cv.height = 12; cv.getContext('2d').drawImage(TURRET_SPR[tu.id], 0, 0);
-      const c = card(cv, tu.name.toUpperCase(), tu.role, mounted ? 'MOUNTED' : owned ? '' : 'LOCKED', open, () => { shopSel.turret = open ? '-' : tu.id; openShop(shopFrom, true); });
-      if (open) {
-        if (owned) { const row = document.createElement('div'); row.className = 'row3';
-          row.appendChild(btn(mounted ? 'UNMOUNT' : slots ? 'MOUNT' : 'NEED PAD', 'small', () => { Meta.mountTurret(tu.id, !mounted); openShop(shopFrom, true); }, midRun || (!slots && !mounted)));
-          c.appendChild(row);
-          tu.tracks.forEach(t => c.appendChild(trackItem(Meta.track(tu.id + '.' + t.k))));
-        } else c.appendChild(trackItem(Meta.track('own.' + tu.id)));
-      }
+      const owned = Meta.hasTurret(tu.id), mounted = eq.turrets.includes(tu.id);
+      const badge = mounted ? 'MOUNTED' : owned ? '' : 'LOCKED';
+      const cv = document.createElement('canvas'); cv.width = 12; cv.height = 12; cv.getContext('2d').drawImage(TURRET_SPR[tu.id], 0, 0);
+      const c = card(cv, tu.name.toUpperCase(), tu.role, badge, mounted, () => {});
+      if (mounted && c.querySelector('.badge')) c.querySelector('.badge').classList.add('equip');
+      if (owned) {
+        const row = document.createElement('div'); row.className = 'row3';
+        const lab = mounted ? 'UNMOUNT' : (slots ? 'MOUNT' : 'NEED PAD');
+        row.appendChild(btn(lab, 'small' + (mounted ? ' on' : ''), () => { Meta.mountTurret(tu.id, !mounted); openShop(shopFrom, true); }, midRun || (!slots && !mounted)));
+        c.appendChild(row);
+        tu.tracks.forEach(tr => c.appendChild(trackItem(Meta.track(tu.id + '.' + tr.k))));
+      } else c.appendChild(trackItem(Meta.track('own.' + tu.id)));
       list.appendChild(c);
     });
   } else if (shopTab === 'gear') {
-    ECON.TRACKS.filter(t => t.group === 'gear' && t.id !== 'loadout' && t.id !== 'turret.slots').forEach(t => list.appendChild(trackItem(t)));
+    ECON.TRACKS.filter(isGearOnly).forEach(t => list.appendChild(trackItem(t)));
+  } else if (shopTab === 'gadgets') {
+    const nte = document.createElement('div'); nte.className = 'note';
+    nte.textContent = 'Gadgets give limited uses each run. Tap their buttons during a hunt.';
+    list.appendChild(nte);
+    ECON.TRACKS.filter(isGadgetTrack).forEach(t => list.appendChild(trackItem(t)));
   } else if (shopTab === 'perks') {
     const nte = document.createElement('div'); nte.className = 'note';
     nte.textContent = 'Late-game perks. Big costs, big help — they work with every gun (including laser vent and bow nock). In Infinity they keep leveling with no cap.';
@@ -1466,9 +1595,9 @@ function openShop(from = 'title', keep) {
       const cleared = Meta.isCleared(m.id), prog = Meta.clearProgress(m.id);
       const clearTag = cleared ? ' <span class="badge">CLEARED</span>' : ` <span class="badge dim">CLEAR ${prog.cur}/${prog.need}</span>`;
       const infLine = cleared ? ` \u00b7 INF BEST ${fmt(Meta.save.bestInfinityByMap[m.id] || 0)}` : '';
-      info.innerHTML = `<div class="nm">${m.name.toUpperCase()} <span class="badge cashc">$ x${m.cash}</span>${selm ? ' <span class="badge">SELECTED</span>' : ''}${clearTag}</div><div class="ds">${esc(m.role)}</div><div class="ds dim">BEST ${fmt(bestM)}${infLine} \u00b7 BEAT ROUND ${ECON.CLEAR_ROUND} BOSS TO CLEAR</div>`;
+      info.innerHTML = `<div class="nm">${m.name.toUpperCase()} <span class="badge cashc">$ x${m.cash}</span>${selm ? ' <span class="badge equip">SELECTED</span>' : ''}${clearTag}</div><div class="ds">${esc(m.role)}</div><div class="ds dim">Best ${fmt(bestM)}${infLine} · beat the round ${ECON.CLEAR_ROUND} boss to clear</div>`;
       c.append(th, info);
-      if (has) c.appendChild(btn(selm ? 'SELECTED' : 'HUNT HERE', 'small', () => { Meta.selectMap(m.id); buildBg(); openShop(shopFrom, true); }, midRun || selm));
+      if (has) c.appendChild(btn(selm ? 'SELECTED' : 'HUNT HERE', 'small' + (selm ? ' on' : ''), () => { Meta.selectMap(m.id); buildBg(); openShop(shopFrom, true); }, midRun || selm));
       else c.appendChild(trackItem(Meta.track('map.' + m.id)));
       list.appendChild(c);
     });
@@ -1476,10 +1605,15 @@ function openShop(from = 'title', keep) {
     const n = document.createElement('div'); n.className = 'note'; n.textContent = 'Cosmetic only: fixed prices.'; list.appendChild(n);
     const mk = (kind, it, preview) => {
       const owned = Meta.save.cosm.includes(it.id), on = (kind === 'skin' ? eq.skin : eq.cross) === it.id;
-      const el = document.createElement('div'); el.className = 'item' + (on ? ' can' : '');
-      const mid = document.createElement('div'); mid.innerHTML = `<div class="nm">${esc(it.name.toUpperCase())}</div><div class="ds dim">${kind === 'skin' ? 'Hunter outfit' : 'Crosshair color'}</div>`;
-      const b = btn(on ? 'ON' : owned ? 'EQUIP' : '$' + fmt(it.cost), on ? 'max' : '', () => { if (Meta.buyCosmetic(kind, it.id)) { Sfx.buy(); openShop(shopFrom, true); } }, on || (!owned && Meta.save.bank < it.cost));
-      el.append(preview, mid, b); list.appendChild(el);
+      const el = document.createElement('div'); el.className = 'item' + (on ? ' can' : ''); el.dataset.id = kind + '.' + it.id;
+      const top = document.createElement('div'); top.className = 'item-top';
+      const mid = document.createElement('div'); mid.innerHTML = `<div class="nm">${esc(it.name.toUpperCase())}</div><div class="blurb">${kind === 'skin' ? 'Hunter outfit' : 'Crosshair color'}</div>`;
+      top.append(preview, mid); el.appendChild(top);
+      if (!owned && Meta.bank() < it.cost) {
+        const need = document.createElement('div'); need.className = 'need'; need.textContent = 'Need $' + fmt(it.cost - Meta.bank()) + ' more'; el.appendChild(need);
+      }
+      const b = btn(on ? 'ON' : owned ? 'EQUIP' : 'BUY $' + fmt(it.cost), on ? 'max' : '', () => { if (Meta.buyCosmetic(kind, it.id)) { Sfx.buy(); shopBoughtId = kind + '.' + it.id; openShop(shopFrom, true); } }, on || (!owned && Meta.bank() < it.cost));
+      el.appendChild(b); list.appendChild(el);
     };
     const sec = t => { const s = document.createElement('div'); s.className = 'sec'; s.textContent = t; list.appendChild(s); };
     sec('HUNTER SKINS');
@@ -1489,9 +1623,21 @@ function openShop(from = 'title', keep) {
   }
   if (keep) list.scrollTop = scroll;
   show('ov-shop', true);
+  flashBought();
 }
-document.querySelectorAll('#shop-tabs button').forEach(b => b.addEventListener('click', () => { Sfx.click(); shopTab = b.dataset.tab; openShop(shopFrom); }));
-$('btn-next').addEventListener('click', () => { Sfx.click(); show('ov-shop', false); if (shopFrom === 'over') show('ov-over', true); else toTitle(); });
+
+
+$('shop-tabs').addEventListener('click', e => {
+  const b = e.target.closest('button[data-tab]');
+  if (!b) return;
+  Sfx.click(); shopTab = b.dataset.tab; openShop(shopFrom);
+});
+$('btn-next').addEventListener('click', () => { Sfx.click(); closeShopDetail(); show('ov-shop', false); if (shopFrom === 'over') show('ov-over', true); else toTitle(); });
+const shopDetail = $('shop-detail');
+if (shopDetail) {
+  $('btn-shop-detail-close').addEventListener('click', e => { e.stopPropagation(); Sfx.click(); closeShopDetail(); });
+  shopDetail.addEventListener('click', e => { if (e.target === shopDetail) { Sfx.click(); closeShopDetail(); } });
+}
 
 // ---------------- death / revive / game over ----------------
 function onDeath() {

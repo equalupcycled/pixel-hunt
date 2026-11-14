@@ -115,14 +115,33 @@
   <div id="ov-shop" class="overlay has-x hidden">
     <button type="button" class="x-close" id="btn-next" aria-label="Close"><span class="x-art" aria-hidden="true"></span></button>
     <div class="panel shop">
-      <div class="shop-head">
-        <h2>UPGRADES</h2>
-        <div class="cash">$<b id="shop-money">0</b></div>
+      <div id="shop-chrome">
+        <div class="shop-head">
+          <h2>UPGRADES</h2>
+        </div>
+        <div id="shop-wallet" class="shop-wallet">
+          <span class="wallet-lbl">WALLET</span>
+          <span class="wallet-amt">$<b id="shop-money">0</b></span>
+        </div>
+        <div class="shop-sub" id="shop-sub">UPGRADES ARE PERMANENT</div>
+        <div id="shop-modes" class="hidden"></div>
+        <div id="shop-tabs">
+          <button type="button" data-tab="weapons"><span class="tab-lbl">GUNS</span></button>
+          <button type="button" data-tab="gear"><span class="tab-lbl">GEAR</span></button>
+          <button type="button" data-tab="turrets"><span class="tab-lbl">TURRETS</span></button>
+          <button type="button" data-tab="gadgets"><span class="tab-lbl">GADGETS</span></button>
+          <button type="button" data-tab="perks"><span class="tab-lbl">PERKS</span></button>
+          <button type="button" data-tab="maps"><span class="tab-lbl">MAPS</span></button>
+          <button type="button" data-tab="style"><span class="tab-lbl">STYLE</span></button>
+        </div>
       </div>
-      <div class="shop-sub" id="shop-sub">UPGRADES ARE PERMANENT</div>
-      <div id="shop-modes" class="hidden"></div>
-      <div id="shop-tabs"><button data-tab="weapons">GUNS</button><button data-tab="turrets">TURRETS</button><button data-tab="gear">GEAR</button><button data-tab="perks">PERKS</button><button data-tab="maps">MAPS</button><button data-tab="style">STYLE</button></div>
       <div id="shop-list"></div>
+    </div>
+    <div id="shop-detail" class="shop-detail hidden" role="dialog" aria-label="Upgrade details">
+      <div class="shop-detail-wrap">
+        <button type="button" class="x-close" id="btn-shop-detail-close" aria-label="Close details"><span class="x-art" aria-hidden="true"></span></button>
+        <div class="shop-detail-panel" id="shop-detail-body"></div>
+      </div>
     </div>
   </div>
 

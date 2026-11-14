@@ -26,7 +26,11 @@ Live: https://pixel-hunt-o4vw.onrender.com/ (Render static site, auto-deploys fr
 
 ## Rules
 - Everything flies/runs **left to right**: enters on the left edge, and if it reaches the right edge unshot it escapes = **1 miss (X)**.
-- Lose: **3 targets escape in a row** (birds, ground animals, or a boss). Any hit by *you* resets the counter (turret kills don't).
+- Lose: **3 escapes TOTAL per run** (birds, ground animals, or a boss = 1 X each). Hits don't clear X's. Lucky Feather raises the limit to 4, then 5.
+- A **PERFECT round** (every target hit) gives one X back. The rewarded-ad revive clears all X's once per run.
+- **Checkpoints** at the start of rounds 5, 10, 15... are saved per map. Game over offers *Continue from Round N checkpoint* (X's cleared, score from 0, normal difficulty for that round) or *Start from Round 1*.
+  Rounds 10, 20... are boss rounds, so their checkpoint puts you right in front of the boss.
+  Checkpoint runs earn cash/missions but are **not ranked** (no leaderboard entry, no map best) - only fresh runs from Round 1 compete.
 - Manual reload for every weapon: RELOAD / BOLT / NOCK / VENT button, swipe down (tap weapons) or R / Space.
 - Pink lovebirds are protected: shooting one costs cash + points; letting them go is free. Turrets never shoot them.
 - Every 10th round is a **boss round** with a health bar; the boss makes one slow left-to-right pass (the timer is how long until it reaches the right edge).

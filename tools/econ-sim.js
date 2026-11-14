@@ -1,86 +1,203 @@
-// Monte Carlo economy sim for Pixel Hunt. Usage: node tools/econ-sim.js [--table]
-// Models an "average" player: aim accuracy falls with target speed/size/erratic paths, more shells
-// and faster reloads give more attempts per target, run ends after N escapes in a row.
-const E = require('../js/economy.js');
+// Monte Carlo economy sim for Pixel Hunt's arsenal.
+//   node tools/econ-sim.js            summary + sampled table
+//   node tools/econ-sim.js --table    every purchase
+//   node tools/econ-sim.js --fit      re-fit the price CURVE in js/economy.js
+//   node tools/econ-sim.js --balance  compare weapons at equal investment
+// The "average player" model: aim accuracy falls with target speed/size/erratic paths; ammo, fire rate
+// and reload give more attempts per target; run ends after N escapes in a row.
+const fs = require('fs'), path = require('path');
+const ECON_PATH = path.join(__dirname, '../js/economy.js');
+let E = require(ECON_PATH);
 const rnd = Math.random;
-function stats(lv) {
-  const v = id => E.TRACKS.find(t => t.id === id).val[lv[id]];
-  return { shells: v('gun'), reload: v('reload'), radius: v('choke'), eye: v('eye'), focus: v('focus'),
-    focusDur: E.TRACKS[4].dur[lv.focus], maxMiss: v('luck'), mm: v('bounty') };
+const T = id => E.TRACKS.find(t => t.id === id);
+const V = (lv, id) => T(id).val[lv[id] || 0];
+
+function aim(radius, scale, speed, erratic) {
+  return Math.min(0.97, Math.max(0.02, 1.05 * Math.pow(radius / 5, 0.4) * Math.pow(scale / 1.5, 0.6) * Math.pow(26 / speed, 0.55) * (1 - 0.25 * erratic)));
 }
-function pTarget(st, d, kind, slow) {
+function attempts(Tw, cap, reload, shotT) {
+  const cycle = cap * shotT + reload, t = Math.max(0, Tw - shotT);
+  return Math.min(6, 1 + Math.floor(t / cycle) * cap + Math.min(cap - 1, Math.floor((t % cycle) / shotT)));
+}
+// probability that the equipped weapon kills a target, plus per-kill modifiers
+function weaponTry(w, lv, d, kind, slow, st, ammo) {
+  const g = k => V(lv, w + '.' + k);
   const speed = (kind === 'deer' ? d.deerSpeed * 0.8 : d.speed * (kind === 'gold' ? 1.35 : 1)) * (slow ? 0.38 : 1);
   const scale = kind === 'deer' ? 1.6 : d.scale * (kind === 'gold' ? 0.85 : 1);
-  const a = Math.min(0.97, Math.max(0.03, 1.05 * Math.pow(st.radius / 5, 0.4) * Math.pow(scale / 1.5, 0.6) *
-    Math.pow(26 / speed, 0.55) * (kind === 'deer' ? 1 : 1 - 0.25 * d.erratic)));
-  let T = (kind === 'deer' ? (180 / (d.deerSpeed)) : d.life * (kind === 'gold' ? 0.8 : 1)) * st.eye / Math.min(d.conc, 3) * (slow ? 2.2 : 1);
-  const cycle = st.shells * 0.45 + st.reload;
-  let n = 1 + Math.floor(Math.max(0, T - 0.45) / cycle) * st.shells + Math.min(st.shells - 1, Math.floor((Math.max(0, T - 0.45) % cycle) / 0.45));
-  n = Math.min(n, 5);
-  return 1 - Math.pow(1 - a, n);
+  const er = kind === 'deer' ? 0 : d.erratic;
+  const Tw = (kind === 'deer' ? 180 / d.deerSpeed : d.life * (kind === 'gold' ? 0.8 : 1)) * st.eye / Math.min(d.conc, 3) * (slow ? 2.2 : 1);
+  let p = 0, extra = 0;
+  if (w === 'shotgun') p = 1 - Math.pow(1 - aim(g('choke'), scale, speed, er), attempts(Tw, g('cap'), g('reload'), 0.45));
+  else if (w === 'handgun') p = 1 - Math.pow(1 - aim(g('sights'), scale, speed, er) * 0.8, attempts(Tw, g('cap'), g('reload'), 0.26));
+  else if (w === 'rifle') { p = 1 - Math.pow(1 - aim(g('caliber'), scale, speed, er) * 1.3, attempts(Tw, g('cap'), g('reload'), 0.5)); extra = d.conc > 1 ? Math.min(0.4, 0.11 * (g('pierce') - 1)) : 0; }
+  else if (w === 'bow') { const lead = 1 - 0.15 * Math.min(1, speed / 110); p = 1 - Math.pow(1 - aim(g('tip'), scale, speed, er) * lead * 1.35, attempts(Tw, g('cap'), g('reload'), 0.3 + g('draw'))); extra = d.conc > 1 ? 0.08 * (g('pierce') - 1) : 0; }
+  else if (w === 'mg') {
+    const rate = g('rate'), r = 3 + (12 - g('spread')) * 0.2;
+    if (ammo.v < 4) { ammo.v = g('cap'); ammo.t += g('reload'); }
+    const Tl = Math.max(0.2, Tw - ammo.t); ammo.t = 0;
+    const n = Math.min(12, Math.floor(Tl / rate), ammo.v), a = aim(r, scale, speed, er) * 0.45;
+    p = 1 - Math.pow(1 - a, n); ammo.v -= Math.max(1, Math.round(p > 0.5 ? Math.min(n, 1 / Math.max(a, 0.05)) : n));
+    extra = Math.min(0.35, 0.07 * (d.conc - 1));
+  } else if (w === 'laser') {
+    const dwell = g('power'), k = Math.pow(speed / 40, 0.7) * (1 + er) * Math.pow(1.5 / scale, 0.5) / Math.pow(g('width') / 2, 0.5);
+    if (ammo.v < dwell * 2) { ammo.v = g('cap'); ammo.t += g('reload'); }
+    const Tl = Math.max(0.2, Tw - ammo.t); ammo.t = 0;
+    const need = dwell * k * 1.6;
+    p = 1 - Math.exp(-Math.min(Tl, ammo.v) / need); ammo.v -= Math.min(ammo.v, need * 1.2);
+    extra = Math.min(0.3, 0.06 * (d.conc - 1));
+  }
+  return { p, extra };
 }
-function run(lv) {
-  const st = stats(lv);
-  let r = 0, cash = 0, time = 0, missRun = 0, streak = 0, alive = true, kills = 0;
-  while (alive && r < 200) {
-    r++; const d = E.difficulty(r);
+function weaponOf(w) { return E.WEAPONS.find(x => x.id === w); }
+function run(lv, equip, mapId = 'meadow') {
+  const M = E.MAPS.find(m => m.id === mapId);
+  const st = { eye: V(lv, 'eye'), focus: V(lv, 'focus'), focusDur: T('focus').dur[lv.focus || 0], maxMiss: V(lv, 'luck'), mm: V(lv, 'bounty') };
+  const W = weaponOf(equip);
+  let r = 0, cash = 0, time = 0, missRun = 0, streak = 0, alive = true;
+  let flak = V(lv, 'gadget.flak'), calls = V(lv, 'gadget.call'), decoys = V(lv, 'gadget.decoy'), boost = 0;
+  const slots = V(lv, 'turret.slots');
+  const turrets = ['pellet', 'tesla', 'missile'].filter(t => lv['own.' + t]).reverse().slice(0, slots);
+  const ammo = { v: 0, t: 0 };
+  while (alive && r < 90) {
+    r++; const d0 = E.difficulty(r); const d = Object.assign({}, d0, { speed: d0.speed * M.speed, deerSpeed: d0.deerSpeed * M.speed, life: d0.life * M.life * (M.dark ? 0.9 + 0.1 * (lv.flashlight || 0) / 4 : 1), scale: d0.scale * M.size });
+    if (r % E.BOSS_EVERY === 0) { // boss: needs bossHp hits within bossTime
+      const hp = E.bossHp(r), pr = weaponTry(W.id, lv, d, 'deer', false, st, { v: 999, t: 0 }).p;
+      const shots = E.bossTime(r) * (W.id === 'mg' || W.id === 'laser' ? 1.6 : 1.1) * pr;
+      if (shots >= hp || rnd() < shots / hp * 0.5) cash += E.bossCash(r) * st.mm * M.cash * W.cash; else { missRun++; if (missRun >= st.maxMiss) { alive = false; break; } }
+      time += 12; continue;
+    }
     let hits = 0, total = 0, focusLeft = Math.round(st.focus * st.focusDur / 2.5);
+    // turret rescue budget this round
+    let tb = 0;
+    turrets.forEach(t => {
+      if (t === 'pellet') tb += V(lv, 'pellet.ammo') * [0.4, 0.5, 0.58, 0.66][lv['pellet.aim'] || 0] * Math.min(1, 2.5 / V(lv, 'pellet.rate') * 0.5);
+      if (t === 'tesla') tb += V(lv, 'tesla.ammo') * (0.75 + 0.15 * (V(lv, 'tesla.chain') - 1)) * (V(lv, 'tesla.range') / 120);
+      if (t === 'missile') tb += V(lv, 'missile.ammo') * (0.85 + V(lv, 'missile.blast') / 50) * Math.min(1, 5 / V(lv, 'missile.rate') * 0.6);
+    });
+    let golds = (calls > 0 && r >= 4) ? (calls--, 3) : 0;
     for (let i = 0; i < d.count && alive; i++) {
       const x = rnd(); let kind = 'bird';
-      if (r > 1) { if (x < d.deer) kind = 'deer'; else if (x < d.deer + d.decoy) kind = 'decoy'; else if (x < d.deer + d.decoy + d.gold) kind = 'gold'; else if (rnd() < 0.3) kind = 'blue'; }
-      if (kind === 'decoy') { if (rnd() < 0.08) cash -= Math.min(cash, E.decoyPenalty(r)); continue; }
+      if (golds > 0) { kind = 'gold'; golds--; }
+      else if (r > 1) { if (x < d.deer) kind = 'deer'; else if (x < d.deer + d.decoy) kind = 'decoy'; else if (x < d.deer + d.decoy + d.gold) kind = 'gold'; else if (rnd() < 0.3) kind = 'blue'; }
+      if (kind === 'decoy') { if (rnd() < (W.id === 'mg' ? 0.16 : 0.08)) cash -= Math.min(cash, E.decoyPenalty(r)); continue; }
       total++;
       const slow = focusLeft > 0; if (slow) focusLeft--;
-      const p = pTarget(st, d, kind, slow);
-      if (rnd() < p) { hits++; kills++; missRun = 0; streak++; cash += E.killCash(kind, r, st.mm, Math.min(streak, 5)); time += d.life * 0.35 / d.conc + d.interval / d.conc; }
-      else { missRun++; streak = 0; time += d.life / d.conc; if (missRun >= st.maxMiss) alive = false; }
+      let { p, extra } = weaponTry(W.id, lv, d, kind, slow, st, ammo);
+      if (boost > 0) { p = Math.min(0.98, p + 0.25); boost--; }
+      const pay = (k, m) => E.killCash(k, r, st.mm, m) * M.cash * W.cash * (k === 'deer' && W.deerBonus ? W.deerBonus : 1) * (k === 'gold' && W.goldBonus ? W.goldBonus : 1);
+      if (rnd() < p) {
+        hits++; missRun = 0; streak++;
+        let c = pay(kind, Math.min(streak, 5));
+        if (W.id === 'handgun') c *= 1 + V(lv, 'handgun.crit');
+        cash += c;
+        if (rnd() < extra) { cash += pay('bird', Math.min(streak, 5)); i++; hits++; total++; }
+        time += d.life * 0.35 / d.conc + d.interval / d.conc;
+      } else {
+        time += d.life / d.conc;
+        if (tb > 0 && rnd() < Math.min(1, tb) * 0.85) { tb -= 1; cash += pay(kind, 1) * E.TURRET_CASH; continue; }
+        if (missRun === st.maxMiss - 1 && flak > 0) { flak--; hits++; missRun = 0; cash += pay(kind, 1) * 1.5; continue; }
+        if (missRun === st.maxMiss - 1 && decoys > 0) { decoys--; boost = 5; }
+        missRun++; if (W.id !== 'bow') streak = 0;
+        if (missRun >= st.maxMiss) alive = false;
+      }
     }
     time += 3.6;
     if (alive) cash += E.roundBonus(r, hits === total);
   }
-  return { cash, rounds: r, time, kills };
+  return { cash, rounds: r, time };
 }
-function avg(lv, n = 400) {
-  let c = 0, r = 0, t = 0; const arr = [];
-  for (let i = 0; i < n; i++) { const o = run(lv); c += o.cash; r += o.rounds; t += o.time; arr.push(o.cash); }
-  arr.sort((a, b) => a - b);
-  return { cash: c / n, median: arr[n >> 1], rounds: r / n, time: t / n };
+function bestMap(lv) { return E.MAPS.filter(m => !m.w || lv['map.' + m.id]).slice(-1)[0].id; }
+function avg(lv, equip, n = 80, map = bestMap(lv)) {
+  let c = 0, r = 0, t = 0;
+  for (let i = 0; i < n; i++) { const o = run(lv, equip, map); c += o.cash; r += o.rounds; t += o.time; }
+  return { cash: c / n, rounds: r / n, time: t / n };
 }
-// Progression: player buys the cheapest available upgrade when affordable; earns missions (~1 per 2 runs)
-// and a daily login reward every ~6 runs. Rewarded 2x ad NOT counted (reported separately).
-function progression({ withSide = true, ads = false } = {}) {
+const owned = lv => E.WEAPONS.filter(w => !w.ownW || lv['own.' + w.id]).map(w => w.id);
+function bestWeapon(lv) {
+  let best = null;
+  for (const w of owned(lv)) { const e = avg(lv, w, 50); if (!best || e.cash > best.e.cash) best = { w, e }; }
+  return best;
+}
+// Purchase ORDER (independent of the price curve): unlocks are bought as soon as their milestone is met,
+// otherwise the cheapest relative price among: equipped weapon, newest weapon, gear, turrets, gadgets.
+function plan() {
   const lv = {}; E.TRACKS.forEach(t => lv[t.id] = 0);
-  let bank = 0, runs = 0, hours = 0, bought = 0, sinceBuy = 0, dayRun = 0, dayIdx = 0;
+  let n = 0, equip = 'shotgun', newest = 'shotgun', est = avg(lv, equip);
+  const steps = [];
+  const avail = t => lv[t.id] < t.val.length - 1 && n >= (t.req || 0) && (!t.needs || lv[t.needs]);
+  while (n < E.TOTAL_LEVELS) {
+    const all = E.TRACKS.filter(avail);
+    let pick = all.find(t => t.unlock);
+    if (!pick && (lv['turret.slots'] || 0) === 0 && T('turret.slots') && avail(T('turret.slots'))) pick = T('turret.slots');
+    if (!pick) {
+      const focus = all.filter(t => t.group !== 'weapon' || t.of === equip || t.of === newest);
+      const pool = focus.length ? focus : all;
+      pool.sort((a, b) => a.w * (1 + E.PER_LEVEL * lv[a.id]) - b.w * (1 + E.PER_LEVEL * lv[b.id]));
+      pick = pool[0];
+    }
+    steps.push({ n, id: pick.id, name: pick.name + (pick.unlock ? '' : ' ' + (lv[pick.id] + 1)), w: pick.w, lvl: lv[pick.id], estCash: est.cash, rounds: est.rounds, time: est.time, equip });
+    lv[pick.id]++; n++;
+    if (pick.unlock && pick.group === 'weapon') newest = pick.of;
+    if (pick.group === 'weapon' || pick.group === 'map' || n % 8 === 0) { const b = bestWeapon(lv); equip = b.w; est = b.e; } else est = avg(lv, equip);
+  }
+  return { steps, lv };
+}
+// Play it out with a bank: runs, side income (missions ~1 per 2 runs at 10% of next price, daily every ~6 runs).
+function playout(steps, { ads = false } = {}) {
+  let bank = 0, runs = 0, hours = 0, day = 0, dayRun = 0;
   const rows = [];
-  const nextOpts = () => E.TRACKS.filter(t => lv[t.id] < t.val.length - 1).map(t => ({ t, c: E.cost(t, lv[t.id], bought) })).sort((a, b) => a.c - b.c);
-  let est = avg(lv, 300);
-  while (bought < E.TOTAL_LEVELS && runs < 5000) {
-    const opts = nextOpts(); const next = opts[0];
-    const o = run(lv); runs++; sinceBuy++; hours += o.time / 3600; bank += o.cash * (ads && dayRun < E.DOUBLE_ADS_PER_DAY ? 2 : 1);
-    if (withSide) {
-      if (runs % 2 === 0) bank += Math.round(next.c * E.MISSION_PCT);
-      if (++dayRun >= 6) { dayRun = 0; bank += Math.round(next.c * E.DAILY_PCT[dayIdx++ % 7]); }
+  for (const s of steps) {
+    const c = E.cost({ w: s.w }, s.lvl, s.n);
+    let k = 0;
+    while (bank < c) {
+      const cash = s.estCash * (0.6 + rnd() * 0.8);
+      bank += cash * (ads && dayRun < E.DOUBLE_ADS_PER_DAY ? 2 : 1); runs++; k++; hours += s.time / 3600;
+      if (runs % 2 === 0) bank += c * E.MISSION_PCT;
+      if (++dayRun >= 6) { dayRun = 0; bank += c * E.DAILY_PCT[day++ % 7]; }
     }
-    while (bought < E.TOTAL_LEVELS) {
-      const nx = nextOpts()[0];
-      if (bank < nx.c) break;
-      bank -= nx.c;
-      rows.push({ n: bought + 1, item: nx.t.name + ' ' + (lv[nx.t.id] + 1), cost: nx.c, earn: Math.round(est.cash), ratio: +(nx.c / est.cash).toFixed(1), effRuns: +(nx.c / (est.cash + (withSide ? nx.c * (E.MISSION_PCT / 2 + 0.02) : 0))).toFixed(1), runs: sinceBuy, rounds: +est.rounds.toFixed(1), runMin: +(est.time / 60).toFixed(1), hours: +hours.toFixed(1) });
-      lv[nx.t.id]++; bought++; sinceBuy = 0; est = avg(lv, 300);
-    }
+    bank -= c;
+    rows.push({ ...s, cost: c, runs: k, hours });
   }
   return { rows, runs, hours };
 }
+function smooth(a, win) { return a.map((_, i) => { let s = 0, c = 0; for (let j = Math.max(0, i - win); j <= Math.min(a.length - 1, i + win); j++) { s += a[j]; c++; } return s / c; }); }
 
-const modes = [['no ads', {}], ['2x ad on 3 runs/day', { ads: true }]];
-for (const [name, opt] of modes) {
-  const res = progression(opt);
-  const rs = res.rows.map(r => r.runs);
-  console.log(`[${name}] upgrades=${E.TOTAL_LEVELS} totalRuns=${res.runs} totalHours=${res.hours.toFixed(1)} runsPerUpgrade avg=${(res.runs / res.rows.length).toFixed(2)} min=${Math.min(...rs)} max=${Math.max(...rs)}`);
-  if (name === 'no ads') {
-    const pick = process.argv.includes('--table') ? res.rows : res.rows.filter((r, i) => i % 4 === 0 || i === res.rows.length - 1);
-    console.log('#  | upgrade bought           | cost     | avg run $ | cost/run | eff runs* | actual runs | avg rounds | run min | hours');
-    pick.forEach(r => console.log(`${String(r.n).padStart(2)} | ${r.item.padEnd(24)} | ${String(r.cost).padStart(8)} | ${String(r.earn).padStart(9)} | ${String(r.ratio).padStart(8)} | ${String(r.effRuns).padStart(9)} | ${String(r.runs).padStart(11)} | ${String(r.rounds).padStart(10)} | ${String(r.runMin).padStart(7)} | ${r.hours}`));
-    console.log('* eff runs = cost / (avg run earnings + mission & daily income per run)');
+const args = process.argv.slice(2);
+const { steps } = plan();
+if (args.includes('--fit')) {
+  const TARGET = 5.0; // cheapest w=1 purchase = 5 average runs of earnings (missions & daily bring it to ~3.5-4 games)
+  let e = steps.map(s => s.estCash);
+  e = e.map((x, i) => smooth(e, Math.min(4, Math.floor(i / 3)))[i]); for (let i = 1; i < e.length; i++) e[i] = Math.max(e[i], e[i - 1]);
+  const curve = e.map(x => +(TARGET * x / E.BASE).toFixed(3)); curve.push(curve[curve.length - 1] * 1.02);
+  let src = fs.readFileSync(ECON_PATH, 'utf8');
+  src = src.replace(/\/\*CURVE\*\/[\s\S]*?\/\*END\*\//, `/*CURVE*/const CURVE = [${curve.join(', ')}];/*END*/`);
+  fs.writeFileSync(ECON_PATH, src);
+  console.log('fitted CURVE with', curve.length, 'points; first', curve.slice(0, 5), 'last', curve.slice(-3));
+  delete require.cache[require.resolve(ECON_PATH)]; E = require(ECON_PATH);
+}
+if (args.includes('--balance')) {
+  console.log('Avg run $ / rounds by weapon at equal investment (gear+turrets at same level):');
+  for (const frac of [0.25, 0.5, 1]) {
+    const lv = {}; E.TRACKS.forEach(t => lv[t.id] = t.unlock ? 1 : Math.round((t.val.length - 1) * frac));
+    if (frac < 1) { lv['own.laser'] = 1; }
+    const line = E.WEAPONS.map(w => { const a = avg(lv, w.id, 150, 'meadow'); return `${w.id}:$${Math.round(a.cash)}/r${a.rounds.toFixed(1)}`; });
+    console.log(`  upgrades ${frac * 100}%:`, line.join('  '));
+  }
+  // early-round vs late-round effectiveness (kill chance on a round-3 bird vs a round-14 bird) at 50% upgrades
+  const lv = {}; E.TRACKS.forEach(t => lv[t.id] = t.unlock ? 1 : Math.round((t.val.length - 1) * 0.5));
+  const st = { eye: V(lv, 'eye') };
+  for (const r of [3, 8, 14, 20]) {
+    const d = E.difficulty(r);
+    console.log(`  round ${r} hit%:`, E.WEAPONS.map(w => `${w.id}:${Math.round(weaponTry(w.id, lv, d, 'bird', false, st, { v: 999, t: 0 }).p * 100)}`).join(' '),
+      ' gold:', E.WEAPONS.map(w => `${w.id}:${Math.round(weaponTry(w.id, lv, d, 'gold', false, st, { v: 999, t: 0 }).p * 100)}`).join(' '));
   }
 }
+const out = playout(steps), outAds = playout(steps, { ads: true });
+const rs = out.rows.map(r => r.runs);
+const pct = q => { const s = [...rs].sort((a, b) => a - b); return s[Math.floor(q * (s.length - 1))]; };
+console.log(`purchases=${E.TOTAL_LEVELS} games=${out.runs} hours=${out.hours.toFixed(1)} games/purchase avg=${(out.runs / rs.length).toFixed(2)} p10=${pct(0.1)} median=${pct(0.5)} p90=${pct(0.9)} | with 2x ads: games=${outAds.runs} hours=${outAds.hours.toFixed(1)} avg=${(outAds.runs / rs.length).toFixed(2)}`);
+const unl = out.rows.filter(r => r.id.startsWith('own.') || r.id.startsWith('map.') || r.id === 'turret.slots' && r.lvl === 0 || r.id === 'loadout');
+console.log('Milestones:'); unl.forEach(r => console.log(`  #${r.n + 1} ${r.name.padEnd(22)} $${r.cost.toLocaleString()} at ~${r.hours.toFixed(1)}h (equipped then: ${r.equip})`));
+console.log('#   | purchase                 | cost       | avg run $ | games | rounds | min/run | hours | weapon');
+const pick = args.includes('--table') ? out.rows : out.rows.filter((r, i) => i % 15 === 0 || i === out.rows.length - 1);
+pick.forEach(r => console.log(`${String(r.n + 1).padStart(3)} | ${r.name.padEnd(24)} | ${String(r.cost.toLocaleString()).padStart(10)} | ${String(Math.round(r.estCash)).padStart(9)} | ${String(r.runs).padStart(5)} | ${r.rounds.toFixed(1).padStart(6)} | ${(r.time / 60).toFixed(1).padStart(7)} | ${r.hours.toFixed(1).padStart(5)} | ${r.equip}`));

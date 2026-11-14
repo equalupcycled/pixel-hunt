@@ -8,7 +8,18 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Pixel Hunt">
-<meta name="description" content="Pixel Hunt - a retro pixel bird hunting high-score game.">
+<meta name="description" content="Pixel Hunt - a retro pixel hunting high-score game. 6 weapons, turrets, 5 maps and boss fights.">
+<!-- Open Graph (Facebook link preview). When hosted, make og:url / og:image absolute (same value as SHARE_CONFIG.GAME_URL in js/share.js). -->
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Pixel Hunt">
+<meta property="og:title" content="Pixel Hunt - retro pixel hunting">
+<meta property="og:description" content="Shotguns, bows, lasers, turrets, 5 maps and boss fights. Miss 3 in a row and it's over. How high can you score?">
+<meta property="og:url" content="https://pixelhunt.example.com/">
+<meta property="og:image" content="icons/share-banner.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="628">
+<meta property="og:image:alt" content="Pixel Hunt title card">
+<meta name="twitter:card" content="summary_large_image">
 <title>Pixel Hunt</title>
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" type="image/png" href="icons/icon-192.png">
@@ -23,23 +34,30 @@
   <button id="btn-pause" class="pbtn hidden" aria-label="Pause">II</button>
   <button id="btn-focus" class="pbtn hidden" aria-label="Slow motion">FOCUS<span id="focus-n">1</span></button>
   <button id="btn-reload" class="pbtn hidden" aria-label="Reload"><span class="fill"></span><span class="lbl">RELOAD</span></button>
+  <button id="btn-swap" class="pbtn hidden" aria-label="Swap weapon">SWAP<small id="swap-n"></small></button>
+  <button id="btn-flak" class="pbtn gad hidden" aria-label="Flak grenade">FLAK<span>0</span></button>
+  <button id="btn-call" class="pbtn gad hidden" aria-label="Bird call">CALL<span>0</span></button>
+  <button id="btn-decoy" class="pbtn gad hidden" aria-label="Duck decoy">DECOY<span>0</span></button>
 
   <!-- title -->
   <div id="ov-title" class="overlay clear">
     <div class="title-spacer"></div>
     <div class="title-best">HIGH SCORE <b id="title-best">0</b> &middot; <span class="cashc" id="title-bank">$0</span></div>
+    <div class="mapsel"><button id="btn-map-prev" class="pbtn small">&#9664;</button><div><b id="title-map">MEADOW</b><small id="title-mapbest"></small></div><button id="btn-map-next" class="pbtn small">&#9654;</button></div>
+    <div class="tiny" id="title-loadout"></div>
     <div id="title-next" class="nextbox"></div>
     <button id="btn-play" class="pbtn big">PLAY</button>
     <div class="row">
       <button id="btn-armory" class="pbtn">ARMORY</button>
       <button id="btn-missions" class="pbtn">MISSIONS</button>
     </div>
+    <div class="row"><button id="btn-board" class="pbtn small">LEADERBOARD</button></div>
     <div class="row">
       <button id="btn-how" class="pbtn small">HOW TO PLAY</button>
       <button id="btn-mute-t" class="pbtn small mute-btn">SOUND: ON</button>
       <button id="btn-daily" class="pbtn small gold-btn hidden">DAILY!</button>
     </div>
-    <div class="tiny">TAP TO SHOOT &middot; RELOAD BY HAND</div>
+    <div class="tiny">SHOOT &middot; RELOAD BY HAND &middot; DON'T MISS 3 IN A ROW</div>
   </div>
 
   <div id="ov-how" class="overlay hidden">
@@ -52,6 +70,10 @@
         <li>Hit streaks multiply your score. <span class="gold">GOLDEN BIRDS</span> pay big.</li>
         <li><span class="pink">PINK LOVEBIRDS</span> are protected &mdash; shooting one costs cash. Letting them go is fine.</li>
         <li>From round 4, <b>DEER</b> dash along the treeline. Worth a lot &mdash; and they count as a miss if they escape.</li>
+        <li><b>WEAPONS:</b> tap to fire the shotgun, handgun &amp; rifle (the rifle pierces in a line from you). <b>Hold</b> to spray the machine gun or sweep the laser (VENT it when hot). Bow: <b>hold to draw, release</b> &mdash; arrows arc, so lead your target.</li>
+        <li><b>TURRETS</b> help with birds about to escape (limited shots). <b>FLAK</b>: tap it, then tap the sky. <b>CALL</b> lures golden birds. <b>DECOY</b> gathers &amp; slows birds.</li>
+        <li>Every <b>10th round is a BOSS</b>. Shoot it down before its timer runs out &mdash; if it escapes it counts as a miss.</li>
+        <li>Unlock <b>MAPS</b> with tougher animals and bigger payouts. Top 10 scores per map go on the <b>LEADERBOARD</b>.</li>
         <li>Your <b>$</b> and upgrades are <b>saved forever</b>. Big upgrades take a few runs to afford &mdash; keep hunting!</li>
         <li>Complete <b>missions</b>, unlock <b>achievements</b> and claim your <b>daily reward</b> for bonus cash.</li>
       </ul>
@@ -63,10 +85,11 @@
   <div id="ov-shop" class="overlay hidden">
     <div class="panel shop">
       <div class="shop-head">
-        <h2>GUN SHOP</h2>
+        <h2>ARMORY</h2>
         <div class="cash">$<b id="shop-money">0</b></div>
       </div>
       <div class="shop-sub" id="shop-sub">ROUND 1 CLEARED</div>
+      <div id="shop-tabs"><button data-tab="weapons">GUNS</button><button data-tab="turrets">TURRETS</button><button data-tab="gear">GEAR</button><button data-tab="maps">MAPS</button><button data-tab="style">STYLE</button></div>
       <div id="shop-list"></div>
       <button id="btn-next" class="pbtn big">NEXT ROUND &#9654;</button>
     </div>
@@ -98,12 +121,13 @@
     <div class="panel">
       <h2 class="red">GAME OVER</h2>
       <div id="newbest" class="newbest hidden">NEW HIGH SCORE!</div>
+      <div id="go-rank" class="rank hidden"></div>
       <div class="earned">EARNED <b id="go-earned">+$0</b></div>
       <button id="btn-double" class="pbtn green">&#9654; WATCH AD: 2X EARNINGS</button>
       <div id="go-next" class="nextbox"></div>
       <div class="stats">
         <div><span>SCORE</span><b id="go-score">0</b></div>
-        <div><span>BEST</span><b id="go-best">0</b></div>
+        <div><span id="go-bestl">BEST</span><b id="go-best">0</b></div>
         <div><span>ROUND</span><b id="go-round">1</b></div>
         <div><span>HITS</span><b id="go-hits">0</b></div>
         <div><span>ACCURACY</span><b id="go-acc">0%</b></div>
@@ -111,6 +135,7 @@
       <div class="sec">MISSIONS</div>
       <div id="go-missions" class="mslist"></div>
       <button id="btn-again" class="pbtn big">PLAY AGAIN</button>
+      <div class="row2"><button id="btn-share" class="pbtn fb">SHARE TO FACEBOOK</button><button id="btn-go-board" class="pbtn small">TOP 10</button></div>
       <div class="row2"><button id="btn-go-shop" class="pbtn">ARMORY</button><button id="btn-menu" class="pbtn">TITLE</button></div>
     </div>
   </div>
@@ -139,6 +164,29 @@
     </div>
   </div>
 
+  <!-- arcade initials -->
+  <div id="ov-initials" class="overlay hidden">
+    <div class="panel">
+      <h2>NEW TOP 10!</h2>
+      <p><b id="ini-score" class="gold">0</b><br><small id="ini-map"></small></p>
+      <p>ENTER YOUR INITIALS</p>
+      <div id="ini-cols"></div>
+      <button id="btn-ini-ok" class="pbtn big">OK</button>
+    </div>
+  </div>
+
+  <!-- leaderboard -->
+  <div id="ov-board" class="overlay hidden">
+    <div class="panel scroll">
+      <h2>LEADERBOARD</h2>
+      <div id="board-tabs"></div>
+      <div id="board-src" class="shop-sub"></div>
+      <div id="board-list"></div>
+      <button id="btn-board-share" class="pbtn fb">SHARE TO FACEBOOK</button>
+      <button id="btn-board-close" class="pbtn big">BACK</button>
+    </div>
+  </div>
+
   <div id="toast" class="hidden"></div>
 
   <!-- ad layer (managed by js/ads.js) -->
@@ -148,6 +196,8 @@
 <script src="js/ads.js"></script>
 <script src="js/economy.js"></script>
 <script src="js/meta.js"></script>
+<script src="js/leaderboard.js"></script>
+<script src="js/share.js"></script>
 <script src="js/game.js"></script>
 <script>
 if ('serviceWorker' in navigator && /^https?:/.test(location.protocol)) {

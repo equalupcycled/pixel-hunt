@@ -6,50 +6,98 @@ window.Meta = (() => {
   const fmt = n => Math.round(n).toLocaleString('en-US');
   const dayStr = (d = new Date()) => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
   const def = () => ({
-    bank: 0, lv: Object.fromEntries(E.TRACKS.map(t => [t.id, 0])),
-    stats: { runs: 0, kills: 0, gold: 0, deer: 0, perfect: 0, multi: 0, bestRound: 0, bestStreak: 0, shots: 0, hits: 0, earned: 0 },
+    v: 2, bank: 0, lv: Object.fromEntries(E.TRACKS.map(t => [t.id, 0])),
+    stats: { runs: 0, kills: 0, gold: 0, deer: 0, perfect: 0, multi: 0, bestRound: 0, bestStreak: 0, shots: 0, hits: 0, earned: 0, bosses: 0, turretKills: 0 },
     missions: [], mDone: 0, ach: {}, daily: { last: null, day: -1 }, ads: { date: null, doubles: 0 },
+    equip: { primary: 'shotgun', secondary: null, turrets: [], skin: 'classic', cross: 'white', map: 'meadow' },
+    cosm: ['classic', 'white'], bestByMap: {}, roundByMap: {},
   });
   function merge(d, s) { for (const k in s) { if (s[k] && typeof s[k] === 'object' && !Array.isArray(s[k]) && d[k] && typeof d[k] === 'object') merge(d[k], s[k]); else d[k] = s[k]; } return d; }
   let save = def();
-  try { const s = JSON.parse(localStorage.getItem(KEY)); if (s) save = merge(def(), s); } catch (e) {}
+  try {
+    const s = JSON.parse(localStorage.getItem(KEY));
+    if (s) {
+      // v1 -> v2 migration: shotgun tracks moved under "shotgun.*"
+      if (!s.v && s.lv) {
+        const map = { gun: 'shotgun.cap', reload: 'shotgun.reload', choke: 'shotgun.choke' };
+        for (const k in map) if (k in s.lv) { s.lv[map[k]] = s.lv[k]; delete s.lv[k]; }
+        s.v = 2;
+      }
+      save = merge(def(), s);
+      // clamp any out-of-range levels from older/newer data
+      E.TRACKS.forEach(t => { save.lv[t.id] = Math.max(0, Math.min(t.val.length - 1, save.lv[t.id] | 0)); });
+      Object.keys(save.lv).forEach(k => { if (!E.TRACKS.find(t => t.id === k)) delete save.lv[k]; });
+    }
+  } catch (e) {}
+  try { const ob = +localStorage.getItem('pixelhunt.best') || 0; if (ob && !save.bestByMap.meadow) save.bestByMap.meadow = ob; } catch (e) {}
   const persist = () => { try { localStorage.setItem(KEY, JSON.stringify(save)); } catch (e) {} };
 
   // ---------- upgrades ----------
   const track = id => E.TRACKS.find(t => t.id === id);
   const totalBought = () => Object.values(save.lv).reduce((a, b) => a + b, 0);
   const maxed = t => save.lv[t.id] >= t.val.length - 1;
+  const eligible = t => totalBought() >= (t.req || 0) && (!t.needs || save.lv[t.needs] > 0);
+  const owns = w => { const d = E.WEAPONS.find(x => x.id === w); return d && (!d.ownW || save.lv['own.' + w] > 0); };
+  const hasTurret = id => save.lv['own.' + id] > 0;
+  const hasMap = id => { const m = E.MAPS.find(x => x.id === id); return m && (!m.w || save.lv['map.' + id] > 0); };
   const costOf = t => E.cost(t, save.lv[t.id], totalBought());
   const val = id => track(id).val[save.lv[id]];
   function cheapestNext() {
-    const o = E.TRACKS.filter(t => !maxed(t)).map(t => ({ t, c: costOf(t) })).sort((a, b) => a.c - b.c)[0];
+    const o = E.TRACKS.filter(t => !maxed(t) && eligible(t)).map(t => ({ t, c: costOf(t) })).sort((a, b) => a.c - b.c)[0];
     return o || { t: null, c: E.cost(E.TRACKS[0], 6, E.TOTAL_LEVELS) };
   }
-  const anyAffordable = () => E.TRACKS.some(t => !maxed(t) && costOf(t) <= save.bank);
+  const anyAffordable = () => E.TRACKS.some(t => !maxed(t) && eligible(t) && costOf(t) <= save.bank);
   function buy(id) {
-    const t = track(id); if (maxed(t)) return false;
+    const t = track(id); if (maxed(t) || !eligible(t)) return false;
     const c = costOf(t); if (save.bank < c) return false;
-    save.bank -= c; save.lv[id]++; persist();
+    save.bank -= c; save.lv[id]++;
+    // auto-mount a new turret if a pad is free
+    if (t.group === 'turret' && t.unlock) mountTurret(t.of, true);
+    if (id === 'turret.slots') { const free = E.TURRETS.filter(x => hasTurret(x.id) && !save.equip.turrets.includes(x.id)); if (free[0]) mountTurret(free[0].id, true); }
+    persist();
     return true;
   }
+  function equipWeapon(w, slot = 'primary') {
+    if (!owns(w)) return false;
+    if (slot === 'secondary' && !(save.lv.loadout > 0)) return false;
+    const other = slot === 'primary' ? 'secondary' : 'primary';
+    if (save.equip[other] === w) save.equip[other] = save.equip[slot];
+    save.equip[slot] = w;
+    if (save.equip.primary == null) save.equip.primary = 'shotgun';
+    persist(); return true;
+  }
+  function mountTurret(id, on) {
+    const eq = save.equip.turrets.filter(x => x !== id), slots = val('turret.slots');
+    if (on && hasTurret(id)) { if (eq.length >= slots) { if (!slots) { save.equip.turrets = eq; return false; } eq.shift(); } eq.push(id); }
+    save.equip.turrets = eq; persist(); return true;
+  }
+  function buyCosmetic(kind, id) {
+    const list = kind === 'skin' ? E.SKINS : E.CROSSHAIRS, it = list.find(x => x.id === id);
+    if (!it) return false;
+    if (!save.cosm.includes(id)) { if (save.bank < it.cost) return false; save.bank -= it.cost; save.cosm.push(id); }
+    save.equip[kind === 'skin' ? 'skin' : 'cross'] = id; persist(); return true;
+  }
+  function selectMap(id) { if (!hasMap(id)) return false; save.equip.map = id; persist(); return true; }
 
   // ---------- missions (3 active, Jetpack-Joyride style) ----------
   const MT = {
     kills_run: { scope: 'run', txt: n => `Hit ${n} targets in one run`, n: t => 12 + 5 * t },
     gold:      { scope: 'total', txt: n => `Shoot ${n} golden bird${n > 1 ? 's' : ''}`, n: t => 2 + t },
-    deer:      { scope: 'total', txt: n => `Bag ${n} deer`, n: t => 2 + 2 * t },
+    deer:      { scope: 'total', txt: n => `Bag ${n} ground animals (deer, wolves...)`, n: t => 2 + 2 * t },
     round:     { scope: 'run', txt: n => `Reach round ${n}`, n: t => 6 + t },
     streak:    { scope: 'run', txt: n => `Get a ${n}-hit streak`, n: t => 6 + 2 * t },
     score_run: { scope: 'run', txt: n => `Score ${fmt(n)} in one run`, n: t => E.nice(60000 * Math.pow(1 + t, 1.6)) },
     multi:     { scope: 'total', txt: n => `Get ${n} double kill${n > 1 ? 's' : ''}`, n: t => 1 + Math.floor(t / 2) },
     perfect:   { scope: 'total', txt: n => `Clear ${n} perfect rounds`, n: t => 2 + t },
     clean:     { scope: 'run', txt: n => `Reach round ${n} without hitting a lovebird`, n: t => 5 + t },
+    boss:      { scope: 'total', txt: n => `Defeat ${n} boss${n > 1 ? 'es' : ''}`, n: t => 1 + Math.floor(t / 3) },
+    turret:    { scope: 'total', txt: n => `Get ${n} turret kills`, n: t => 5 + 3 * t, needs: () => save.equip.turrets.length > 0 },
   };
   const tier = () => Math.floor(save.mDone / 3);
   const missionReward = () => Math.max(100, E.nice(cheapestNext().c * E.MISSION_PCT));
   function newMission() {
     const used = save.missions.map(m => m.type);
-    const pool = Object.keys(MT).filter(k => !used.includes(k));
+    const pool = Object.keys(MT).filter(k => !used.includes(k) && (!MT[k].needs || MT[k].needs()));
     const type = pool[Math.floor(Math.random() * pool.length)];
     return { type, n: MT[type].n(tier()), p: 0 };
   }
@@ -71,7 +119,13 @@ window.Meta = (() => {
     { id: 'k1000', name: 'Thousand Club', txt: 'Hit 1,000 targets', r: 10000, f: s => s.kills >= 1000 },
     { id: 'm5', name: 'Two Birds', txt: '5 double kills', r: 1500, f: s => s.multi >= 5 },
     { id: 'runs50', name: 'Dedicated', txt: 'Play 50 runs', r: 6000, f: s => s.runs >= 50 },
-    { id: 'gun6', name: 'Drum Roll', txt: 'Unlock the Drum Mag', r: 0, f: () => save.lv.gun >= 6 },
+    { id: 'gun6', name: 'Drum Roll', txt: 'Unlock the Drum Mag', r: 0, f: () => save.lv['shotgun.cap'] >= 6 },
+    { id: 'boss1', name: 'Boss Slayer', txt: 'Defeat a boss', r: 3000, f: s => s.bosses >= 1 },
+    { id: 'boss10', name: 'Boss Hunter', txt: 'Defeat 10 bosses', r: 20000, f: s => s.bosses >= 10 },
+    { id: 'arsenal', name: 'Arsenal', txt: 'Own every weapon', r: 25000, f: () => E.WEAPONS.every(w => owns(w.id)) },
+    { id: 'turret25', name: 'Automated', txt: '25 turret kills', r: 5000, f: s => s.turretKills >= 25 },
+    { id: 'maps', name: 'Explorer', txt: 'Unlock every map', r: 30000, f: () => E.MAPS.every(m => hasMap(m.id)) },
+    { id: 'night10', name: 'Night Owl', txt: 'Reach round 10 on Night Hunt', r: 15000, f: () => (save.roundByMap.night || 0) >= 10 },
     { id: 'max', name: 'Fully Loaded', txt: 'Max every upgrade', r: 0, f: () => totalBought() >= E.TOTAL_LEVELS },
   ];
 
@@ -117,17 +171,23 @@ window.Meta = (() => {
     if (type === 'kill') {
       run.kills++; s.kills++; s.hits++;
       if (d.kind === 'gold') { s.gold++; save.missions.forEach(m => m.type === 'gold' && m.p++); }
-      if (d.kind === 'deer') { s.deer++; save.missions.forEach(m => m.type === 'deer' && m.p++); }
+      if (d.kind === 'deer' || d.ground) { s.deer++; save.missions.forEach(m => m.type === 'deer' && m.p++); }
       run.streak = Math.max(run.streak, d.streak || 0); s.bestStreak = Math.max(s.bestStreak, d.streak || 0);
       run.score = d.score || run.score;
     } else if (type === 'shot') { s.shots++; }
     else if (type === 'multi') { s.multi++; save.missions.forEach(m => m.type === 'multi' && m.p++); run.score = d.score || run.score; }
     else if (type === 'decoy') { run.clean = false; }
     else if (type === 'roundStart') { run.round = d.round; if (run.clean) run.cleanRound = d.round; s.bestRound = Math.max(s.bestRound, d.round); }
+    else if (type === 'boss') { s.bosses++; save.missions.forEach(m => m.type === 'boss' && m.p++); }
+    else if (type === 'turretKill') { s.turretKills++; save.missions.forEach(m => m.type === 'turret' && m.p++); }
     else if (type === 'roundClear') { if (d.perfect) { s.perfect++; save.missions.forEach(m => m.type === 'perfect' && m.p++); } run.score = d.score || run.score; }
     check();
   }
-  function endRun(o) { save.stats.runs++; save.stats.earned += Math.max(0, o.earned || 0); check(); persist(); }
+  function endRun(o) {
+    const m = save.equip.map;
+    save.bestByMap[m] = Math.max(save.bestByMap[m] || 0, o.score || 0);
+    save.roundByMap[m] = Math.max(save.roundByMap[m] || 0, o.round || 0);
+    save.stats.runs++; save.stats.earned += Math.max(0, o.earned || 0); check(); persist(); }
   function takeNotices() { const n = notices; notices = []; if (n.length) persist(); return n; }
 
   // ---------- daily login calendar ----------
@@ -152,6 +212,7 @@ window.Meta = (() => {
 
   return {
     get save() { return save; }, persist, track, val, maxed, costOf, totalBought, cheapestNext, anyAffordable, buy,
+    eligible, owns, hasTurret, hasMap, equipWeapon, mountTurret, buyCosmetic, selectMap,
     MT, ACH, missionText, missionReward, progressOf, startRun, event, endRun, takeNotices,
     dailyStatus, dailyAmount, claimDaily, doublesLeft, useDouble,
     reset() { save = def(); while (save.missions.length < 3) save.missions.push(newMission()); persist(); },

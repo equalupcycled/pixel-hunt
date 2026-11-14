@@ -1,6 +1,6 @@
 // Pixel Hunt service worker: offline cache-first, refreshed in background.
-const CACHE = 'pixelhunt-v2';
-const ASSETS = ['./', './index.html', './css/style.css', './js/audio.js', './js/ads.js', './js/economy.js', './js/meta.js', './js/game.js',
+const CACHE = 'pixelhunt-v3';
+const ASSETS = ['./', './index.html', './css/style.css', './js/audio.js', './js/ads.js', './js/economy.js', './js/meta.js', './js/leaderboard.js', './js/share.js', './js/game.js',
   './manifest.webmanifest', './icons/icon-192.png', './icons/icon-512.png', './icons/apple-touch-icon.png'];
 self.addEventListener('install', e => { e.waitUntil(caches.open(CACHE).then(c => c.addAll(ASSETS)).then(() => self.skipWaiting())); });
 self.addEventListener('activate', e => {

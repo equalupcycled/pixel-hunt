@@ -130,3 +130,52 @@ ul.how li { margin-bottom: 6px; }
 .overlay { justify-content: safe center; }
 .panel { min-height: 0; flex-shrink: 1; }
 .nx-t.ready { color: #7dff7a; }
+
+/* ---- arsenal / maps / leaderboard / share ---- */
+#btn-swap { position: absolute; right: calc(var(--u) * 3); bottom: calc(var(--u) * 52); height: calc(var(--u) * 16); padding: 0 calc(var(--u) * 3);
+  font-size: calc(var(--u) * 5.5); background: #2b4f8f; display: flex; flex-direction: column; justify-content: center; line-height: 1.1; }
+#btn-swap small { font-size: calc(var(--u) * 4); color: #ffe066; }
+.pbtn.gad { position: absolute; left: calc(var(--u) * 3); width: calc(var(--u) * 26); height: calc(var(--u) * 14); padding: 0;
+  font-size: calc(var(--u) * 5); background: #4a6a2a; }
+.pbtn.gad span { margin-left: 4px; color: #ffe066; }
+.pbtn.gad.active { background: #ffb030; color: #000; animation: pulse .5s steps(2) infinite; }
+#btn-flak { bottom: calc(var(--u) * 34); } #btn-call { bottom: calc(var(--u) * 51); background: #8a6a1a; } #btn-decoy { bottom: calc(var(--u) * 68); background: #2a6a8a; }
+.mapsel { display: flex; align-items: center; gap: 10px; text-shadow: 2px 2px 0 #000; }
+.mapsel div { display: flex; flex-direction: column; min-width: 150px; }
+.mapsel b { font-size: 18px; color: #fff; } .mapsel small { font-size: 10px; color: #ffe066; }
+#shop-tabs { display: flex; gap: 4px; }
+#shop-tabs button { flex: 1; font: inherit; font-weight: 900; font-size: 11px; padding: 7px 2px; background: #0f1a2e; color: #9fc4ff; border: 2px solid #000; cursor: pointer; position: relative; }
+#shop-tabs button.on { background: #f5c542; color: #000; }
+#shop-tabs button.can::after { content: '$'; position: absolute; top: -6px; right: -3px; background: #2f9e3a; color: #fff; font-size: 9px; padding: 0 3px; border: 1px solid #000; }
+.note { font-size: 10px; color: #9fc4ff; text-align: left; font-weight: 700; }
+.card { background: #13223b; border: 3px solid #000; padding: 6px; display: flex; flex-direction: column; gap: 6px; text-align: left; }
+.card.open { border-color: #f5c542; }
+.card-h { display: grid; grid-template-columns: 36px 1fr auto; gap: 8px; align-items: center; cursor: pointer; }
+.card-h canvas { width: 36px; height: 36px; image-rendering: pixelated; background: #2b4f8f; border: 2px solid #000; }
+.card .nm { font-size: 13px; color: #ffe066; } .card .ds { font-size: 10px; font-weight: 700; color: #cfe0ff; margin-top: 2px; }
+.card .dim { opacity: .75; }
+.chev { color: #9fc4ff; font-size: 12px; }
+.badge { font-size: 9px; background: #2f9e3a; color: #fff; padding: 1px 4px; border: 1px solid #000; vertical-align: middle; }
+.row3 { display: flex; gap: 6px; } .row3 .pbtn { flex: 1; }
+.pbtn.small.on { background: #f5c542; color: #000; }
+.item.locked { opacity: .6; }
+.card.map .thumb { width: 100%; image-rendering: pixelated; border: 2px solid #000; }
+.card.map .thumb.dim { filter: grayscale(.8) brightness(.6); }
+.card.map.sel { border-color: #7dff7a; }
+.card.map > .pbtn { align-self: stretch; }
+.item canvas { object-fit: contain; }
+.pbtn.fb { background: #1877f2; font-size: 13px; }
+.rank { color: #7dff7a; font-size: 14px; }
+#ini-cols { display: flex; justify-content: center; gap: 14px; }
+.ini-col { display: flex; flex-direction: column; gap: 6px; align-items: center; }
+.ini-l { font-size: 40px; width: 54px; background: #0f1a2e; border: 3px solid #000; color: #ffe066; text-shadow: 3px 3px 0 #000; cursor: pointer; }
+.ini-col.on .ini-l { border-color: #f5c542; animation: blink .8s steps(2) infinite; }
+#board-tabs { display: flex; flex-wrap: wrap; gap: 4px; justify-content: center; }
+#board-tabs .pbtn { font-size: 10px; padding: 6px 6px; }
+#board-list { display: flex; flex-direction: column; gap: 3px; }
+.brow { display: grid; grid-template-columns: 24px 44px 1fr 34px 70px; gap: 4px; align-items: center; font-size: 13px; background: #0f1a2e; border: 2px solid #000; padding: 4px 6px; text-align: left; }
+.brow .rk { color: #9fc4ff; } .brow b { color: #ffe066; letter-spacing: 2px; } .brow .sc { text-align: right; }
+.brow .rd { color: #9fc4ff; font-size: 10px; text-align: right; } .brow .wp { font-size: 9px; color: #cfe0ff; text-align: right; }
+.brow.me { border-color: #7dff7a; background: #183a1a; } .brow.empty { opacity: .4; }
+.brow:nth-child(1) .rk { color: #ffd23f; }
+.overlay.clear { gap: 10px; }

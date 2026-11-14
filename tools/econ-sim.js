@@ -4,7 +4,9 @@
 //   node tools/econ-sim.js --fit      re-fit the price CURVE in js/economy.js
 //   node tools/econ-sim.js --balance  compare weapons at equal investment
 // The "average player" model: aim accuracy falls with target speed/size/erratic paths; ammo, fire rate
-// and reload give more attempts per target; run ends after N escapes in a row.
+// and reload give more attempts per target; run ends after N escapes TOTAL (Lucky Feather: 3/4/5); a perfect round
+// gives one X back. Checkpoints every 5 rounds: a game is either fresh (round 1) or continues from the checkpoint,
+// whichever pays more for that gear level (checkpoint = best round reached, rounded down to a multiple of 5).
 const fs = require('fs'), path = require('path');
 const ECON_PATH = path.join(__dirname, '../js/economy.js');
 let E = require(ECON_PATH);
@@ -51,16 +53,16 @@ function weaponTry(w, lv, d, kind, slow, st, ammo) {
   return { p, extra };
 }
 function weaponOf(w) { return E.WEAPONS.find(x => x.id === w); }
-function run(lv, equip, mapId = 'meadow') {
+function run(lv, equip, mapId = 'meadow', start = 1) {
   const M = E.MAPS.find(m => m.id === mapId);
   const st = { eye: V(lv, 'eye'), focus: V(lv, 'focus'), focusDur: T('focus').dur[lv.focus || 0], maxMiss: V(lv, 'luck'), mm: V(lv, 'bounty') };
   const W = weaponOf(equip);
-  let r = 0, cash = 0, time = 0, missRun = 0, streak = 0, alive = true;
+  let r = start - 1, cash = 0, time = 0, missRun = 0, streak = 0, alive = true;
   let flak = V(lv, 'gadget.flak'), calls = V(lv, 'gadget.call'), decoys = V(lv, 'gadget.decoy'), boost = 0;
   const slots = V(lv, 'turret.slots');
   const turrets = ['pellet', 'tesla', 'missile'].filter(t => lv['own.' + t]).reverse().slice(0, slots);
   const ammo = { v: 0, t: 0 };
-  while (alive && r < 90) {
+  while (alive && r < 90 + start) {
     r++; const d0 = E.difficulty(r); const d = Object.assign({}, d0, { speed: d0.speed * M.speed, deerSpeed: d0.deerSpeed * M.speed, life: d0.life * M.life * (M.dark ? 0.9 + 0.1 * (lv.flashlight || 0) / 4 : 1), scale: d0.scale * M.size });
     if (r % E.BOSS_EVERY === 0) { // boss: needs bossHp hits within bossTime
       const hp = E.bossHp(r), pr = weaponTry(W.id, lv, d, 'deer', false, st, { v: 999, t: 0 }).p;
@@ -88,7 +90,7 @@ function run(lv, equip, mapId = 'meadow') {
       if (boost > 0) { p = Math.min(0.98, p + 0.25); boost--; }
       const pay = (k, m) => E.killCash(k, r, st.mm, m) * M.cash * W.cash * (k === 'deer' && W.deerBonus ? W.deerBonus : 1) * (k === 'gold' && W.goldBonus ? W.goldBonus : 1);
       if (rnd() < p) {
-        hits++; missRun = 0; streak++;
+        hits++; streak++;
         let c = pay(kind, Math.min(streak, 5));
         if (W.id === 'handgun') c *= 1 + V(lv, 'handgun.crit');
         cash += c;
@@ -97,22 +99,30 @@ function run(lv, equip, mapId = 'meadow') {
       } else {
         time += d.life / d.conc;
         if (tb > 0 && rnd() < Math.min(1, tb) * 0.85) { tb -= 1; cash += pay(kind, 1) * E.TURRET_CASH; continue; }
-        if (missRun === st.maxMiss - 1 && flak > 0) { flak--; hits++; missRun = 0; cash += pay(kind, 1) * 1.5; continue; }
+        if (missRun === st.maxMiss - 1 && flak > 0) { flak--; hits++; cash += pay(kind, 1) * 1.5; continue; }
         if (missRun === st.maxMiss - 1 && decoys > 0) { decoys--; boost = 5; }
         missRun++; if (W.id !== 'bow') streak = 0;
         if (missRun >= st.maxMiss) alive = false;
       }
     }
     time += 3.6;
-    if (alive) cash += E.roundBonus(r, hits === total);
+    if (alive) { cash += E.roundBonus(r, hits === total); if (hits === total && missRun > 0) missRun--; }
   }
-  return { cash, rounds: r, time };
+  return { cash, rounds: r - start + 1, reached: r, time };
 }
 function bestMap(lv) { return E.MAPS.filter(m => !m.w || lv['map.' + m.id]).slice(-1)[0].id; }
+function avgFrom(lv, equip, n, map, start) {
+  let c = 0, r = 0, t = 0; const reached = [];
+  for (let i = 0; i < n; i++) { const o = run(lv, equip, map, start); c += o.cash; r += o.rounds; t += o.time; reached.push(o.reached); }
+  return { cash: c / n, rounds: r / n, time: t / n, reached };
+}
 function avg(lv, equip, n = 80, map = bestMap(lv)) {
-  let c = 0, r = 0, t = 0;
-  for (let i = 0; i < n; i++) { const o = run(lv, equip, map); c += o.cash; r += o.rounds; t += o.time; }
-  return { cash: c / n, rounds: r / n, time: t / n };
+  const fresh = avgFrom(lv, equip, n, map, 1);
+  // checkpoint the player has saved: best of their last ~8 runs, rounded down to a multiple of 5
+  const rs = fresh.reached.sort((a, b) => b - a), ck = Math.floor(rs[Math.floor(rs.length / 8)] / 5) * 5;
+  if (ck < 5) return Object.assign(fresh, { from: 1 });
+  const cont = avgFrom(lv, equip, n, map, ck);
+  return cont.cash > fresh.cash ? Object.assign(cont, { from: ck }) : Object.assign(fresh, { from: 1 });
 }
 const owned = lv => E.WEAPONS.filter(w => !w.ownW || lv['own.' + w.id]).map(w => w.id);
 function bestWeapon(lv) {

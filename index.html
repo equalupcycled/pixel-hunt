@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#2b6fd6">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Pixel Hunt">
+<meta name="description" content="Pixel Hunt - a retro pixel bird hunting high-score game.">
+<title>Pixel Hunt</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div id="wrap">
+  <canvas id="game"></canvas>
+
+  <!-- in-game buttons -->
+  <button id="btn-pause" class="pbtn hidden" aria-label="Pause">II</button>
+  <button id="btn-focus" class="pbtn hidden" aria-label="Slow motion">FOCUS<span id="focus-n">1</span></button>
+  <button id="btn-reload" class="pbtn hidden" aria-label="Reload"><span class="fill"></span><span class="lbl">RELOAD</span></button>
+
+  <!-- title -->
+  <div id="ov-title" class="overlay clear">
+    <div class="title-spacer"></div>
+    <div class="title-best">HIGH SCORE <b id="title-best">0</b></div>
+    <button id="btn-play" class="pbtn big">PLAY</button>
+    <div class="row">
+      <button id="btn-how" class="pbtn small">HOW TO PLAY</button>
+      <button id="btn-mute-t" class="pbtn small mute-btn">SOUND: ON</button>
+    </div>
+    <div class="tiny">TAP TO SHOOT &middot; RELOAD BY HAND</div>
+  </div>
+
+  <div id="ov-how" class="overlay hidden">
+    <div class="panel">
+      <h2>HOW TO PLAY</h2>
+      <ul class="how">
+        <li><b>TAP</b> a bird to shoot it.</li>
+        <li>Your gun starts with <b>1 SHELL</b>. Tap <b>RELOAD</b> (or swipe down) &mdash; you can't shoot while reloading.</li>
+        <li>Miss <b>3 targets in a row</b> (birds or deer get away) and it's <b>GAME OVER</b>. A hit resets the counter.</li>
+        <li>Hit streaks multiply your score. <span class="gold">GOLDEN BIRDS</span> pay big.</li>
+        <li><span class="pink">PINK LOVEBIRDS</span> are protected &mdash; shooting one costs cash. Letting them go is fine.</li>
+        <li>From round 4, <b>DEER</b> dash along the treeline. Worth a lot &mdash; and they count as a miss if they escape.</li>
+        <li>Spend <b>$</b> in the shop between rounds on guns and gear.</li>
+      </ul>
+      <button id="btn-how-close" class="pbtn">GOT IT</button>
+    </div>
+  </div>
+
+  <!-- shop -->
+  <div id="ov-shop" class="overlay hidden">
+    <div class="panel shop">
+      <div class="shop-head">
+        <h2>GUN SHOP</h2>
+        <div class="cash">$<b id="shop-money">0</b></div>
+      </div>
+      <div class="shop-sub" id="shop-sub">ROUND 1 CLEARED</div>
+      <div id="shop-list"></div>
+      <button id="btn-next" class="pbtn big">NEXT ROUND &#9654;</button>
+    </div>
+  </div>
+
+  <!-- pause -->
+  <div id="ov-pause" class="overlay hidden">
+    <div class="panel">
+      <h2>PAUSED</h2>
+      <button id="btn-resume" class="pbtn big">RESUME</button>
+      <button id="btn-mute-p" class="pbtn mute-btn">SOUND: ON</button>
+      <button id="btn-quit" class="pbtn">QUIT TO TITLE</button>
+    </div>
+  </div>
+
+  <!-- continue (rewarded ad) -->
+  <div id="ov-continue" class="overlay hidden">
+    <div class="panel">
+      <h2 class="red">OUT OF LUCK!</h2>
+      <p>3 got away in a row.</p>
+      <button id="btn-revive" class="pbtn big green">&#9654; WATCH AD<br><small>TO CONTINUE</small></button>
+      <button id="btn-norevive" class="pbtn">NO THANKS <span id="cont-count">8</span></button>
+      <p class="tiny">One continue per run</p>
+    </div>
+  </div>
+
+  <!-- game over -->
+  <div id="ov-over" class="overlay hidden">
+    <div class="panel">
+      <h2 class="red">GAME OVER</h2>
+      <div id="newbest" class="newbest hidden">NEW HIGH SCORE!</div>
+      <div class="stats">
+        <div><span>SCORE</span><b id="go-score">0</b></div>
+        <div><span>BEST</span><b id="go-best">0</b></div>
+        <div><span>ROUND</span><b id="go-round">1</b></div>
+        <div><span>HITS</span><b id="go-hits">0</b></div>
+        <div><span>ACCURACY</span><b id="go-acc">0%</b></div>
+      </div>
+      <button id="btn-again" class="pbtn big">PLAY AGAIN</button>
+      <button id="btn-menu" class="pbtn">TITLE</button>
+    </div>
+  </div>
+
+  <!-- ad layer (managed by js/ads.js) -->
+  <div id="ov-ad" class="overlay hidden"></div>
+</div>
+<script src="js/audio.js"></script>
+<script src="js/ads.js"></script>
+<script src="js/game.js"></script>
+<script>
+if ('serviceWorker' in navigator && /^https?:/.test(location.protocol)) {
+  window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
+}
+</script>
+</body>
+</html>

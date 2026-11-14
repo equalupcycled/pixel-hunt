@@ -1,0 +1,16 @@
+{
+  "name": "Pixel Hunt",
+  "short_name": "Pixel Hunt",
+  "description": "Retro pixel bird hunting. Manual reload, upgrades, high scores.",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "fullscreen",
+  "orientation": "portrait",
+  "background_color": "#0d1b2a",
+  "theme_color": "#2b6fd6",
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

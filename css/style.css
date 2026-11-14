@@ -1,0 +1,88 @@
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+html, body { margin: 0; height: 100%; background: #0d1b2a; overflow: hidden; touch-action: none;
+  -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+body { display: flex; align-items: center; justify-content: center;
+  font-family: "Courier New", ui-monospace, Menlo, monospace; font-weight: 900; color: #fff; }
+#wrap { position: relative; --u: 2px; }
+#game { display: block; image-rendering: pixelated; image-rendering: crisp-edges; cursor: crosshair; }
+.hidden { display: none !important; }
+
+.pbtn { font: inherit; font-weight: 900; color: #fff; background: #d94a1e; border: 0; letter-spacing: 1px;
+  padding: 10px 16px; font-size: 16px; cursor: pointer; text-transform: uppercase;
+  box-shadow: 0 -3px 0 0 #000 inset, 0 0 0 3px #000, 4px 4px 0 3px rgba(0,0,0,.35);
+  image-rendering: pixelated; touch-action: manipulation; }
+.pbtn:active { transform: translate(2px, 2px); box-shadow: 0 -1px 0 0 #000 inset, 0 0 0 3px #000; }
+.pbtn:disabled { background: #555; color: #999; cursor: default; }
+.pbtn.big { font-size: 22px; padding: 14px 26px; }
+.pbtn.small { font-size: 12px; padding: 8px 10px; background: #2b4f8f; }
+.pbtn.green { background: #2f9e3a; }
+
+/* in-game buttons, positioned in logical units (--u = css px per game pixel) */
+#btn-pause { position: absolute; top: calc(var(--u) * 31); right: calc(var(--u) * 4);
+  width: calc(var(--u) * 16); height: calc(var(--u) * 16); padding: 0; font-size: calc(var(--u) * 6);
+  background: rgba(0,0,0,.45); box-shadow: 0 0 0 2px #000; }
+#btn-reload { position: absolute; right: calc(var(--u) * 3); bottom: calc(var(--u) * 3);
+  width: calc(var(--u) * 58); height: calc(var(--u) * 24); padding: 0; font-size: calc(var(--u) * 7.5);
+  background: #3a3a3a; overflow: hidden; }
+#btn-reload .fill { position: absolute; left: 0; top: 0; bottom: 0; width: calc(var(--p, 0) * 100%); background: #2f9e3a; }
+#btn-reload .lbl { position: relative; }
+#btn-reload.need { background: #d94a1e; animation: pulse .5s steps(2) infinite; }
+#btn-reload.full { background: #2b3d55; color: #8aa; }
+#btn-focus { position: absolute; right: calc(var(--u) * 3); bottom: calc(var(--u) * 34);
+  height: calc(var(--u) * 16); padding: 0 calc(var(--u) * 4); font-size: calc(var(--u) * 6); background: #6a3fb5; }
+#btn-focus span { margin-left: 6px; color: #ffe066; }
+#btn-focus.active { background: #ffe066; color: #000; }
+@keyframes pulse { 50% { background: #ff7a3d; } }
+
+.overlay { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center;
+  background: rgba(8, 16, 32, .72); gap: 14px; padding: 16px; text-align: center; }
+.overlay.clear { background: transparent; }
+.title-spacer { height: 38%; }
+.title-best { font-size: 16px; text-shadow: 2px 2px 0 #000; color: #ffe066; }
+.title-best b { color: #fff; }
+.row { display: flex; gap: 12px; }
+.tiny { font-size: 11px; opacity: .85; text-shadow: 1px 1px 0 #000; }
+
+.panel { background: #1b2a44; border: 4px solid #000; box-shadow: 0 0 0 4px #f5c542, 0 0 0 8px #000, 8px 8px 0 8px rgba(0,0,0,.4);
+  padding: 16px; width: min(92%, 380px); display: flex; flex-direction: column; align-items: stretch; gap: 12px; max-height: 92%; }
+.panel h2 { margin: 0; font-size: 26px; color: #ffe066; text-shadow: 3px 3px 0 #000; letter-spacing: 2px; }
+.panel p { margin: 0; font-size: 14px; }
+.red { color: #ff5a5a !important; }
+.gold { color: #ffd23f; } .pink { color: #ff8fc8; }
+ul.how { text-align: left; margin: 0; padding-left: 18px; font-size: 13px; font-weight: 700; line-height: 1.35; }
+ul.how li { margin-bottom: 6px; }
+
+.shop { padding: 12px; }
+.shop-head { display: flex; justify-content: space-between; align-items: center; }
+.cash { font-size: 22px; color: #7dff7a; text-shadow: 2px 2px 0 #000; }
+.shop-sub { font-size: 12px; color: #9fc4ff; text-align: left; }
+#shop-list { overflow-y: auto; display: flex; flex-direction: column; gap: 8px; padding: 4px; -webkit-overflow-scrolling: touch; touch-action: pan-y; }
+.item { display: grid; grid-template-columns: 36px 1fr auto; gap: 8px; align-items: center; background: #0f1a2e; border: 3px solid #000;
+  padding: 6px; text-align: left; }
+.item canvas { width: 36px; height: 36px; image-rendering: pixelated; background: #2b4f8f; border: 2px solid #000; }
+.item .nm { font-size: 13px; color: #ffe066; }
+.item .ds { font-size: 11px; font-weight: 700; color: #cfe0ff; margin-top: 2px; }
+.item .pips { margin-top: 3px; display: flex; gap: 3px; }
+.item .pips i { width: 9px; height: 6px; background: #334; border: 1px solid #000; }
+.item .pips i.on { background: #7dff7a; }
+.item .pbtn { font-size: 13px; padding: 8px 8px; min-width: 70px; background: #2f9e3a; }
+.item .pbtn.max { background: #444; color: #ffe066; }
+
+.stats { display: flex; flex-direction: column; gap: 6px; font-size: 16px; }
+.stats div { display: flex; justify-content: space-between; border-bottom: 2px dashed #34507a; padding-bottom: 4px; }
+.stats span { color: #9fc4ff; }
+.newbest { color: #ffe066; font-size: 18px; animation: blink .6s steps(2) infinite; }
+@keyframes blink { 50% { opacity: .2; } }
+
+/* placeholder ads */
+#ov-ad { background: #000; z-index: 50; }
+.ad-box { position: relative; width: min(92%, 380px); height: min(80%, 620px); background: linear-gradient(#1e3c72, #2a5298);
+  border: 4px solid #fff; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; padding: 18px; }
+.ad-label { position: absolute; top: 8px; left: 8px; background: #ffd23f; color: #000; font-size: 12px; padding: 2px 6px; }
+.ad-close { position: absolute; top: 6px; right: 6px; font-size: 13px; padding: 6px 10px; background: #333; }
+.ad-close:disabled { background: #222; color: #aaa; }
+.ad-title { font-size: 24px; color: #ffe066; text-shadow: 3px 3px 0 #000; }
+.ad-body { font-size: 14px; max-width: 280px; }
+.ad-art { width: 96px; height: 96px; image-rendering: pixelated; }
+.ad-bar { width: 80%; height: 10px; background: #000; border: 2px solid #fff; }
+.ad-bar i { display: block; height: 100%; width: 0; background: #7dff7a; }

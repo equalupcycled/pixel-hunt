@@ -54,12 +54,12 @@ with sync_playwright() as p:
                   kinds.add(t.kind); if (t.kind === 'boss') bossSeen = 1;
                   const s = seen.get(t);
                   if (!s) { seen.set(t, { x: t.x, st: t.state }); if (t.kind !== 'eyes') firstX.push(Math.round(t.x)); continue; }
-                  if (t.state === 'fly' && s.st === 'fly' && t.kind !== 'eyes' && t.x < s.x - 0.01) back++;
-                  if (s.st === 'fly' && t.state === 'gone' && t.kind !== 'eyes') { if (t.x > PH.dims().W) rightExit++; else badExit++; }
+                  if (t.state === 'fly' && s.st === 'fly' && t.kind !== 'eyes' && t.kind !== 'boss' && t.kind !== 'egg' && t.x < s.x - 0.01) back++;
+                  if (s.st === 'fly' && t.state === 'gone' && t.kind !== 'eyes' && t.kind !== 'boss' && t.kind !== 'egg') { if (t.x > PH.dims().W) rightExit++; else badExit++; }
                   s.x = t.x; s.st = t.state;
                 }
                 const cur = new Set(PH.targets);
-                for (const [t, s] of seen) if (!cur.has(t) && !s.done) { s.done = 1; if (s.st === 'fly' && t.kind !== 'eyes') { if (s.x > PH.dims().W) rightExit++; else badExit++; } }
+                for (const [t, s] of seen) if (!cur.has(t) && !s.done) { s.done = 1; if (s.st === 'fly' && t.kind !== 'eyes' && t.kind !== 'boss' && t.kind !== 'egg') { if (s.x > PH.dims().W) rightExit++; else badExit++; } }
                 if (PH.missRun > last) missAdds += PH.missRun - last; last = PH.missRun;
                 if (PH.state === 'dying' || PH.state === 'over' || performance.now() - t0 > 14000) {
                   res({ back, badExit, rightExit, missAdds, firstX: [...new Set(firstX)].slice(0, 6), kinds: [...kinds], bossSeen, state: PH.state, flee: PH.targets.filter(t => t.state === 'flee').length }); return; }

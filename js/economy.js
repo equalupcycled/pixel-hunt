@@ -213,6 +213,16 @@
   const killPts = (kind, round, mult) => Math.round(KILL[kind].pts * (1 + (round - 1) * 0.25) * mult / 10) * 10;
   const roundBonus = (r, perfect) => Math.round((10 + r * 5 + (perfect ? 10 + r * 3 : 0)));
   const decoyPenalty = r => 15 + r * 5;
+  // Eggs dropped by patrolling bosses. Interval shortens with boss tier (round/10) and faster maps.
+  // Round 10 Meadow is deliberately gentle so a new player who reaches it isn't swarmed.
+  const eggPts = r => Math.round((200 + 12 * r) / 10) * 10;
+  const eggCash = r => 3 + Math.floor(r / 5);
+  function eggInterval(r, map) {
+    const tier = Math.max(1, Math.floor(r / BOSS_EVERY));
+    const mapMul = (map && map.speed) || 1;
+    return Math.max(1.15, (4.05 - (tier - 1) * 0.55) / mapMul);
+  }
+
 
   const MISSION_PCT = 0.10;
   const DAILY_PCT = [0.08, 0.10, 0.12, 0.14, 0.16, 0.20, 0.35];
@@ -220,6 +230,6 @@
 
   const ECON = { WEAPONS, TURRETS, GLOBAL, MAPS, BOSS_EVERY, CLEAR_ROUND, bossHp, bossTime, bossCash, SKINS, CROSSHAIRS, TRACKS, TOTAL_LEVELS, TURRET_CASH, TURRET_PTS,
     cost, infCost, infVal, extendVal, cappedTrack, nice, curve, difficulty, KILL, killCash, killPts, roundBonus, decoyPenalty,
-    MISSION_PCT, DAILY_PCT, DOUBLE_ADS_PER_DAY, BASE, PER_LEVEL };
+    MISSION_PCT, DAILY_PCT, DOUBLE_ADS_PER_DAY, BASE, PER_LEVEL, eggPts, eggCash, eggInterval };
   if (typeof module !== 'undefined' && module.exports) module.exports = ECON; else root.ECON = ECON;
 })(typeof window !== 'undefined' ? window : globalThis);

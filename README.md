@@ -27,7 +27,7 @@ Live: https://pixel-hunt-o4vw.onrender.com/ (Render static site, auto-deploys fr
 
 ## Rules
 - Everything flies/runs **left to right**: enters on the left edge, and if it reaches the right edge unshot it escapes = **1 miss (X)**.
-- Lose: **3 escapes TOTAL per run** (birds, ground animals, or a boss = 1 X each). Hits don't clear X's. Lucky Feather raises the limit to 4, then 5.
+- Lose: **3 escapes TOTAL per run** (birds, ground animals, a hatched boss-egg bird, or a boss that leaves = 1 X each). Hits don't clear X's. Lucky Feather raises the limit to 4, then 5.
 - A **PERFECT round** (every target hit) gives one X back.
 - **Watch ad to continue** (once per run): restarts the **same round you lost**, **keeps your score** and cash earned this run, and clears all X's. If the run started at round 1 it stays ranked.
 - **Checkpoints** at the start of rounds 5, 10, 15... are saved per map (Infinity has its own). Game over also offers *Continue from Round N checkpoint* (X's cleared, score from 0, not ranked) or *Start from Round 1* (ranked).
@@ -36,7 +36,7 @@ Live: https://pixel-hunt-o4vw.onrender.com/ (Render static site, auto-deploys fr
 - **Infinity progression is shared** across every Infinity map, and is **completely separate** from Classic. Entering Infinity starts you over with the free shotgun (no upgrades) and an Infinity wallet of $0. Classic money, upgrades, and loadout are never spent or changed by Infinity play. In Infinity, upgrades have **no level cap** (except one-time unlocks, maps, and the 3 turret pads): each extra level costs more (×1.22 past the Classic cap) and gains shrink but stay nonzero. The Upgrades screen is labeled Classic or Infinity and shows the matching wallet; it is still only reachable from the title screen and game over.
 - Manual reload for every weapon: RELOAD / BOLT / NOCK / VENT button, swipe down (tap weapons) or R / Space.
 - Pink lovebirds are protected: shooting one costs cash + points; letting them go is free. Turrets never shoot them.
-- Every 10th round is a **boss round** with a health bar; the boss makes one slow left-to-right pass (the timer is how long until it reaches the right edge).
+- Every 10th round is a **boss round** (Classic and Infinity) with a health bar. The boss patrols the upper sky, left to right and back, and periodically drops **eggs**. Smash an egg before it hatches for a few points; a hatched bird flies left-to-right and is **1 X** if it escapes. Drop rate rises with boss tier (round 10 / 20 / 30 / Infinity) and harder maps, and each map's boss drops that map's bird types. A timer still counts down: if it hits zero the boss flies off for **1 X** (this keeps fights from lasting forever and is the same skill check as before, just no longer tied to a single pass).
 - The **Upgrades** screen is only available between runs (title screen and game over). There is no shop between rounds or in the pause menu.
 - Money, upgrades and equipment **persist** (localStorage `pixelhunt.save.v1`, schema v4). High score overall in `pixelhunt.best`, per-map Classic and Infinity bests in the save.
 

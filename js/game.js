@@ -179,6 +179,18 @@ SPR.roadrunner = [makeSprite(RR_A, APAL.roadrunner), makeSprite(RR_B, APAL.roadr
 SPR.wolf = [makeSprite(WOLF_A, APAL.wolf), makeSprite(WOLF_B, APAL.wolf)];
 SPR.coyote = [makeSprite(WOLF_A, APAL.coyote), makeSprite(WOLF_B, APAL.coyote)];
 SPR.buck = [makeSprite(DEER_A, APAL.buck), makeSprite(DEER_B, APAL.buck)];
+const EGG_PAL = { K: '#3a2a14', W: '#f4e6b8', L: '#ffe9a0', Y: '#e0c070', C: '#d8a24a' };
+SPR.egg = [makeSprite([
+  '..KKKK..',
+  '.KWWWLK.',
+  'KWWLLYLK',
+  'KWLYYYYK',
+  'KWLYYYCK',
+  '.KWYYCK.',
+  '..KCCK..',
+  '...KK...'
+], EGG_PAL)];
+
 
 const ICONS = {
   shotgun: ['................', '................', '...KKKKKKKKKKKK.', 'KKKSSSSSSSSSSSSK', 'KWWWWWWKKKKKKKK.', 'KWWKWWK.........', 'KWK.KK..........', 'KK..............'],
@@ -517,8 +529,7 @@ function startRound(opts) {
   bossRound = round % ECON.BOSS_EVERY === 0;
   queue = [];
   if (bossRound) {
-    queue.push('boss');
-    for (let i = 0; i < 3; i++) queue.push(Math.random() < 0.2 ? 'decoy' : pickFly());
+    queue.push('boss'); // eggs (and the hatchlings they become) spawn during the fight
   } else {
     for (let i = 0; i < diff.count; i++) {
       const x = Math.random(); let k;
@@ -560,16 +571,17 @@ function reachCheckpoint(opts) {
 }
 function checkpointFor(mapId, inf) { const c = (inf ? Meta.save.ckptInf : Meta.save.ckpt) || {}; return c[mapId] || 0; }
 
-function tImg(t) { return t.kind === 'eyes' ? { width: 12, height: 6 } : SPR[t.set][0]; }
+function tImg(t) { return t.kind === 'egg' ? SPR.egg[0] : t.kind === 'eyes' ? { width: 12, height: 6 } : SPR[t.set][0]; }
 function groundY(set, sc) { return GROUND + 12 - SPR[set][0].height * sc / 2; }
 function spawn(kind) {
   if (kind === 'boss') {
     const id = bossIdFor(round), b = BOSSES[id], hp = ECON.bossHp(round), tm = ECON.bossTime(round) * eyeMult;
     const t = { kind: 'boss', boss: id, name: b.name, set: b.set, sc: b.sc, m: b.m, crown: b.crown, hp, hp0: hp, timer: tm, timer0: tm, state: 'fly', anim: 0, ph: rand(0, 6), risen: false, hurt: 0, life: 99 };
-    // Bosses make ONE left-to-right pass that lasts the boss timer (Hunter's Eye already stretches tm).
-    t.x0 = -12 * b.sc; t.x1 = W + 12 * b.sc; t.x = t.x0; t.vx = (t.x1 - t.x0) / tm; t.risen = true;
-    if (b.m === 'brun') { t.g = 1; t.y = groundY(b.set, b.sc); }
-    else { t.y = SKY_TOP + 60; t.y0 = t.y; }
+    // Patrol the upper sky, left <-> right, until the escape timer runs out (Hunter's Eye stretches the timer and slows the patrol).
+    t.x0 = 18; t.x1 = W - 18; t.x = t.x0;
+    const cross = Math.max(3.4, 5.5 - Math.floor(round / ECON.BOSS_EVERY) * 0.35) * eyeMult;
+    t.vx = (t.x1 - t.x0) / cross; t.risen = true; t.leaving = false;
+    t.y = SKY_TOP + 52; t.y0 = t.y; t.dropT = 1.6 * eyeMult;
     targets.push(t); bossT = t; shake = 5; Sfx.deer();
     return;
   }
@@ -618,9 +630,59 @@ function segDist(t, x0, y0, x1, y1) { // distance from target box to a segment; 
   return { d: boxDist(t, x0 + vx * s, y0 + vy * s), s };
 }
 
+function dropEgg(boss) {
+  const mid = Math.random() < 0.45;
+  const hatchY = mid ? boss.y + rand(36, 100) : GROUND - rand(22, 50);
+  targets.push({ kind: 'egg', set: 'egg', state: 'fly', x: boss.x + rand(-3, 3), y: boss.y + 8,
+    vx: 0, vy: 16, sc: 1.2, hp: 1, hp0: 1, hatchY: clamp(hatchY, boss.y + 24, GROUND - 14),
+    risen: true, anim: 0, hurt: 0, life: 99, g: 0 });
+}
+function smashEgg(t, src) {
+  const pts = Math.round(ECON.eggPts(round) * M.pts / 10) * 10;
+  const cash = Math.max(1, Math.round(ECON.eggCash(round) * moneyMult * M.cash * (src === 'turret' ? ECON.TURRET_CASH : 1)));
+  score += pts; addCash(cash);
+  if (src !== 'turret') { hits++; }
+  float('+' + fmt(pts), t.x, t.y - 12, '#ffe066', 1.1, 0.9);
+  Sfx.eggCrack();
+  t.state = 'gone';
+  for (let k = 0; k < 10; k++) parts.push({ x: t.x, y: t.y, vx: rand(-40, 40), vy: rand(-55, 8), c: k % 2 ? '#f4e6b8' : '#d8a24a', t: 0, life: rand(0.25, 0.7), g: 180, s: 1 });
+}
+function hatchEgg(egg) {
+  const kind = pickFly();
+  const K = KIND[kind];
+  const set = kind === 'owl' && M.id === 'snow' ? 'snowowl' : K.set;
+  const base = { kind, set, m: K.m, hp: K.hp || 1, hp0: K.hp || 1, state: 'fly', anim: rand(0, 1), hurt: 0, g: 0, hatched: true };
+  const bird = makeFlyer(kind, K, set, base);
+  bird.x = clamp(egg.x, 8, W - 8);
+  bird.y = clamp(egg.y, SKY_TOP + 16, SKY_BOT - 16);
+  bird.y0 = bird.y;
+  bird.vx = Math.abs(bird.vx0 || bird.vx || 40);
+  bird.vx0 = bird.vx;
+  bird.life = (W + 22 - bird.x) / bird.vx;
+  bird.risen = true;
+  targets.push(bird);
+  roundTotal++;
+  egg.state = 'gone';
+  Sfx.hatch();
+  for (let k = 0; k < 8; k++) parts.push({ x: egg.x, y: egg.y, vx: rand(-35, 35), vy: rand(-40, 10), c: k % 2 ? '#f4e6b8' : '#ffe066', t: 0, life: rand(0.25, 0.6), g: 140, s: 1 });
+}
+function maybeDropEgg(t, dt) {
+  if (state !== 'play' || t.leaving) return;
+  const tier = Math.max(1, Math.floor(round / ECON.BOSS_EVERY));
+  const cap = 2 + tier;
+  const liveAdds = targets.filter(o => o !== t && live(o) && (o.kind === 'egg' || o.hatched)).length;
+  if (liveAdds >= cap) { t.dropT = Math.max(t.dropT, 0.35); return; }
+  t.dropT -= dt;
+  if (t.dropT > 0) return;
+  if (t.x < 24 || t.x > W - 24) return;
+  t.dropT = ECON.eggInterval(round, M) * rand(0.82, 1.18);
+  dropEgg(t);
+}
+
 // ---------------- damage, kills, misses ----------------
 function damage(t, dmg, src, info = {}) {
   if (!hittable(t)) return false;
+  if (t.kind === 'egg') { smashEgg(t, src); return true; }
   if (t.kind === 'decoy') { if (src !== 'turret') hitDecoy(t); return true; }
   t.hp -= dmg; t.hurt = 0.12;
   if (t.hp > 0.001) {
@@ -821,7 +883,7 @@ function releaseArrow() {
 
 // ---------------- turrets ----------------
 function dangerOf(t) {
-  if (t.kind === 'decoy' || !hittable(t)) return -1;
+  if (t.kind === 'decoy' || t.kind === 'egg' || !hittable(t)) return -1;
   if (t.kind === 'boss') return 2;
   if (t.state === 'flee') return 1.5;
   if (t.kind === 'eyes') return t.peeks <= 1 ? 1.2 : -1;
@@ -1049,7 +1111,16 @@ function updProjs(dt) {
 
 function updTarget(t, dt) {
   t.anim += dt; t.hurt = Math.max(0, (t.hurt || 0) - dt);
-  const slow = decoyObj && t.state === 'fly' ? (t.kind === 'boss' ? 0.8 : t.g ? 0.75 : 0.6) : 1;
+  const slow = decoyObj && t.state === 'fly' ? (t.kind === 'boss' ? 0.8 : t.kind === 'egg' ? 0.85 : t.g ? 0.75 : 0.6) : 1;
+  if (t.kind === 'egg') {
+    if (t.state === 'fly') {
+      t.vy += 150 * dt * slow;
+      t.y += t.vy * dt * slow;
+      t.x += (t.vx || 0) * dt * slow;
+      if (t.y >= t.hatchY || t.y >= GROUND - 14) hatchEgg(t);
+    }
+    return;
+  }
   if (t.kind === 'boss') return updBoss(t, dt * slow, dt);
   if (t.m === 'peek') {
     if (t.state === 'fly') {
@@ -1104,17 +1175,25 @@ function updTarget(t, dt) {
 function updBoss(t, dt, rdt) {
   if (t.state === 'fly') {
     t.ph += dt;
-    // one slow pass left -> right; it surges and slows but never turns back. Timer = time left to reach the right edge.
-    const surge = 1 + 0.45 * Math.sin(t.ph * 1.3);
-    if (state === 'play') t.x += t.vx * surge * dt;
-    t.timer = Math.max(0, (t.x1 - t.x) / t.vx);
+    const surge = 1 + 0.35 * Math.sin(t.ph * 1.3);
+    if (state === 'play') {
+      t.timer = Math.max(0, t.timer - dt);
+      t.x += t.vx * surge * dt;
+      if (t.timer <= 0) t.leaving = true;
+      if (t.leaving) {
+        if (t.x > W + 16 * t.sc || t.x < -16 * t.sc) escaped(t);
+      } else {
+        if (t.x >= t.x1) { t.x = t.x1; t.vx = -Math.abs(t.vx); }
+        else if (t.x <= t.x0) { t.x = t.x0; t.vx = Math.abs(t.vx); }
+        maybeDropEgg(t, dt);
+      }
+    }
     if (t.m === 'brun') t.hop = Math.abs(Math.sin(t.anim * 9)) * 3;
-    else t.y = t.y0 + Math.sin(t.ph * 1.7) * 34 + Math.sin(t.ph * 0.5) * 16;
-    if (t.x >= t.x1) escaped(t);
+    else t.y = t.y0 + Math.sin(t.ph * 1.7) * 16 + Math.sin(t.ph * 0.5) * 9;
   } else if (t.state === 'hit') { t.hitT -= rdt; if (t.hitT <= 0) { t.state = 'fall'; t.vy = 10; t.fallT = 1.2; Sfx.fall(); } }
   else if (t.state === 'fall') {
-    if (t.m === 'brun') { t.fallT -= rdt; if (t.fallT <= 0) t.state = 'gone'; }
-    else { t.vy += 200 * dt; t.y += t.vy * dt; if (t.y > GROUND + 20) { t.state = 'gone'; Sfx.thud(); shake = 6; } }
+    t.vy += 200 * dt; t.y += t.vy * dt;
+    if (t.y > GROUND + 20) { t.state = 'gone'; Sfx.thud(); shake = 6; }
   }
 }
 
@@ -1684,6 +1763,11 @@ press('btn-flak', () => useGadget('flak')); press('btn-call', () => useGadget('c
 const crossColor = () => (ECON.CROSSHAIRS.find(c => c.id === Meta.save.equip.cross) || ECON.CROSSHAIRS[0]).c;
 function drawTarget(t) {
   if (t.kind === 'eyes') return;
+  if (t.kind === 'egg') {
+    const wob = Math.sin(t.anim * 8) * 1.2;
+    spr(SPR.egg[0], t.x + wob * 0.3, t.y, t.sc, false, false, 1);
+    return;
+  }
   const set = SPR[t.set]; if (!set) return;
   const flick = t.hurt > 0 && Math.floor(t.hurt * 40) % 2 === 0;
   const a = flick ? 0.35 : 1;
@@ -1766,6 +1850,12 @@ function drawDark() {
   hole(lp.x, lp.y, Meta.val('flashlight'));
   hole(HUNTER_X, H - BAR - 12, 26, 0.8);
   hole(146, 54, 18, 0.5);
+  // Boss and falling eggs stay visible on Night Hunt so the fight is fair in the dark.
+  for (const t of targets) {
+    if (!live(t)) continue;
+    if (t.kind === 'boss') hole(t.x, t.y, 34, 0.95);
+    else if (t.kind === 'egg') hole(t.x, t.y, 16, 0.9);
+  }
   for (const f of flashes) hole(f.x, f.y, f.boom ? 44 : 24, 1 - f.t / 0.25);
   if (wpn && wpn.beam && holding) { const b = wpn.beam; for (let k = 0; k < 1; k += 0.08) hole(b.x0 + (b.x1 - b.x0) * k * 0.4, b.y0 + (b.y1 - b.y0) * k * 0.4, 10, 0.7); }
   for (const tu of turrets) if (tu.flash > 0) hole(tu.x, tu.y - 8, 16, 0.8);

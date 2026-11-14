@@ -256,6 +256,8 @@ window.Sfx = (() => {
     bossDown() { notes([[523, .09, 0], [659, .09, .1], [784, .09, .2], [1047, .09, .3], [1319, .09, .4], [1568, .28, .5]], 'square', 0.11); noise(0.5, 0.45, 1200, 50); },
     letter() { tone('square', 880, 880, 0.03, 0.06); },
     click() { tone('square', 700, 700, 0.025, 0.07); },
+    eggCrack() { noise(0.08, 0.32, 2600, 400); tone('square', 720, 260, 0.07, 0.10); tone('triangle', 420, 180, 0.06, 0.06, 0.02); },
+    hatch() { noise(0.10, 0.26, 2000, 450); tone('square', 880, 1240, 0.07, 0.08, 0.03); tone('triangle', 1480, 900, 0.09, 0.07, 0.07); },
   };
   Object.keys(api).forEach(k => {
     const d = Object.getOwnPropertyDescriptor(api, k);

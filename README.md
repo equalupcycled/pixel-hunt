@@ -15,8 +15,8 @@ Live: https://pixel-hunt-o4vw.onrender.com/ (Render static site, auto-deploys fr
 - `css/style.css` - pixel UI styling
 - `js/game.js` - game loop, sprites, pixel font, maps/backgrounds, weapons, turrets, gadgets, bosses, armory UI, input
 - `js/economy.js` - weapons, turrets, gear, maps, cosmetics, price formula, difficulty curve, payouts (shared with the simulator)
-- `js/meta.js` - persistent save v2 (bank, upgrade levels, equipment, missions, achievements, daily calendar, stats, per-map bests); migrates v1 saves
-- `js/leaderboard.js` - local top-10 per map + stubbed online provider
+- `js/meta.js` - persistent save (schema v3: bank, upgrades, equipment, missions, achievements, daily calendar, stats, per-map bests, map clears, Infinity bests); migrates v1 and v2 saves
+- `js/leaderboard.js` - local top-10 per map for Classic and Infinity (`map:inf`) + stubbed online provider
 - `js/share.js` - "Share to Facebook" (Web Share API -> Facebook sharer fallback); `SHARE_CONFIG.GAME_URL`
 - `js/audio.js` - WebAudio synth sound effects (each weapon has its own)
 - `js/ads.js` - ad abstraction (web placeholder / AdMob on native)
@@ -27,14 +27,16 @@ Live: https://pixel-hunt-o4vw.onrender.com/ (Render static site, auto-deploys fr
 ## Rules
 - Everything flies/runs **left to right**: enters on the left edge, and if it reaches the right edge unshot it escapes = **1 miss (X)**.
 - Lose: **3 escapes TOTAL per run** (birds, ground animals, or a boss = 1 X each). Hits don't clear X's. Lucky Feather raises the limit to 4, then 5.
-- A **PERFECT round** (every target hit) gives one X back. The rewarded-ad revive clears all X's once per run.
-- **Checkpoints** at the start of rounds 5, 10, 15... are saved per map. Game over offers *Continue from Round N checkpoint* (X's cleared, score from 0, normal difficulty for that round) or *Start from Round 1*.
+- A **PERFECT round** (every target hit) gives one X back.
+- **Watch ad to continue** (once per run): restarts the **same round you lost**, **keeps your score** and cash earned this run, and clears all X's. If the run started at round 1 it stays ranked.
+- **Checkpoints** at the start of rounds 5, 10, 15... are saved per map (Infinity has its own). Game over also offers *Continue from Round N checkpoint* (X's cleared, score from 0, not ranked) or *Start from Round 1* (ranked).
   Rounds 10, 20... are boss rounds, so their checkpoint puts you right in front of the boss.
-  Checkpoint runs earn cash/missions but are **not ranked** (no leaderboard entry, no map best) - only fresh runs from Round 1 compete.
+- **Clear a map** by defeating its **round 30 boss** (the 3rd boss). That unlocks **Infinity** for that map: endless rounds with ever-scaling difficulty and a **separate Infinity high score**. Map select shows clear progress (N/30) and a CLEARED / Infinity badge. Saves that already reached round 30 are granted the clear on load.
 - Manual reload for every weapon: RELOAD / BOLT / NOCK / VENT button, swipe down (tap weapons) or R / Space.
 - Pink lovebirds are protected: shooting one costs cash + points; letting them go is free. Turrets never shoot them.
 - Every 10th round is a **boss round** with a health bar; the boss makes one slow left-to-right pass (the timer is how long until it reaches the right edge).
-- Money, upgrades and equipment **persist** (localStorage `pixelhunt.save.v1`, schema v2). High score overall in `pixelhunt.best`, per map in the save.
+- The **Armory** is only available between runs (title screen and game over). There is no shop between rounds or in the pause menu.
+- Money, upgrades and equipment **persist** (localStorage `pixelhunt.save.v1`, schema v3). High score overall in `pixelhunt.best`, per-map Classic and Infinity bests in the save.
 
 ## Arsenal
 | Weapon | Input | Role | Unlock |
@@ -65,16 +67,17 @@ Cosmetics: 5 hunter skins, 6 crosshair colors (fixed prices, no gameplay effect)
 | Night Hunt | 120 | 2.8 / 2.3 | bats, owls, glowing eyes in the bushes; dark - only the flashlight shows them | Bat King |
 
 ## Economy (tuned with tools/econ-sim.js)
-- 239 purchasable levels. Price = 1000 x track weight x (1 + 3% x track level) x CURVE[upgrades owned]; CURVE is fitted by
-  `node tools/econ-sim.js --fit` so the cheapest next purchase is ~4 average runs of earnings at every stage.
-- Simulated average player: 3.9 games per purchase (p10 3, median 4, p90 5), ~76 h to max everything (~57 h watching 2x ads).
+- 239 purchasable levels. Price = 1000 x track weight x (1 + 3% x track level) x CURVE[upgrades owned].
+  The CURVE is the higher pre-total-miss set (kept at John's request). Campaign runs end at the round 30 boss, so late-game earnings per campaign run are a bit lower than an endless climb; Infinity is a separate mode after a map is cleared.
+- Simulated average player: 6.41 games per purchase (p10 4, median 6, p90 9), ~90 h to max everything (~74 h watching 2x ads).
+  Examples: Handgun $9,000, Laser Gun $96,000, Night Hunt $230,000.
 - Side income scales with the cheapest next upgrade: missions 10%, daily calendar 8-35%, achievements one-time.
 
 ## Leaderboard
 `js/leaderboard.js`: `Leaderboard.submitScore(map, {name, score, round, weapon})`, `Leaderboard.fetchTop(map)`, `Leaderboard.qualifies(map, score)`.
-Today: local top 10 per map (`pixelhunt.board.v1`), after a qualifying run the player types a name (free text, up to 12 characters; letters, digits, spaces and . - _ ' ! - cleaned by `Leaderboard.cleanName`, remembered for next time). Old initials entries still display.
+Today: local top 10 per map (`pixelhunt.board.v1`), plus a separate Infinity board per map under keys like `meadow:inf`. After a qualifying run the player types a name (free text, up to 12 characters; letters, digits, spaces and . - _ ' ! - cleaned by `Leaderboard.cleanName`, remembered for next time). Old initials entries still display.
 Online later: set `LEADERBOARD_CONFIG.online = { enabled: true, url: 'https://<api>' }`. Expected API (e.g. a Render web service + Postgres):
-`POST /scores` `{map, name, score, round, weapon, ts}` -> `{rank}`; `GET /scores?map=lake&limit=10` -> `[{name, score, round, weapon, ts}]`.
+`POST /scores` `{map, name, score, round, weapon, ts}` -> `{rank}`; `GET /scores?map=lake&limit=10` -> `[{name, score, round, weapon, ts}]`. Infinity uses map keys such as `lake:inf`.
 Validate scores and names server-side (length, profanity filter) (rate limit, sanity caps per round) before trusting them.
 
 ## Share to Facebook
@@ -88,7 +91,7 @@ Capacitor: `npm i @capacitor/share` - `share.js` already prefers `Capacitor.Plug
 
 ## Ads / AdMob
 `js/ads.js` exposes `Ads.showInterstitial()` (shown on every death before Game Over) and `Ads.showRewarded()`
-("Watch ad to continue" once per run, 2x run earnings, 2x daily). On the web it shows placeholder ads (5 s countdown, "AD" label, close).
+("Watch ad to continue this run" once per run — same round, score kept, 2x run earnings, 2x daily). On the web it shows placeholder ads (5 s countdown, "AD" label, close).
 When running inside Capacitor with `@capacitor-community/admob` installed, it uses AdMob automatically.
 
 To go live:

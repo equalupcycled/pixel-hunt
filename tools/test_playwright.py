@@ -11,7 +11,7 @@ def watch(pg, tag=''):
     pg.on('console', lambda m: m.type == 'error' and errs.append(tag + 'console: ' + m.text))
 
 async def part_a(b):
-    """Original flow: daily, first hits, reload, shop, pause, revive ad, death ad, name entry, game over, missions."""
+    """Original flow: daily, first hits, reload, no mid-run shop, title armory, pause, revive ad, death ad, name entry, game over, missions."""
     ctx = await b.new_context(viewport={'width': 390, 'height': 844}, device_scale_factor=2, is_mobile=True, has_touch=True)
     pg = await ctx.new_page(); watch(pg)
     await pg.goto(URL); await pg.evaluate('localStorage.clear()'); await pg.reload()
@@ -37,13 +37,16 @@ async def part_a(b):
     await pg.evaluate('PH.jumpRound(6)'); await pg.wait_for_timeout(5000)
     await pg.screenshot(path=OUT + '04-gameplay-round6.png')
     await pg.evaluate('PH.setMoney(9000); PH.forceClear()')
-    await pg.wait_for_function('PH.state==="shop"', timeout=8000); await pg.wait_for_timeout(300)
-    await pg.screenshot(path=OUT + '05-armory-between-rounds.png')
-    await pg.click('.item .pbtn:not([disabled]) >> nth=0'); await pg.wait_for_timeout(300)
-    await pg.screenshot(path=OUT + '06-armory-bought.png')
-    print('A: bought', {k: v for k, v in json.loads(await pg.evaluate('JSON.stringify(PH.Meta.save.lv)')).items() if v}, 'bank', await pg.evaluate('PH.money'))
-    await pg.click('#btn-next'); await pg.wait_for_timeout(2500)
+    await pg.wait_for_function('PH.state==="intro"||PH.state==="play"||PH.state==="clear"', timeout=8000)
+    await pg.wait_for_function('PH.state==="intro"||PH.state==="play"', timeout=8000)
+    shop_vis = await pg.evaluate("!document.getElementById('ov-shop').classList.contains('hidden')")
+    print('A: shop between rounds', shop_vis, 'state', await pg.evaluate('PH.state'), 'round', await pg.evaluate('PH.round'))
+    assert shop_vis is False, 'armory must not open between rounds'
+    await pg.screenshot(path=OUT + '05-between-rounds-no-shop.png')
     await pg.click('#btn-pause'); await pg.wait_for_timeout(300)
+    pause_shop = await pg.evaluate("!!document.querySelector('#ov-pause #btn-armory, #ov-pause [id*=shop]')")
+    print('A: pause has shop button', pause_shop)
+    assert pause_shop is False, 'pause menu must not have a shop'
     await pg.screenshot(path=OUT + '07-pause.png')
     await pg.click('#btn-resume'); await pg.wait_for_timeout(300)
     await pg.wait_for_function('PH.state==="ad"||PH.state==="dying"', timeout=90000); await pg.wait_for_timeout(300)
@@ -67,6 +70,12 @@ async def part_a(b):
     await pg.wait_for_selector('#ov-over:not(.hidden)', timeout=3000); await pg.wait_for_timeout(2600)
     await pg.screenshot(path=OUT + '13-game-over.png')
     print('A: rank text', await pg.text_content('#go-rank'))
+    await pg.click('#btn-go-shop'); await pg.wait_for_timeout(300)
+    await pg.screenshot(path=OUT + '06-armory-title.png')
+    await pg.click('.item .pbtn:not([disabled]) >> nth=0'); await pg.wait_for_timeout(300)
+    await pg.screenshot(path=OUT + '06-armory-bought.png')
+    print('A: bought from game-over armory', {k: v for k, v in json.loads(await pg.evaluate('JSON.stringify(PH.Meta.save.lv)')).items() if v}, 'bank', await pg.evaluate('PH.money'))
+    await pg.click('#btn-next'); await pg.wait_for_timeout(400)
     bank0 = await pg.evaluate('PH.money')
     await pg.click('#btn-double'); await pg.wait_for_timeout(5600); await pg.click('.ad-close'); await pg.wait_for_timeout(400)
     print('A: bank before/after double', bank0, await pg.evaluate('PH.money'))
@@ -112,7 +121,7 @@ async def part_b(b):
         await pg.wait_for_function(f'PH.targets.some(t=>t.state==="fly" && t.kind!=="decoy" && t.y < PH.dims().GROUND && t.x > 16 && t.x < 160 && ({pred}))', timeout=wait)
         return await pg.evaluate(f'(()=>{{const t=PH.targets.find(t=>t.state==="fly" && t.kind!=="decoy" && t.y < PH.dims().GROUND && t.x > 16 && t.x < 160 && ({pred})); return [t.x+t.vx*0.05, t.y+(t.vy||0)*0.05]}})()')
     async def quit():
-        await pg.evaluate("PH.forceClear()"); await pg.click('#btn-pause'); await pg.click('#btn-quit'); await pg.wait_for_timeout(200)
+        await pg.evaluate("PH.toTitle()"); await pg.wait_for_timeout(200)
 
     results = {}
     for w in ['shotgun', 'handgun', 'rifle']:

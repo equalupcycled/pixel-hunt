@@ -189,3 +189,16 @@ button { touch-action: manipulation; -webkit-user-select: none; user-select: non
   font: 700 11px/1.3 ui-monospace, Menlo, monospace; padding: 6px 8px; border: 2px solid #000; word-break: break-word; }
 .pbtn.big small { display: block; font-size: 10px; letter-spacing: 0; opacity: .9; margin-top: 3px; }
 #go-unranked { color: #ffd23f; }
+
+/* infinity / map-clear */
+#title-actions { width: 92%; max-width: 320px; }
+#title-actions .pbtn { flex: 1; }
+#title-clear { width: 92%; max-width: 320px; }
+#title-clear .prog { margin-top: 4px; }
+#title-clear .prog span { position: absolute; right: 4px; top: -10px; font-size: 9px; color: #9fc4ff; }
+h2.gold, #go-title.gold { color: #ffe066; }
+#board-modes { margin: 4px 0 2px; }
+#board-modes .pbtn { flex: 1; }
+.badge.dim { background: #2a3a55; color: #cfe0ff; }
+#cont-detail { font-size: 13px; color: #cfe0ff; }
+.clearprog { text-shadow: 2px 2px 0 #000; }

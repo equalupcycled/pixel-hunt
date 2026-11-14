@@ -6,11 +6,12 @@ window.Meta = (() => {
   const fmt = n => Math.round(n).toLocaleString('en-US');
   const dayStr = (d = new Date()) => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
   const def = () => ({
-    v: 2, bank: 0, lv: Object.fromEntries(E.TRACKS.map(t => [t.id, 0])),
+    v: 3, bank: 0, lv: Object.fromEntries(E.TRACKS.map(t => [t.id, 0])),
     stats: { runs: 0, kills: 0, gold: 0, deer: 0, perfect: 0, multi: 0, bestRound: 0, bestStreak: 0, shots: 0, hits: 0, earned: 0, bosses: 0, turretKills: 0 },
     missions: [], mDone: 0, ach: {}, daily: { last: null, day: -1 }, ads: { date: null, doubles: 0 },
     equip: { primary: 'shotgun', secondary: null, turrets: [], skin: 'classic', cross: 'white', map: 'meadow' },
     cosm: ['classic', 'white'], bestByMap: {}, roundByMap: {}, ckpt: {},
+    cleared: {}, bestInfinityByMap: {}, roundInfinityByMap: {}, ckptInf: {},
   });
   function merge(d, s) { for (const k in s) { if (s[k] && typeof s[k] === 'object' && !Array.isArray(s[k]) && d[k] && typeof d[k] === 'object') merge(d[k], s[k]); else d[k] = s[k]; } return d; }
   let save = def();
@@ -27,6 +28,16 @@ window.Meta = (() => {
       // clamp any out-of-range levels from older/newer data
       E.TRACKS.forEach(t => { save.lv[t.id] = Math.max(0, Math.min(t.val.length - 1, save.lv[t.id] | 0)); });
       Object.keys(save.lv).forEach(k => { if (!E.TRACKS.find(t => t.id === k)) delete save.lv[k]; });
+      // v2 -> v3: Infinity / map-clear fields. Anyone who already reached the clear round is granted the clear (and Infinity).
+      save.cleared = save.cleared || {};
+      save.bestInfinityByMap = save.bestInfinityByMap || {};
+      save.roundInfinityByMap = save.roundInfinityByMap || {};
+      save.ckptInf = save.ckptInf || {};
+      E.MAPS.forEach(m => {
+        if ((save.roundByMap[m.id] || 0) >= E.CLEAR_ROUND && !save.cleared[m.id]) save.cleared[m.id] = 'migrated';
+        if ((save.ckpt[m.id] || 0) > E.CLEAR_ROUND) save.ckpt[m.id] = E.CLEAR_ROUND;
+      });
+      save.v = Math.max(save.v || 2, 3);
     }
   } catch (e) {}
   try { const ob = +localStorage.getItem('pixelhunt.best') || 0; if (ob && !save.bestByMap.meadow) save.bestByMap.meadow = ob; } catch (e) {}
@@ -40,6 +51,15 @@ window.Meta = (() => {
   const owns = w => { const d = E.WEAPONS.find(x => x.id === w); return d && (!d.ownW || save.lv['own.' + w] > 0); };
   const hasTurret = id => save.lv['own.' + id] > 0;
   const hasMap = id => { const m = E.MAPS.find(x => x.id === id); return m && (!m.w || save.lv['map.' + id] > 0); };
+  const isCleared = id => !!save.cleared[id];
+  function markCleared(id) {
+    if (save.cleared[id]) return false;
+    save.cleared[id] = dayStr(); persist(); return true;
+  }
+  function clearProgress(id) {
+    const need = E.CLEAR_ROUND, cur = Math.min(need, save.roundByMap[id] || 0);
+    return { cur, need, done: isCleared(id) };
+  }
   const costOf = t => E.cost(t, save.lv[t.id], totalBought());
   const val = id => track(id).val[save.lv[id]];
   function cheapestNext() {
@@ -126,6 +146,9 @@ window.Meta = (() => {
     { id: 'turret25', name: 'Automated', txt: '25 turret kills', r: 5000, f: s => s.turretKills >= 25 },
     { id: 'maps', name: 'Explorer', txt: 'Unlock every map', r: 30000, f: () => E.MAPS.every(m => hasMap(m.id)) },
     { id: 'night10', name: 'Night Owl', txt: 'Reach round 10 on Night Hunt', r: 15000, f: () => (save.roundByMap.night || 0) >= 10 },
+    { id: 'clear1', name: 'Map Master', txt: 'Clear a map (beat the round 30 boss)', r: 25000, f: () => Object.keys(save.cleared).length >= 1 },
+    { id: 'clearall', name: 'World Hunter', txt: 'Clear every map', r: 100000, f: () => E.MAPS.every(m => save.cleared[m.id]) },
+    { id: 'inf10', name: 'Endless Hunt', txt: 'Reach round 10 in Infinity', r: 15000, f: () => Object.values(save.roundInfinityByMap).some(n => n >= 10) },
     { id: 'max', name: 'Fully Loaded', txt: 'Max every upgrade', r: 0, f: () => totalBought() >= E.TOTAL_LEVELS },
   ];
 
@@ -185,8 +208,15 @@ window.Meta = (() => {
   }
   function endRun(o) {
     const m = save.equip.map;
-    save.bestByMap[m] = Math.max(save.bestByMap[m] || 0, o.score || 0);
-    save.roundByMap[m] = Math.max(save.roundByMap[m] || 0, o.round || 0);
+    const ranked = o.ranked !== false;
+    if (o.infinity) {
+      if (ranked) save.bestInfinityByMap[m] = Math.max(save.bestInfinityByMap[m] || 0, o.score || 0);
+      save.roundInfinityByMap[m] = Math.max(save.roundInfinityByMap[m] || 0, o.round || 0);
+    } else {
+      if (ranked) save.bestByMap[m] = Math.max(save.bestByMap[m] || 0, o.score || 0);
+      save.roundByMap[m] = Math.max(save.roundByMap[m] || 0, o.round || 0);
+      if (o.cleared) markCleared(m);
+    }
     save.stats.runs++; save.stats.earned += Math.max(0, o.earned || 0); check(); persist(); }
   function takeNotices() { const n = notices; notices = []; if (n.length) persist(); return n; }
 
@@ -212,7 +242,7 @@ window.Meta = (() => {
 
   return {
     get save() { return save; }, persist, track, val, maxed, costOf, totalBought, cheapestNext, anyAffordable, buy,
-    eligible, owns, hasTurret, hasMap, equipWeapon, mountTurret, buyCosmetic, selectMap,
+    eligible, owns, hasTurret, hasMap, isCleared, markCleared, clearProgress, equipWeapon, mountTurret, buyCosmetic, selectMap,
     MT, ACH, missionText, missionReward, progressOf, startRun, event, endRun, takeNotices,
     dailyStatus, dailyAmount, claimDaily, doublesLeft, useDouble,
     reset() { save = def(); while (save.missions.length < 3) save.missions.push(newMission()); persist(); },

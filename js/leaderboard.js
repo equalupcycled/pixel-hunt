@@ -4,6 +4,7 @@
 // (e.g. Render web service + Postgres) exposing:
 //   POST {url}/scores        body {map, name, score, round, weapon, ts}   -> 200 {rank}
 //   GET  {url}/scores?map=meadow&limit=10                                    -> 200 [{name, score, round, weapon, ts}]
+// Infinity boards use map keys like 'meadow:inf'.
 // See README "Leaderboard". Until then online calls are no-ops and the game uses local scores only.
 'use strict';
 window.LEADERBOARD_CONFIG = {
@@ -15,6 +16,8 @@ window.LEADERBOARD_CONFIG = {
 window.Leaderboard = (() => {
   const cfg = window.LEADERBOARD_CONFIG;
   const KEY = 'pixelhunt.board.v1';
+  // Campaign scores live under the map id (e.g. 'meadow'). Infinity scores use 'meadow:inf'.
+  const boardKey = (map, infinity) => infinity ? map + ':inf' : map;
 
   const LocalProvider = {
     _all() { try { return JSON.parse(localStorage.getItem(KEY)) || {}; } catch (e) { return {}; } },
@@ -60,20 +63,24 @@ window.Leaderboard = (() => {
   const nameOf = e => e.name || e.initials || 'HUNTER'; // old entries used 3-letter initials
   return {
     local: LocalProvider, online: OnlineProvider, cleanName, nameOf, NAME_MAX: cfg.nameMax,
-    qualifies: (map, score) => LocalProvider.qualifies(map, score),
+    qualifies: (map, score, infinity) => LocalProvider.qualifies(boardKey(map, infinity), score),
+    boardKey,
     /** Save locally (always) and online (if configured). Resolves {rank, online}. */
     async submitScore(map, entry) {
-      const e = Object.assign({ ts: Date.now() }, entry, { name: cleanName(entry.name != null ? entry.name : entry.initials) });
+      const inf = !!entry.infinity;
+      const e = Object.assign({ ts: Date.now() }, entry, { name: cleanName(entry.name != null ? entry.name : entry.initials), infinity: inf });
       delete e.initials;
-      const local = await LocalProvider.submitScore(map, e);
-      const online = await OnlineProvider.submitScore(map, e);
+      const key = boardKey(map, inf);
+      const local = await LocalProvider.submitScore(key, e);
+      const online = await OnlineProvider.submitScore(key, e);
       return { rank: local.rank, online };
     },
     /** Online top list if available, otherwise local. Resolves {list, source}. */
-    async fetchTop(map, limit) {
-      const o = await OnlineProvider.fetchTop(map, limit);
+    async fetchTop(map, limit, infinity) {
+      const key = boardKey(map, infinity);
+      const o = await OnlineProvider.fetchTop(key, limit);
       if (o) return { list: o, source: 'online' };
-      return { list: await LocalProvider.fetchTop(map, limit), source: 'local' };
+      return { list: await LocalProvider.fetchTop(key, limit), source: 'local' };
     },
   };
 })();

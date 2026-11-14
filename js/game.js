@@ -434,6 +434,7 @@ let focusCharges = 0, focusMax = 0, focusDur = 3, focusT = 0, reviveUsed = false
 // missRun = X's used this run (TOTAL, not in a row). fromCkpt = checkpoint round this run started at (0 = fresh, ranked run).
 let fromCkpt = 0, ckptFlash = 0, ckptRound = 0;
 const CKPT_EVERY = 5;
+let infinity = false, bossKilled = false, mapJustCleared = false, failedClear = false;
 let roundHits = 0, roundEsc = 0, roundTotal = 0, queue = [], spawnT = 0, diff = null, bossT = null, bossRound = false;
 let introT = 0, clearT = 0, dieT = 0, banner = '', banner2 = '';
 let targets = [], parts = [], floats = [], flashes = [], projs = [], zaps = [], tracers = [];
@@ -482,6 +483,7 @@ function resetRun() {
   if (!curMap || curMap.id !== Meta.save.equip.map) buildBg();
   M = curMap;
   score = 0; runCash = 0; round = 0; shots = 0; hits = 0; streak = 0; bestStreak = 0; missRun = 0; reviveUsed = false; fromCkpt = 0; ckptFlash = 0;
+  infinity = false; bossKilled = false; mapJustCleared = false; failedClear = false;
   applyGear();
   const eq = Meta.save.equip;
   weapons = [makeWeapon(Meta.owns(eq.primary) ? eq.primary : 'shotgun')];
@@ -504,8 +506,8 @@ function pickFly() {
 function pickGround() { const g = MAP_SET[M.id].ground; return g[Math.floor(Math.random() * g.length)]; }
 function bossIdFor(r) { if (M.id === 'meadow') return (r / ECON.BOSS_EVERY) % 2 === 1 ? 'eagle' : 'buck'; return M.boss; }
 
-function startRound() {
-  round++;
+function startRound(opts) {
+  if (!(opts && opts.restart)) round++;
   diff = Object.assign({}, ECON.difficulty(round));
   diff.speed *= M.speed; diff.deerSpeed *= M.speed; diff.life *= M.life; diff.scale *= M.size;
   bossRound = round % ECON.BOSS_EVERY === 0;
@@ -526,32 +528,33 @@ function startRound() {
     if (round >= 4 && !queue.some(k => KIND[k] && KIND[k].g)) queue[Math.floor(rand(1, queue.length))] = pickGround();
   }
   roundTotal = queue.filter(k => k !== 'decoy').length;
-  roundHits = 0; roundEsc = 0; spawnT = 0.6; bossT = null;
+  roundHits = 0; roundEsc = 0; spawnT = 0.6; bossT = null; bossKilled = false;
   weapons.forEach(w => { w.ammo = w.id === 'laser' ? 0 : w.cap; w.heat = 0; w.overheated = false; w.reloading = false; });
   turrets.forEach(t => { t.ammo = t.ammo0; t.cool = rand(0.6, 1.4); });
   focusCharges = focusMax; focusT = 0; armed = false;
   state = 'intro'; introT = bossRound ? 2.2 : 1.6;
   const inp = wpn.def.input;
-  if (bossRound) { const b = BOSSES[bossIdFor(round)]; banner = 'BOSS ROUND!'; banner2 = b.name + ' APPROACHES'; Sfx.boss(); }
+  if (bossRound) { const b = BOSSES[bossIdFor(round)]; banner = (infinity ? 'INF ' : '') + 'BOSS ROUND!'; banner2 = b.name + ' APPROACHES'; Sfx.boss(); }
   else {
-    banner = 'ROUND ' + round;
+    banner = (infinity ? 'INFINITY ' : '') + 'ROUND ' + round;
     banner2 = round === 1 ? (inp === 'hold' ? 'HOLD TO SPRAY' : inp === 'draw' ? 'HOLD TO DRAW, RELEASE' : inp === 'beam' ? 'HOLD TO FIRE BEAM' : 'TAP TO SHOOT')
       : round === 4 ? MAP_SET[M.id].hint : round === 3 ? "DON'T SHOOT PINK BIRDS" : round === ECON.BOSS_EVERY - 1 ? 'BOSS NEXT ROUND!' : '';
     Sfx.roundStart();
   }
-  if (round % CKPT_EVERY === 0) reachCheckpoint();
+  if (round % CKPT_EVERY === 0) reachCheckpoint({ silent: !!(opts && opts.revive) });
   showGameButtons(true);
   Meta.event('roundStart', { round }); notify();
 }
 // Checkpoint = the START of round 5, 10, 15... (per map, persistent). Boss rounds are 10, 20...: their checkpoint is
 // saved as the boss round begins, so continuing puts you right in front of that boss with clean X's.
-function reachCheckpoint() {
-  const c = Meta.save.ckpt || (Meta.save.ckpt = {});
+function reachCheckpoint(opts) {
+  const bag = infinity ? 'ckptInf' : 'ckpt';
+  const c = Meta.save[bag] || (Meta.save[bag] = {});
   const isNew = round > (c[M.id] || 0);
   if (isNew) { c[M.id] = round; Meta.persist(); }
-  if (round !== fromCkpt) { ckptFlash = 2.6; ckptRound = round; Sfx.buy(); if (bossRound) introT = Math.max(introT, 2.8); }
+  if (!(opts && opts.silent) && round !== fromCkpt) { ckptFlash = 2.6; ckptRound = round; Sfx.buy(); if (bossRound) introT = Math.max(introT, 2.8); }
 }
-function checkpointFor(mapId) { const c = Meta.save.ckpt || {}; return c[mapId] || 0; }
+function checkpointFor(mapId, inf) { const c = (inf ? Meta.save.ckptInf : Meta.save.ckpt) || {}; return c[mapId] || 0; }
 
 function tImg(t) { return t.kind === 'eyes' ? { width: 12, height: 6 } : SPR[t.set][0]; }
 function groundY(set, sc) { return GROUND + 12 - SPR[set][0].height * sc / 2; }
@@ -634,7 +637,7 @@ function kill(t, src, info = {}) {
   if (t.kind === 'boss') {
     pts = Math.round(20000 * (round / ECON.BOSS_EVERY) * M.pts / 10) * 10;
     cash = ECON.bossCash(round) * moneyMult * M.cash;
-    Meta.event('boss'); Sfx.bossDown(); shake = 8; whiteFlash = 0.15; bossT = null;
+    bossKilled = true; Meta.event('boss'); Sfx.bossDown(); shake = 8; whiteFlash = 0.15; bossT = null;
     float('BOSS DOWN!', W / 2, H * 0.32, '#ffd23f', 2.2, 2);
     for (let k = 0; k < 40; k++) parts.push({ x: t.x, y: t.y, vx: rand(-90, 90), vy: rand(-110, 20), c: ['#ffd23f', '#fff', '#ff9a3d'][k % 3], t: 0, life: rand(0.6, 1.4), g: 120, s: 2 });
   } else {
@@ -972,7 +975,12 @@ function update(dt) {
     if (!queue.length && targets.length === 0 && !projs.some(p => p.type === 'flak')) roundClear();
     updTurrets(gdt);
   } else if (state === 'clear') {
-    clearT -= dt; if (clearT <= 0) { if (Meta.anyAffordable()) openShop('round'); else startRound(); }
+    clearT -= dt;
+    if (clearT <= 0) {
+      if (mapJustCleared) { mapJustCleared = false; victory(); }
+      else if (failedClear) { failedClear = false; gameOver(); }
+      else startRound(); // shop is only on the title / game-over screens, never mid-run
+    }
   } else if (state === 'dying') {
     dieT -= dt; if (dieT <= 0) { state = 'ad'; onDeath(); }
   }
@@ -1109,7 +1117,22 @@ function roundClear() {
   banner2 = '+$' + bonusCash + (perfect ? '  +' + fmt(5000 * round) : '');
   if (perfect && missRun > 0) { missRun--; banner2 += '  -1 X'; } // a perfect round gives back one X
   if (perfect) score += 5000 * round;
-  Sfx.clear(); showGameButtons(false);
+  // Campaign ends at the map's clear boss (round 30). Beating it unlocks Infinity; failing it ends the run.
+  const campaignEnd = !infinity && round >= ECON.CLEAR_ROUND;
+  mapJustCleared = campaignEnd && bossKilled;
+  failedClear = campaignEnd && !bossKilled;
+  if (mapJustCleared) {
+    const first = !Meta.isCleared(M.id);
+    banner = 'MAP CLEARED!';
+    banner2 = first ? 'INFINITY MODE UNLOCKED' : M.name.toUpperCase() + ' COMPLETE';
+    if (perfect) banner2 += '  +$' + bonusCash;
+    clearT = 3.2;
+  } else if (failedClear) {
+    banner = 'SO CLOSE!'; banner2 = 'BEAT THE ROUND ' + ECON.CLEAR_ROUND + ' BOSS TO CLEAR ' + M.name.toUpperCase();
+    clearT = 2.6;
+  }
+  Sfx.clear(); if (mapJustCleared) Sfx.gold();
+  showGameButtons(false);
   Meta.event('roundClear', { perfect, score }); Meta.persist(); notify();
 }
 // ---------------- overlays / UI ----------------
@@ -1149,22 +1172,14 @@ function trackItem(u) {
   b.addEventListener('click', () => {
     if (!Meta.buy(u.id)) return;
     Sfx.buy(); afterBuy(); toast(u.unlock ? 'UNLOCKED!' : 'UPGRADED!', u.name + (u.unlock ? '' : ' LV ' + Meta.save.lv[u.id]), 0);
-    if (u.group === 'weapon' && u.unlock && shopFrom !== 'round') { Meta.equipWeapon(u.of, 'primary'); toast('EQUIPPED', WDEF(u.of).name, 0); }
-    if (u.group === 'map' && shopFrom !== 'round') { Meta.selectMap(u.of); buildBg(); }
+    if (u.group === 'weapon' && u.unlock) { Meta.equipWeapon(u.of, 'primary'); toast('EQUIPPED', WDEF(u.of).name, 0); }
+    if (u.group === 'map') { Meta.selectMap(u.of); buildBg(); }
     if (u.group === 'turret' && u.unlock) Meta.mountTurret(u.of, true);
     openShop(shopFrom, true);
   });
   el.append(iconEl(u.icon), mid, b); return el;
 }
-function afterBuy() {
-  notify();
-  if (shopFrom === 'round') { // upgrades apply right away mid-run
-    applyGear();
-    weapons = weapons.map(w => makeWeapon(w.id)); wpn = weapons[wi] || weapons[0];
-    const slots = Meta.val('turret.slots');
-    turrets = Meta.save.equip.turrets.filter(id => Meta.hasTurret(id)).slice(0, slots).map(makeTurret);
-  }
-}
+function afterBuy() { notify(); }
 function card(iconKey, title, sub, badge, expanded, onToggle) {
   const c = document.createElement('div'); c.className = 'card' + (expanded ? ' open' : '');
   const h = document.createElement('div'); h.className = 'card-h';
@@ -1179,22 +1194,19 @@ function tabCan(group) {
   return ECON.TRACKS.some(t => t.group === group && !Meta.maxed(t) && Meta.eligible(t) && Meta.costOf(t) <= Meta.save.bank);
 }
 function openShop(from = 'title', keep) {
-  shopFrom = from;
-  if (from === 'round') state = 'shop';
+  shopFrom = from === 'round' ? 'title' : from; // armory is only between runs (title / game over)
   if (!keep) $('shop-list').scrollTop = 0;
   const scroll = $('shop-list').scrollTop;
   $('shop-money').textContent = fmt(Meta.save.bank);
-  $('shop-sub').textContent = from === 'round' ? `ROUND ${round} CLEARED \u00b7 NEXT: ROUND ${round + 1}` + ((round + 1) % ECON.BOSS_EVERY === 0 ? ' (BOSS!)' : '')
-    : `UPGRADES ARE PERMANENT \u00b7 ${Meta.totalBought()}/${ECON.TOTAL_LEVELS} OWNED`;
-  $('btn-next').innerHTML = from === 'round' ? 'NEXT ROUND &#9654;' : 'BACK';
+  $('shop-sub').textContent = `UPGRADES ARE PERMANENT \u00b7 ${Meta.totalBought()}/${ECON.TOTAL_LEVELS} OWNED`;
+  $('btn-next').innerHTML = 'BACK';
   document.querySelectorAll('#shop-tabs button').forEach(b => {
     b.classList.toggle('on', b.dataset.tab === shopTab);
     const g = { weapons: 'weapon', turrets: 'turret', gear: 'gear', maps: 'map' }[b.dataset.tab];
     b.classList.toggle('can', !!g && tabCan(g));
   });
   const list = $('shop-list'); list.innerHTML = '';
-  const midRun = from === 'round';
-  if (midRun) { const n = document.createElement('div'); n.className = 'note'; n.textContent = 'Upgrades apply now. Change weapons, turrets & maps between runs.'; list.appendChild(n); }
+  const midRun = false; // shop is never mid-run; kept so equip/mount buttons stay enabled between runs
   const eq = Meta.save.equip;
   if (shopTab === 'weapons') {
     const sel = shopSel.weapon || eq.primary;
@@ -1242,7 +1254,10 @@ function openShop(from = 'title', keep) {
       const c = document.createElement('div'); c.className = 'card map' + (selm ? ' sel' : '');
       const info = document.createElement('div'); info.className = 'map-info';
       const bestM = Meta.save.bestByMap[m.id] || 0;
-      info.innerHTML = `<div class="nm">${m.name.toUpperCase()} <span class="badge cashc">$ x${m.cash}</span>${selm ? ' <span class="badge">SELECTED</span>' : ''}</div><div class="ds">${esc(m.role)}</div><div class="ds dim">BEST ${fmt(bestM)} \u00b7 BOSS EVERY ${ECON.BOSS_EVERY} ROUNDS</div>`;
+      const cleared = Meta.isCleared(m.id), prog = Meta.clearProgress(m.id);
+      const clearTag = cleared ? ' <span class="badge">CLEARED</span>' : ` <span class="badge dim">CLEAR ${prog.cur}/${prog.need}</span>`;
+      const infLine = cleared ? ` \u00b7 INF BEST ${fmt(Meta.save.bestInfinityByMap[m.id] || 0)}` : '';
+      info.innerHTML = `<div class="nm">${m.name.toUpperCase()} <span class="badge cashc">$ x${m.cash}</span>${selm ? ' <span class="badge">SELECTED</span>' : ''}${clearTag}</div><div class="ds">${esc(m.role)}</div><div class="ds dim">BEST ${fmt(bestM)}${infLine} \u00b7 BEAT ROUND ${ECON.CLEAR_ROUND} BOSS TO CLEAR</div>`;
       c.append(th, info);
       if (has) c.appendChild(btn(selm ? 'SELECTED' : 'HUNT HERE', 'small', () => { Meta.selectMap(m.id); buildBg(); openShop(shopFrom, true); }, midRun || selm));
       else c.appendChild(trackItem(Meta.track('map.' + m.id)));
@@ -1267,11 +1282,13 @@ function openShop(from = 'title', keep) {
   show('ov-shop', true);
 }
 document.querySelectorAll('#shop-tabs button').forEach(b => b.addEventListener('click', () => { Sfx.click(); shopTab = b.dataset.tab; openShop(shopFrom); }));
-$('btn-next').addEventListener('click', () => { Sfx.click(); show('ov-shop', false); if (shopFrom === 'round') startRound(); else if (shopFrom === 'over') show('ov-over', true); else toTitle(); });
+$('btn-next').addEventListener('click', () => { Sfx.click(); show('ov-shop', false); if (shopFrom === 'over') show('ov-over', true); else toTitle(); });
 
 // ---------------- death / revive / game over ----------------
 function onDeath() {
   if (!reviveUsed && Ads.rewardedAvailable()) {
+    $('cont-detail').textContent = 'Resume Round ' + round + ' and keep your score (' + fmt(score) + ').';
+    $('cont-note').textContent = 'One continue per run \u00b7 X\'s cleared \u00b7 ' + (fromCkpt ? 'checkpoint run, not ranked' : 'still ranked');
     show('ov-continue', true);
     let n = 8; $('cont-count').textContent = n;
     clearInterval(contTimer);
@@ -1285,49 +1302,70 @@ $('btn-revive').addEventListener('click', () => {
   Ads.showRewarded().then(ok => { if (ok) revive(); else gameOver(); });
 });
 function revive() {
+  // Restart the round you lost from the beginning, keeping score, cash earned, and ranked status.
+  const keep = { score, runCash, hits, shots, bestStreak, fromCkpt, infinity, round };
   missRun = 0; streak = 0;
-  targets = targets.filter(t => t.state === 'fall' || t.state === 'hit' || t === bossT);
-  if (bossT) { bossT.state = 'fly'; bossT.x = Math.min(bossT.x, bossT.x1 - 5 * bossT.vx); bossT.timer = (bossT.x1 - bossT.x) / bossT.vx; } // at least 5s more
-  weapons.forEach(w => { w.ammo = w.id === 'laser' ? 0 : w.cap; w.heat = 0; w.overheated = false; w.reloading = false; });
-  state = 'intro'; introT = 1.4; banner = 'SECOND CHANCE!'; banner2 = 'ROUND ' + round;
-  Sfx.roundStart(); showGameButtons(true);
+  targets = []; queue = []; projs = []; parts = []; floats = []; zaps = []; tracers = []; flashes = [];
+  bossT = null; decoyObj = null; armed = false; holding = false; drawing = null; mapJustCleared = false; failedClear = false;
+  score = keep.score; runCash = keep.runCash; hits = keep.hits; shots = keep.shots; bestStreak = keep.bestStreak;
+  fromCkpt = keep.fromCkpt; infinity = keep.infinity;
+  startRound({ restart: true, revive: true });
+  banner = 'SECOND CHANCE!';
+  banner2 = 'ROUND ' + keep.round + '  \u00b7  SCORE KEPT  ' + fmt(keep.score);
 }
 let earnedShown = 0, lastRun = null;
-function gameOver() {
+function finishRun(opts) {
   state = 'over';
-  const ranked = !fromCkpt; // only fresh runs from round 1 go on the leaderboard / count as bests
-  const mapBest = Meta.save.bestByMap[M.id] || 0;
-  const isBest = ranked && score > mapBest, isAll = ranked && score > best;
+  const ranked = !fromCkpt; // only fresh runs from round 1 (including ad-revived ones) are ranked
+  const cleared = !!(opts && opts.cleared);
+  const mapBest = infinity ? (Meta.save.bestInfinityByMap[M.id] || 0) : (Meta.save.bestByMap[M.id] || 0);
+  const isBest = ranked && score > mapBest;
+  const isAll = ranked && !infinity && score > best;
   if (isAll) { best = score; store.set('best', best); }
-  Meta.endRun({ score: ranked ? score : 0, round, earned: runCash });
-  lastRun = { score, round, map: M.id, mapName: M.name, weapon: wpn.id, isBest: isBest && score > 0, isAll: isAll && score > 0, fromCkpt };
-  if (ranked && window.Leaderboard && Leaderboard.qualifies(M.id, score)) openNameEntry();
+  Meta.endRun({ score: ranked ? score : 0, round, earned: runCash, ranked, infinity, cleared });
+  lastRun = { score, round, map: M.id, mapName: M.name, weapon: wpn.id, isBest: isBest && score > 0, isAll: isAll && score > 0, fromCkpt, infinity, cleared };
+  if (ranked && window.Leaderboard && Leaderboard.qualifies(M.id, score, infinity)) openNameEntry();
   else showOver(null);
 }
+function gameOver() { finishRun({ cleared: false }); }
+function victory() { finishRun({ cleared: true }); }
 function showOver(rank) {
   const r = lastRun;
-  $('go-score').textContent = fmt(r.score); $('go-best').textContent = fmt(Meta.save.bestByMap[r.map] || 0);
-  $('go-bestl').textContent = 'BEST (' + r.mapName.toUpperCase() + ')';
+  $('go-title').textContent = r.cleared ? 'MAP CLEARED!' : 'GAME OVER';
+  $('go-title').classList.toggle('red', !r.cleared);
+  $('go-title').classList.toggle('gold', !!r.cleared);
+  const bestNow = r.infinity ? (Meta.save.bestInfinityByMap[r.map] || 0) : (Meta.save.bestByMap[r.map] || 0);
+  $('go-score').textContent = fmt(r.score); $('go-best').textContent = fmt(bestNow);
+  $('go-bestl').textContent = (r.infinity ? 'INF BEST (' : 'BEST (') + r.mapName.toUpperCase() + ')';
   $('go-round').textContent = r.round; $('go-hits').textContent = hits;
   $('go-acc').textContent = shots ? Math.min(100, Math.round(hits / shots * 100)) + '%' : '0%';
-  $('go-rank').textContent = rank ? `#${rank} ON THE ${r.mapName.toUpperCase()} LEADERBOARD!` : '';
+  const boardName = r.mapName.toUpperCase() + (r.infinity ? ' INFINITY' : '');
+  $('go-rank').textContent = rank ? `#${rank} ON THE ${boardName} LEADERBOARD!` : '';
   show('go-rank', !!rank);
   earnedShown = Math.max(0, runCash);
   $('go-earned').textContent = '+$' + fmt(earnedShown);
-  $('newbest').textContent = r.isAll ? 'NEW HIGH SCORE!' : 'NEW ' + r.mapName.toUpperCase() + ' BEST!';
+  $('newbest').textContent = r.isAll ? 'NEW HIGH SCORE!' : r.infinity ? 'NEW ' + r.mapName.toUpperCase() + ' INFINITY BEST!' : 'NEW ' + r.mapName.toUpperCase() + ' BEST!';
   show('newbest', r.isBest);
   const dbl = $('btn-double'), left = Meta.doublesLeft();
   dbl.classList.toggle('hidden', earnedShown <= 0);
   dbl.disabled = left <= 0;
   dbl.innerHTML = left > 0 ? `&#9654; WATCH AD: 2X EARNINGS<br><small>+$${fmt(earnedShown)} MORE \u00b7 ${left} LEFT TODAY</small>` : '2X USED UP TODAY<br><small>COMES BACK TOMORROW</small>';
   renderNext('go-next'); renderMissions('go-missions');
-  $('go-unranked').textContent = r.fromCkpt ? `CHECKPOINT RUN (FROM ROUND ${r.fromCkpt}) \u00b7 NOT RANKED` : '';
-  show('go-unranked', !!r.fromCkpt);
-  const ck = checkpointFor(r.map);
-  $('btn-ckpt').innerHTML = `CONTINUE FROM ROUND ${ck}<br><small>CHECKPOINT \u00b7 X'S CLEARED \u00b7 NOT RANKED</small>`;
+  let note = '';
+  if (r.cleared) note = 'MAP CLEARED \u00b7 INFINITY UNLOCKED' + (r.fromCkpt ? ' \u00b7 CHECKPOINT RUN, NOT RANKED' : '');
+  else if (r.fromCkpt) note = (r.infinity ? 'INFINITY ' : '') + `CHECKPOINT RUN (FROM ROUND ${r.fromCkpt}) \u00b7 NOT RANKED`;
+  else if (r.infinity) note = 'INFINITY RUN \u00b7 RANKED ON THE INFINITY BOARD';
+  $('go-unranked').textContent = note;
+  show('go-unranked', !!note);
+  const ck = checkpointFor(r.map, r.infinity);
+  $('btn-ckpt').innerHTML = `CONTINUE FROM ROUND ${ck}<br><small>CHECKPOINT \u00b7 SCORE 0 \u00b7 X'S CLEARED \u00b7 NOT RANKED</small>`;
   show('btn-ckpt', ck > 0);
-  $('btn-again').innerHTML = ck > 0 ? 'START FROM ROUND 1<br><small>RANKED RUN</small>' : 'PLAY AGAIN';
+  const againMode = r.infinity ? 'INFINITY' : 'RANKED RUN';
+  $('btn-again').innerHTML = ck > 0 ? `START FROM ROUND 1<br><small>${againMode}</small>` : (r.infinity ? 'PLAY INFINITY AGAIN' : 'PLAY AGAIN');
   $('btn-again').classList.toggle('green', false);
+  const showInf = Meta.isCleared(r.map) && !r.infinity;
+  $('btn-go-infinity').innerHTML = 'PLAY INFINITY<br><small>ENDLESS \u00b7 SEPARATE HIGH SCORE</small>';
+  show('btn-go-infinity', showInf);
   show('ov-over', true); notify();
 }
 function renderNext(id) {
@@ -1358,7 +1396,7 @@ function openNameEntry() {
   const inp = $('name-input');
   inp.value = store.get('playerName', '');
   $('name-score').textContent = fmt(lastRun.score);
-  $('name-map').textContent = lastRun.mapName.toUpperCase() + ' \u00b7 ROUND ' + lastRun.round;
+  $('name-map').textContent = lastRun.mapName.toUpperCase() + (lastRun.infinity ? ' INFINITY' : '') + ' \u00b7 ROUND ' + lastRun.round;
   syncNameCount(); show('ov-name', true); Sfx.gold();
   setTimeout(() => { try { inp.focus(); inp.select(); } catch (e) {} }, 50);
 }
@@ -1370,20 +1408,26 @@ function submitName() {
   const name = Leaderboard.cleanName($('name-input').value);
   store.set('playerName', name); show('ov-name', false); $('name-input').blur(); Sfx.buy();
   const ts = Date.now(); lastEntryTs = ts;
-  Leaderboard.submitScore(lastRun.map, { name, score: lastRun.score, round: lastRun.round, weapon: lastRun.weapon, ts }).then(r => showOver(r.rank));
+  Leaderboard.submitScore(lastRun.map, { name, score: lastRun.score, round: lastRun.round, weapon: lastRun.weapon, ts, infinity: !!lastRun.infinity }).then(r => showOver(r.rank));
 }
 $('btn-name-ok').addEventListener('click', () => { Sfx.click(); submitName(); });
 
 // ---------------- leaderboard ----------------
-let boardMap = 'meadow', boardFrom = 'title';
-function openBoard(map, from) {
+let boardMap = 'meadow', boardFrom = 'title', boardInf = false;
+function openBoard(map, from, inf) {
   boardMap = map || boardMap; boardFrom = from || boardFrom;
+  if (inf != null) boardInf = !!inf;
+  else if (from === 'over' && lastRun) boardInf = !!lastRun.infinity;
   $('board-tabs').innerHTML = '';
   ECON.MAPS.forEach(m => $('board-tabs').appendChild(btn(m.name.toUpperCase(), 'small' + (m.id === boardMap ? ' on' : ''), () => openBoard(m.id))));
+  $('board-modes').innerHTML = '';
+  $('board-modes').appendChild(btn('CLASSIC', 'small' + (!boardInf ? ' on' : ''), () => openBoard(boardMap, boardFrom, false)));
+  $('board-modes').appendChild(btn('INFINITY', 'small' + (boardInf ? ' on' : ''), () => openBoard(boardMap, boardFrom, true)));
   $('board-list').innerHTML = '<div class="note">LOADING...</div>';
   show('ov-board', true);
-  Leaderboard.fetchTop(boardMap).then(({ list, source }) => {
-    $('board-src').textContent = source === 'online' ? 'ONLINE TOP 10' : 'TOP 10 ON THIS DEVICE';
+  Leaderboard.fetchTop(boardMap, undefined, boardInf).then(({ list, source }) => {
+    const src = source === 'online' ? 'ONLINE TOP 10' : 'TOP 10 ON THIS DEVICE';
+    $('board-src').textContent = (boardInf ? 'INFINITY · ' : 'CLASSIC · ') + src;
     const rows = [];
     for (let i = 0; i < 10; i++) {
       const e = list[i];
@@ -1413,7 +1457,7 @@ function makeCard(o) { // 300x157 pixel card, upscaled x4 -> 1200x628 PNG (Open 
     if (o.score != null) {
       text('I SCORED', 150, 70, 1.5, '#9fc4ff', 'center');
       text(fmt(o.score), 150, 82, 3.2, '#ffffff', 'center');
-      text((o.mapName || '').toUpperCase() + ' \u00b7 ROUND ' + o.round, 150, 108, 1.5, '#7dff7a', 'center');
+      text((o.mapName || '').toUpperCase() + (o.infinity ? ' INF' : '') + ' \u00b7 ROUND ' + o.round, 150, 108, 1.5, '#7dff7a', 'center');
       text('CAN YOU BEAT ME?', 150, 126, 1.5, '#ffd23f', 'center');
     } else {
       text('RETRO PIXEL HUNTING', 150, 72, 2, '#ffffff', 'center');
@@ -1428,7 +1472,7 @@ function makeCard(o) { // 300x157 pixel card, upscaled x4 -> 1200x628 PNG (Open 
 }
 function shareScore(o) {
   if (!o) return;
-  const txt = `I scored ${fmt(o.score)} on Pixel Hunt (${o.mapName}, round ${o.round})! Can you beat me?`;
+  const txt = `I scored ${fmt(o.score)} on Pixel Hunt (${o.mapName}${o.infinity ? ' Infinity' : ''}, round ${o.round})! Can you beat me?`;
   Share.share({ title: 'Pixel Hunt', text: txt, canvas: makeCard(o) }).then(res => {
     if (res === 'facebook') toast('OPENING FACEBOOK', 'Score text copied - paste it into your post', 0);
     else if (res === 'shared') toast('THANKS FOR SHARING!', '', 0);
@@ -1437,9 +1481,9 @@ function shareScore(o) {
 $('btn-share').addEventListener('click', () => { Sfx.click(); shareScore(lastRun); });
 $('btn-board-share').addEventListener('click', () => {
   Sfx.click();
-  Leaderboard.fetchTop(boardMap).then(({ list }) => {
+  Leaderboard.fetchTop(boardMap, undefined, boardInf).then(({ list }) => {
     const mine = list.find(e => e.ts === lastEntryTs) || list[0]; if (!mine) return;
-    shareScore({ score: mine.score, round: mine.round, map: boardMap, mapName: mapDef(boardMap).name });
+    shareScore({ score: mine.score, round: mine.round, map: boardMap, mapName: mapDef(boardMap).name, infinity: boardInf });
   });
 });
 
@@ -1488,7 +1532,11 @@ function openMissions() {
   const s = Meta.save.stats;
   $('ach-list').innerHTML = Meta.ACH.map(a => `<div class="ach ${Meta.save.ach[a.id] ? 'done' : ''}"><b>${esc(a.name)}</b><span>${esc(a.txt)}</span><i>${Meta.save.ach[a.id] ? '\u2713' : a.r ? '$' + fmt(a.r) : 'BADGE'}</i></div>`).join('');
   $('ach-count').textContent = Object.keys(Meta.save.ach).length + '/' + Meta.ACH.length;
-  const bm = ECON.MAPS.filter(m => Meta.hasMap(m.id)).map(m => ['BEST: ' + m.name.toUpperCase(), Meta.save.bestByMap[m.id] || 0]);
+  const bm = ECON.MAPS.filter(m => Meta.hasMap(m.id)).flatMap(m => {
+    const rows = [['BEST: ' + m.name.toUpperCase(), Meta.save.bestByMap[m.id] || 0]];
+    if (Meta.isCleared(m.id)) rows.push(['INF BEST: ' + m.name.toUpperCase(), Meta.save.bestInfinityByMap[m.id] || 0]);
+    return rows;
+  });
   $('stats-list').innerHTML = [['RUNS', s.runs], ['TARGETS HIT', s.kills], ['GOLDEN BIRDS', s.gold], ['GROUND GAME', s.deer], ['BOSSES', s.bosses || 0], ['TURRET KILLS', s.turretKills || 0], ['BEST ROUND', s.bestRound], ['BEST STREAK', s.bestStreak],
     ['ACCURACY', s.shots ? Math.min(100, Math.round(s.hits / s.shots * 100)) + '%' : '-'], ['TOTAL EARNED', '$' + fmt(s.earned)], ['UPGRADES', Meta.totalBought() + '/' + ECON.TOTAL_LEVELS], ['MISSIONS DONE', Meta.save.mDone]].concat(bm)
     .map(([k, v]) => `<div><span>${k}</span><b>${typeof v === 'number' ? fmt(v) : v}</b></div>`).join('');
@@ -1510,11 +1558,23 @@ function updateTitle() {
   const m = mapDef();
   $('title-best').textContent = fmt(best);
   $('title-bank').textContent = '$' + fmt(Meta.save.bank);
-  $('title-map').textContent = m.name.toUpperCase();
-  $('title-mapbest').textContent = 'MAP BEST ' + fmt(Meta.save.bestByMap[m.id] || 0) + ' \u00b7 $ x' + m.cash;
+  $('title-map').textContent = m.name.toUpperCase() + (Meta.isCleared(m.id) ? '  \u2605' : '');
+  const bestLine = 'MAP BEST ' + fmt(Meta.save.bestByMap[m.id] || 0) + ' \u00b7 $ x' + m.cash;
+  $('title-mapbest').textContent = Meta.isCleared(m.id)
+    ? bestLine + ' \u00b7 INF BEST ' + fmt(Meta.save.bestInfinityByMap[m.id] || 0)
+    : bestLine;
   const eq = Meta.save.equip;
   $('title-loadout').textContent = WDEF(eq.primary).name.toUpperCase() + (Meta.val('loadout') && eq.secondary ? ' + ' + WDEF(eq.secondary).name.toUpperCase() : '') + (eq.turrets.length ? ' \u00b7 ' + eq.turrets.length + ' TURRET' + (eq.turrets.length > 1 ? 'S' : '') : '');
   $('btn-armory').classList.toggle('gold-btn', Meta.anyAffordable());
+  const cleared = Meta.isCleared(m.id), prog = Meta.clearProgress(m.id);
+  show('btn-infinity', cleared);
+  const el = $('title-clear');
+  if (cleared) {
+    el.innerHTML = '<div class="nx-t ready">MAP CLEARED \u00b7 INFINITY UNLOCKED</div>';
+  } else {
+    const pct = Math.floor(prog.cur / prog.need * 100);
+    el.innerHTML = `<div class="nx-t">CLEAR ${prog.cur}/${prog.need} \u00b7 BEAT THE ROUND ${prog.need} BOSS</div><div class="prog"><i style="width:${pct}%"></i><span>${pct}%</span></div>`;
+  }
   renderNext('title-next');
 }
 function toTitle() {
@@ -1523,18 +1583,28 @@ function toTitle() {
   if (!curMap || curMap.id !== Meta.save.equip.map) buildBg();
   updateTitle(); show('ov-title', true); maybeDaily();
 }
-function newGame(fromRound) {
+function newGame(fromRound, opts) {
   Sfx.init(); Sfx.click(); Ads.init();
   ['ov-title', 'ov-over', 'ov-pause', 'ov-shop', 'ov-daily', 'ov-board'].forEach(id => show(id, false));
   targets = []; resetRun();
+  infinity = !!(opts && opts.infinity);
   const ck = fromRound > 1 ? fromRound : 0;
   Meta.startRun({ base: ck ? ck - 1 : 0 });
   if (ck) { fromCkpt = ck; round = ck - 1; } // normal difficulty for that round, score from 0, X's cleared
   startRound();
 }
-function continueCheckpoint() { const ck = checkpointFor(Meta.save.equip.map); if (ck) newGame(ck); else newGame(); }
+function continueCheckpoint() {
+  const inf = !!(lastRun && lastRun.infinity);
+  const ck = checkpointFor(Meta.save.equip.map, inf);
+  if (ck) newGame(ck, { infinity: inf }); else newGame(0, { infinity: inf });
+}
 $('btn-play').addEventListener('click', () => newGame());
-$('btn-again').addEventListener('click', () => newGame());
+$('btn-infinity').addEventListener('click', () => {
+  if (!Meta.isCleared(Meta.save.equip.map)) { toast('INFINITY LOCKED', 'Beat the round ' + ECON.CLEAR_ROUND + ' boss to unlock', 0); return; }
+  newGame(0, { infinity: true });
+});
+$('btn-go-infinity').addEventListener('click', () => newGame(0, { infinity: true }));
+$('btn-again').addEventListener('click', () => newGame(0, { infinity: !!(lastRun && lastRun.infinity) }));
 $('btn-ckpt').addEventListener('click', continueCheckpoint);
 $('btn-menu').addEventListener('click', () => { Sfx.click(); toTitle(); });
 $('btn-how').addEventListener('click', () => { Sfx.init(); Sfx.click(); show('ov-how', true); });
@@ -1752,11 +1822,13 @@ function drawHud() {
   ctx.fillStyle = '#000'; ctx.fillRect(0, 28, W, 1);
   text('SCORE', 4, 3, 1, '#9fc4ff', 'left', null);
   text(fmt(score), 4, 10, 1.5, '#fff');
-  const mb = Math.max(Meta.save.bestByMap[M.id] || 0, score);
-  text(M.name.toUpperCase() + ' BEST', W / 2 + 6, 3, 1, '#9fc4ff', 'center', null);
+  const savedBest = infinity ? (Meta.save.bestInfinityByMap[M.id] || 0) : (Meta.save.bestByMap[M.id] || 0);
+  const mb = Math.max(savedBest, score);
+  text((infinity ? 'INF ' : '') + M.name.toUpperCase() + ' BEST', W / 2 + 6, 3, 1, '#9fc4ff', 'center', null);
   text(fmt(mb), W / 2 + 6, 10, 1.5, '#ffe066', 'center');
-  text('ROUND', W - 4, 3, 1, '#9fc4ff', 'right', null);
-  text(round, W - 4, 10, 1.5, bossRound ? '#ff5a5a' : '#fff', 'right');
+  text(infinity ? 'INF ROUND' : 'ROUND', W - 4, 3, 1, infinity ? '#ffd23f' : '#9fc4ff', 'right', null);
+  const rlabel = infinity ? String(round) : (round + '/' + ECON.CLEAR_ROUND);
+  text(rlabel, W - 4, 10, 1.5, bossRound ? '#ff5a5a' : '#fff', 'right');
   text('$' + fmt(Meta.save.bank), 4, 20, 1, '#7dff7a');
   const mx = W - 4 - maxMiss * 8;
   text('MISS', mx - 3, 20, 1, '#ff9a9a', 'right', null);
@@ -1829,12 +1901,17 @@ window.PH = {
   get state() { return state; }, get targets() { return targets; }, get score() { return score; }, get weapon() { return wpn; }, get turrets() { return turrets; },
   get money() { return Meta.save.bank; }, Meta, get missRun() { return missRun; }, get round() { return round; }, get shells() { return wpn ? wpn.ammo : 0; },
   get boss() { return bossT; }, get projs() { return projs; },
-  setMoney(m) { Meta.save.bank = m; Meta.persist(); }, toLogical: (x, y) => ({ x: x / W, y: y / H }), dims: () => ({ W, H, GROUND, SKY_TOP, SKY_BOT, BAR, S, U }),
-  forceClear() { queue = []; targets = []; }, forceDie() { missRun = maxMiss; die(); }, get fromCkpt() { return fromCkpt; }, setMiss(n) { missRun = n; }, perfectClear() { queue = []; targets = []; roundHits = roundTotal; }, get maxMiss() { return maxMiss; }, checkpoint: m => checkpointFor(m || Meta.save.equip.map), continueCkpt() { continueCheckpoint(); },
+  setMoney(m) { Meta.save.bank = m; Meta.persist(); }, setScore(n) { score = n; }, setCash(n) { runCash = n; }, toLogical: (x, y) => ({ x: x / W, y: y / H }), dims: () => ({ W, H, GROUND, SKY_TOP, SKY_BOT, BAR, S, U }),
+  forceClear() { queue = []; targets = []; }, forceDie() { missRun = maxMiss; die(); }, get fromCkpt() { return fromCkpt; }, get infinity() { return infinity; }, get reviveUsed() { return reviveUsed; },
+  setMiss(n) { missRun = n; }, perfectClear() { queue = []; targets = []; roundHits = roundTotal; }, get maxMiss() { return maxMiss; },
+  checkpoint: (m, inf) => checkpointFor(m || Meta.save.equip.map, inf != null ? inf : infinity), continueCkpt() { continueCheckpoint(); },
   jumpRound(r) { round = r - 1; targets = []; queue = []; startRound(); },
+  reviveNow() { reviveUsed = true; revive(); },
+  forceMapClear() { infinity = false; bossKilled = true; round = ECON.CLEAR_ROUND; bossRound = true; queue = []; targets = []; projs = []; mapJustCleared = false; failedClear = false; if (state !== 'play') state = 'play'; },
+  startInfinity() { newGame(0, { infinity: true }); },
   spawn(k) { spawn(k); }, setAim(x, y) { aim = { x, y }; lightPos = { x, y }; }, hold(on) { holding = on; },
   grantAll() { ECON.TRACKS.forEach(t => Meta.save.lv[t.id] = t.val.length - 1); Meta.persist(); },
   makeCard: o => makeCard(o || {}).toDataURL('image/png'),
-  rebuild() { buildBg(); }, openShop(tab) { shopTab = tab || shopTab; openShop('title'); }, openBoard(m) { openBoard(m, 'title'); },
+  rebuild() { buildBg(); }, toTitle() { toTitle(); }, openShop(tab) { shopTab = tab || shopTab; openShop('title'); }, openBoard(m) { openBoard(m, 'title'); },
 };
 })();

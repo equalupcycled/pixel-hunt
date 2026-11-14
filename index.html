@@ -47,9 +47,13 @@
     <div class="title-spacer"></div>
     <div class="title-best">HIGH SCORE <b id="title-best">0</b> &middot; <span class="cashc" id="title-bank">$0</span></div>
     <div class="mapsel"><button id="btn-map-prev" class="pbtn small">&#9664;</button><div><b id="title-map">MEADOW</b><small id="title-mapbest"></small></div><button id="btn-map-next" class="pbtn small">&#9654;</button></div>
+    <div id="title-clear" class="clearprog"></div>
     <div class="tiny" id="title-loadout"></div>
     <div id="title-next" class="nextbox"></div>
-    <button id="btn-play" class="pbtn big">PLAY</button>
+    <div class="row" id="title-actions">
+      <button id="btn-play" class="pbtn big">PLAY</button>
+      <button id="btn-infinity" class="pbtn big gold-btn hidden">INFINITY</button>
+    </div>
     <div class="row">
       <button id="btn-armory" class="pbtn">ARMORY</button>
       <button id="btn-missions" class="pbtn">MISSIONS</button>
@@ -70,7 +74,9 @@
         <li><b>TAP</b> a bird to shoot it.</li>
         <li>Your gun starts with <b>1 SHELL</b>. Tap <b>RELOAD</b> (or swipe down) &mdash; you can't shoot while reloading.</li>
         <li>Every target that gets away is <b>1 X</b>. <b>3 X total</b> and it's <b>GAME OVER</b> (Lucky Feather allows 4, then 5). A <b>PERFECT</b> round gives one X back.</li>
-        <li><b>CHECKPOINTS</b> every 5 rounds (5, 10, 15...) are saved per map. After game over you can continue from your checkpoint (X's cleared) &mdash; checkpoint runs earn cash but aren't ranked.</li>
+        <li><b>CHECKPOINTS</b> every 5 rounds (5, 10, 15...) are saved per map. After game over you can continue from your checkpoint (score starts at 0, X's cleared) &mdash; checkpoint runs earn cash but aren't ranked.</li>
+        <li>Or <b>WATCH AD TO CONTINUE</b> once per run: you restart the <b>same round</b> and <b>keep your score</b> (X's cleared). Fresh runs (from round 1) stay ranked after a continue.</li>
+        <li>Beat that map's <b>ROUND 30 BOSS</b> to <b>CLEAR</b> it and unlock <b>INFINITY</b> &mdash; endless rounds with a separate Infinity high score per map.</li>
         <li>Hit streaks multiply your score. <span class="gold">GOLDEN BIRDS</span> pay big.</li>
         <li><span class="pink">PINK LOVEBIRDS</span> are protected &mdash; shooting one costs cash. Letting them go is fine.</li>
         <li>Birds fly in from the <b>LEFT</b> and leave on the <b>RIGHT</b>. Each one that gets across = <b>1 X</b>.</li>
@@ -79,7 +85,7 @@
         <li><b>TURRETS</b> help with birds about to escape (limited shots). <b>FLAK</b>: tap it, then tap the sky. <b>CALL</b> lures golden birds. <b>DECOY</b> gathers &amp; slows birds.</li>
         <li>Every <b>10th round is a BOSS</b>. It makes one slow pass left to right &mdash; shoot it down before it reaches the right edge or it counts as a miss.</li>
         <li>Unlock <b>MAPS</b> with tougher animals and bigger payouts. Top 10 scores per map go on the <b>LEADERBOARD</b>.</li>
-        <li>Your <b>$</b> and upgrades are <b>saved forever</b>. Big upgrades take a few runs to afford &mdash; keep hunting!</li>
+        <li>Your <b>$</b> and upgrades are <b>saved forever</b>. Buy them in the <b>ARMORY</b> from the title screen or after game over &mdash; you can't shop during a run or between rounds. Big upgrades take a few runs to afford.</li>
         <li>Complete <b>missions</b>, unlock <b>achievements</b> and claim your <b>daily reward</b> for bonus cash.</li>
       </ul>
       <button id="btn-how-close" class="pbtn">GOT IT</button>
@@ -93,10 +99,10 @@
         <h2>ARMORY</h2>
         <div class="cash">$<b id="shop-money">0</b></div>
       </div>
-      <div class="shop-sub" id="shop-sub">ROUND 1 CLEARED</div>
+      <div class="shop-sub" id="shop-sub">UPGRADES ARE PERMANENT</div>
       <div id="shop-tabs"><button data-tab="weapons">GUNS</button><button data-tab="turrets">TURRETS</button><button data-tab="gear">GEAR</button><button data-tab="maps">MAPS</button><button data-tab="style">STYLE</button></div>
       <div id="shop-list"></div>
-      <button id="btn-next" class="pbtn big">NEXT ROUND &#9654;</button>
+      <button id="btn-next" class="pbtn big">BACK</button>
     </div>
   </div>
 
@@ -114,22 +120,23 @@
   <div id="ov-continue" class="overlay hidden">
     <div class="panel">
       <h2 class="red">OUT OF LUCK!</h2>
-      <p>Too many got away.</p>
-      <button id="btn-revive" class="pbtn big green">&#9654; WATCH AD<br><small>TO CONTINUE</small></button>
+      <p id="cont-detail">Resume this round and keep your score.</p>
+      <button id="btn-revive" class="pbtn big green">&#9654; WATCH AD<br><small>CONTINUE THIS RUN &middot; KEEP SCORE</small></button>
       <button id="btn-norevive" class="pbtn">NO THANKS <span id="cont-count">8</span></button>
-      <p class="tiny">One continue per run</p>
+      <p class="tiny" id="cont-note">One continue per run &middot; X's cleared &middot; still ranked</p>
     </div>
   </div>
 
   <!-- game over -->
   <div id="ov-over" class="overlay hidden">
     <div class="panel">
-      <h2 class="red">GAME OVER</h2>
+      <h2 id="go-title" class="red">GAME OVER</h2>
       <div id="newbest" class="newbest hidden">NEW HIGH SCORE!</div>
       <div id="go-rank" class="rank hidden"></div>
       <div id="go-unranked" class="tiny gold hidden"></div>
       <button id="btn-ckpt" class="pbtn big green hidden">CONTINUE FROM ROUND 5</button>
       <button id="btn-again" class="pbtn big">PLAY AGAIN</button>
+      <button id="btn-go-infinity" class="pbtn big gold-btn hidden">PLAY INFINITY</button>
       <div class="earned">EARNED <b id="go-earned">+$0</b></div>
       <button id="btn-double" class="pbtn green">&#9654; WATCH AD: 2X EARNINGS</button>
       <div id="go-next" class="nextbox"></div>
@@ -188,6 +195,7 @@
     <div class="panel scroll">
       <h2>LEADERBOARD</h2>
       <div id="board-tabs"></div>
+      <div id="board-modes" class="row2"></div>
       <div id="board-src" class="shop-sub"></div>
       <div id="board-list"></div>
       <button id="btn-board-share" class="pbtn fb">SHARE TO FACEBOOK</button>

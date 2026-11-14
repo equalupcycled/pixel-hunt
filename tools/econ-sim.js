@@ -62,7 +62,8 @@ function run(lv, equip, mapId = 'meadow', start = 1) {
   const slots = V(lv, 'turret.slots');
   const turrets = ['pellet', 'tesla', 'missile'].filter(t => lv['own.' + t]).reverse().slice(0, slots);
   const ammo = { v: 0, t: 0 };
-  while (alive && r < 90 + start) {
+  const cap = (E.CLEAR_ROUND || 90); // campaign ends after the round-30 boss
+  while (alive && r < cap) {
     r++; const d0 = E.difficulty(r); const d = Object.assign({}, d0, { speed: d0.speed * M.speed, deerSpeed: d0.deerSpeed * M.speed, life: d0.life * M.life * (M.dark ? 0.9 + 0.1 * (lv.flashlight || 0) / 4 : 1), scale: d0.scale * M.size });
     if (r % E.BOSS_EVERY === 0) { // boss: needs bossHp hits within bossTime
       const hp = E.bossHp(r), pr = weaponTry(W.id, lv, d, 'deer', false, st, { v: 999, t: 0 }).p;

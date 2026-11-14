@@ -23,7 +23,7 @@ async def part_a(b):
     box = await pg.eval_on_selector('#game', 'e=>{const r=e.getBoundingClientRect();return [r.left,r.top,r.width,r.height]}')
     H = (await pg.evaluate('PH.dims()'))['H']
     async def tap_target():
-        t = await pg.evaluate('PH.targets.filter(t=>t.state==="fly" && t.kind!=="decoy").map(t=>[t.x,t.y])')
+        t = await pg.evaluate('PH.targets.filter(t=>t.state==="fly" && t.kind!=="decoy" && t.x>14 && t.x<166).map(t=>[t.x,t.y])')
         if not t: return False
         x, y = t[0]; await pg.mouse.click(box[0] + x / 180 * box[2], box[1] + y / H * box[3]); return True
     for i in range(40):
@@ -109,8 +109,8 @@ async def part_b(b):
         await pg.click('#btn-play'); await pg.wait_for_timeout(300)
         await pg.evaluate(f'PH.jumpRound({rnd})'); await pg.wait_for_timeout(2600)
     async def target(pred='true', wait=8000):
-        await pg.wait_for_function(f'PH.targets.some(t=>t.state==="fly" && t.kind!=="decoy" && t.y < PH.dims().GROUND && ({pred}))', timeout=wait)
-        return await pg.evaluate(f'(()=>{{const t=PH.targets.find(t=>t.state==="fly" && t.kind!=="decoy" && t.y < PH.dims().GROUND && ({pred})); return [t.x+t.vx*0.05, t.y+(t.vy||0)*0.05]}})()')
+        await pg.wait_for_function(f'PH.targets.some(t=>t.state==="fly" && t.kind!=="decoy" && t.y < PH.dims().GROUND && t.x > 16 && t.x < 160 && ({pred}))', timeout=wait)
+        return await pg.evaluate(f'(()=>{{const t=PH.targets.find(t=>t.state==="fly" && t.kind!=="decoy" && t.y < PH.dims().GROUND && t.x > 16 && t.x < 160 && ({pred})); return [t.x+t.vx*0.05, t.y+(t.vy||0)*0.05]}})()')
     async def quit():
         await pg.evaluate("PH.forceClear()"); await pg.click('#btn-pause'); await pg.click('#btn-quit'); await pg.wait_for_timeout(200)
 

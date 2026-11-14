@@ -25,10 +25,11 @@ Live: https://pixel-hunt-o4vw.onrender.com/ (Render static site, auto-deploys fr
 - `manifest.webmanifest`, `sw.js`, `icons/` - PWA (installable, works offline); `icons/share-banner.png` = 1200x628 og:image
 
 ## Rules
+- Everything flies/runs **left to right**: enters on the left edge, and if it reaches the right edge unshot it escapes = **1 miss (X)**.
 - Lose: **3 targets escape in a row** (birds, ground animals, or a boss). Any hit by *you* resets the counter (turret kills don't).
 - Manual reload for every weapon: RELOAD / BOLT / NOCK / VENT button, swipe down (tap weapons) or R / Space.
 - Pink lovebirds are protected: shooting one costs cash + points; letting them go is free. Turrets never shoot them.
-- Every 10th round is a **boss round** with a health bar and escape timer.
+- Every 10th round is a **boss round** with a health bar; the boss makes one slow left-to-right pass (the timer is how long until it reaches the right edge).
 - Money, upgrades and equipment **persist** (localStorage `pixelhunt.save.v1`, schema v2). High score overall in `pixelhunt.best`, per map in the save.
 
 ## Arsenal

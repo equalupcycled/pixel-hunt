@@ -384,6 +384,10 @@ function resize() {
   cvs.style.width = cw + 'px'; cvs.style.height = ch + 'px';
   wrap.style.width = cw + 'px'; wrap.style.height = ch + 'px';
   wrap.style.setProperty('--u', U + 'px');
+  const r = wrap.getBoundingClientRect(), cs = getComputedStyle(document.documentElement);
+  const sat = parseFloat(cs.getPropertyValue('--sat')) || 0, sar = parseFloat(cs.getPropertyValue('--sar')) || 0;
+  wrap.style.setProperty('--safe-top', Math.max(0, sat - r.top) + 'px');
+  wrap.style.setProperty('--safe-right', Math.max(0, sar - ((window.innerWidth || 0) - r.right)) + 'px');
   GROUND = H - 72; BAR = 30; SKY_TOP = 34; SKY_BOT = GROUND - 26;
   darkC.width = W; darkC.height = H;
   buildBg();
@@ -1212,7 +1216,6 @@ function openShop(from = 'title', keep) {
   $('shop-sub').textContent = shopInf
     ? ('INFINITY WALLET · NO LEVEL CAP · SEPARATE FROM CLASSIC · ' + Meta.totalBought() + ' BOUGHT')
     : ('CLASSIC · UPGRADES ARE PERMANENT · ' + Meta.totalBought() + '/' + ECON.TOTAL_LEVELS + ' OWNED');
-  $('btn-next').innerHTML = 'BACK';
   const anyClear = ECON.MAPS.some(m => Meta.isCleared(m.id));
   const modes = $('shop-modes');
   if (modes) {
@@ -1553,6 +1556,7 @@ function claimDaily(mult) {
 $('btn-daily-claim').addEventListener('click', () => { Sfx.init(); claimDaily(1); });
 $('btn-daily-2x').addEventListener('click', () => { Sfx.init(); Ads.showRewarded().then(ok => claimDaily(ok ? 2 : 1)); });
 $('btn-daily').addEventListener('click', () => { Sfx.init(); Sfx.click(); maybeDaily(); });
+$('btn-daily-close').addEventListener('click', () => { Sfx.click(); show('ov-daily', false); });
 
 // ---------- missions / achievements / stats ----------
 function openMissions() {

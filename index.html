@@ -67,7 +67,8 @@
     <div class="tiny">SHOOT &middot; RELOAD BY HAND &middot; DON'T LET 3 GET AWAY</div>
   </div>
 
-  <div id="ov-how" class="overlay hidden">
+  <div id="ov-how" class="overlay has-x hidden">
+    <button type="button" class="x-close" id="btn-how-close" aria-label="Close"><span class="x-art" aria-hidden="true"></span></button>
     <div class="panel">
       <h2>HOW TO PLAY</h2>
       <ul class="how">
@@ -89,12 +90,12 @@
         <li>Your <b>$</b> and upgrades are <b>saved forever</b>. Buy them in <b>UPGRADES</b> from the title screen or after game over &mdash; you can't shop during a run or between rounds. Big upgrades take a few runs to afford.</li>
         <li>Complete <b>missions</b>, unlock <b>achievements</b> and claim your <b>daily reward</b> for bonus cash.</li>
       </ul>
-      <button id="btn-how-close" class="pbtn">GOT IT</button>
     </div>
   </div>
 
   <!-- shop -->
-  <div id="ov-shop" class="overlay hidden">
+  <div id="ov-shop" class="overlay has-x hidden">
+    <button type="button" class="x-close" id="btn-next" aria-label="Close"><span class="x-art" aria-hidden="true"></span></button>
     <div class="panel shop">
       <div class="shop-head">
         <h2>UPGRADES</h2>
@@ -104,7 +105,6 @@
       <div id="shop-modes" class="hidden"></div>
       <div id="shop-tabs"><button data-tab="weapons">GUNS</button><button data-tab="turrets">TURRETS</button><button data-tab="gear">GEAR</button><button data-tab="maps">MAPS</button><button data-tab="style">STYLE</button></div>
       <div id="shop-list"></div>
-      <button id="btn-next" class="pbtn big">BACK</button>
     </div>
   </div>
 
@@ -157,7 +157,8 @@
   </div>
 
   <!-- daily reward -->
-  <div id="ov-daily" class="overlay hidden">
+  <div id="ov-daily" class="overlay has-x hidden">
+    <button type="button" class="x-close" id="btn-daily-close" aria-label="Close"><span class="x-art" aria-hidden="true"></span></button>
     <div class="panel">
       <h2>DAILY REWARD</h2>
       <p>Log in every day &mdash; day 7 is the big one!</p>
@@ -168,7 +169,8 @@
   </div>
 
   <!-- missions / achievements / stats -->
-  <div id="ov-missions" class="overlay hidden">
+  <div id="ov-missions" class="overlay has-x hidden">
+    <button type="button" class="x-close" id="btn-missions-close" aria-label="Close"><span class="x-art" aria-hidden="true"></span></button>
     <div class="panel scroll">
       <h2>MISSIONS</h2>
       <div id="ms-list" class="mslist"></div>
@@ -176,7 +178,6 @@
       <div id="ach-list" class="achlist"></div>
       <div class="sec">STATS</div>
       <div id="stats-list" class="stats small"></div>
-      <button id="btn-missions-close" class="pbtn big">BACK</button>
     </div>
   </div>
 
@@ -193,7 +194,8 @@
   </div>
 
   <!-- leaderboard -->
-  <div id="ov-board" class="overlay hidden">
+  <div id="ov-board" class="overlay has-x hidden">
+    <button type="button" class="x-close" id="btn-board-close" aria-label="Close"><span class="x-art" aria-hidden="true"></span></button>
     <div class="panel scroll">
       <h2>LEADERBOARD</h2>
       <div id="board-tabs"></div>
@@ -201,7 +203,6 @@
       <div id="board-src" class="shop-sub"></div>
       <div id="board-list"></div>
       <button id="btn-board-share" class="pbtn fb">SHARE TO FACEBOOK</button>
-      <button id="btn-board-close" class="pbtn big">BACK</button>
     </div>
   </div>
 

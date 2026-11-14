@@ -13,7 +13,7 @@
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Pixel Hunt">
 <meta property="og:title" content="Pixel Hunt - retro pixel hunting">
-<meta property="og:description" content="Shotguns, bows, lasers, turrets, 5 maps and boss fights. Miss 3 in a row and it's over. How high can you score?">
+<meta property="og:description" content="Shotguns, bows, lasers, turrets, 5 maps and boss fights. Let 3 get away and it's over. How high can you score?">
 <meta property="og:url" content="https://pixel-hunt-o4vw.onrender.com/">
 <meta property="og:image" content="https://pixel-hunt-o4vw.onrender.com/icons/share-banner.png">
 <meta property="og:image:secure_url" content="https://pixel-hunt-o4vw.onrender.com/icons/share-banner.png">
@@ -60,7 +60,7 @@
       <button id="btn-mute-t" class="pbtn small mute-btn">SOUND: ON</button>
       <button id="btn-daily" class="pbtn small gold-btn hidden">DAILY!</button>
     </div>
-    <div class="tiny">SHOOT &middot; RELOAD BY HAND &middot; DON'T MISS 3 IN A ROW</div>
+    <div class="tiny">SHOOT &middot; RELOAD BY HAND &middot; DON'T LET 3 GET AWAY</div>
   </div>
 
   <div id="ov-how" class="overlay hidden">
@@ -69,10 +69,11 @@
       <ul class="how">
         <li><b>TAP</b> a bird to shoot it.</li>
         <li>Your gun starts with <b>1 SHELL</b>. Tap <b>RELOAD</b> (or swipe down) &mdash; you can't shoot while reloading.</li>
-        <li>Miss <b>3 targets in a row</b> (birds or deer get away) and it's <b>GAME OVER</b>. A hit resets the counter.</li>
+        <li>Every target that gets away is <b>1 X</b>. <b>3 X total</b> and it's <b>GAME OVER</b> (Lucky Feather allows 4, then 5). A <b>PERFECT</b> round gives one X back.</li>
+        <li><b>CHECKPOINTS</b> every 5 rounds (5, 10, 15...) are saved per map. After game over you can continue from your checkpoint (X's cleared) &mdash; checkpoint runs earn cash but aren't ranked.</li>
         <li>Hit streaks multiply your score. <span class="gold">GOLDEN BIRDS</span> pay big.</li>
         <li><span class="pink">PINK LOVEBIRDS</span> are protected &mdash; shooting one costs cash. Letting them go is fine.</li>
-        <li>Birds fly in from the <b>LEFT</b> and leave on the <b>RIGHT</b>. Each one that gets across = <b>1 X</b>. 3 X in a row = game over; any hit resets it.</li>
+        <li>Birds fly in from the <b>LEFT</b> and leave on the <b>RIGHT</b>. Each one that gets across = <b>1 X</b>.</li>
         <li>From round 4, <b>DEER</b> dash along the treeline. Worth a lot &mdash; and they count as a miss if they escape.</li>
         <li><b>WEAPONS:</b> tap to fire the shotgun, handgun &amp; rifle (the rifle pierces in a line from you). <b>Hold</b> to spray the machine gun or sweep the laser (VENT it when hot). Bow: <b>hold to draw, release</b> &mdash; arrows arc, so lead your target.</li>
         <li><b>TURRETS</b> help with birds about to escape (limited shots). <b>FLAK</b>: tap it, then tap the sky. <b>CALL</b> lures golden birds. <b>DECOY</b> gathers &amp; slows birds.</li>
@@ -113,7 +114,7 @@
   <div id="ov-continue" class="overlay hidden">
     <div class="panel">
       <h2 class="red">OUT OF LUCK!</h2>
-      <p>3 got away in a row.</p>
+      <p>Too many got away.</p>
       <button id="btn-revive" class="pbtn big green">&#9654; WATCH AD<br><small>TO CONTINUE</small></button>
       <button id="btn-norevive" class="pbtn">NO THANKS <span id="cont-count">8</span></button>
       <p class="tiny">One continue per run</p>
@@ -126,6 +127,9 @@
       <h2 class="red">GAME OVER</h2>
       <div id="newbest" class="newbest hidden">NEW HIGH SCORE!</div>
       <div id="go-rank" class="rank hidden"></div>
+      <div id="go-unranked" class="tiny gold hidden"></div>
+      <button id="btn-ckpt" class="pbtn big green hidden">CONTINUE FROM ROUND 5</button>
+      <button id="btn-again" class="pbtn big">PLAY AGAIN</button>
       <div class="earned">EARNED <b id="go-earned">+$0</b></div>
       <button id="btn-double" class="pbtn green">&#9654; WATCH AD: 2X EARNINGS</button>
       <div id="go-next" class="nextbox"></div>
@@ -138,7 +142,6 @@
       </div>
       <div class="sec">MISSIONS</div>
       <div id="go-missions" class="mslist"></div>
-      <button id="btn-again" class="pbtn big">PLAY AGAIN</button>
       <div class="row2"><button id="btn-share" class="pbtn fb">SHARE TO FACEBOOK</button><button id="btn-go-board" class="pbtn small">TOP 10</button></div>
       <div class="row2"><button id="btn-go-shop" class="pbtn">ARMORY</button><button id="btn-menu" class="pbtn">TITLE</button></div>
     </div>

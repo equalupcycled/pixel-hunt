@@ -10,7 +10,7 @@ window.Meta = (() => {
     stats: { runs: 0, kills: 0, gold: 0, deer: 0, perfect: 0, multi: 0, bestRound: 0, bestStreak: 0, shots: 0, hits: 0, earned: 0, bosses: 0, turretKills: 0 },
     missions: [], mDone: 0, ach: {}, daily: { last: null, day: -1 }, ads: { date: null, doubles: 0 },
     equip: { primary: 'shotgun', secondary: null, turrets: [], skin: 'classic', cross: 'white', map: 'meadow' },
-    cosm: ['classic', 'white'], bestByMap: {}, roundByMap: {},
+    cosm: ['classic', 'white'], bestByMap: {}, roundByMap: {}, ckpt: {},
   });
   function merge(d, s) { for (const k in s) { if (s[k] && typeof s[k] === 'object' && !Array.isArray(s[k]) && d[k] && typeof d[k] === 'object') merge(d[k], s[k]); else d[k] = s[k]; } return d; }
   let save = def();
@@ -131,8 +131,8 @@ window.Meta = (() => {
 
   // ---------- run tracking & events ----------
   let run = null, notices = [];
-  function startRun() {
-    run = { kills: 0, round: 0, streak: 0, score: 0, clean: true, cleanRound: 0 };
+  function startRun(o) { // o.base = rounds skipped by starting from a checkpoint (run missions count rounds played)
+    run = { kills: 0, round: 0, streak: 0, score: 0, clean: true, cleanRound: 0, base: (o && o.base) || 0 };
     save.missions.forEach(m => { if (MT[m.type].scope === 'run') m.p = 0; });
   }
   function progressOf(m) {
@@ -177,7 +177,7 @@ window.Meta = (() => {
     } else if (type === 'shot') { s.shots++; }
     else if (type === 'multi') { s.multi++; save.missions.forEach(m => m.type === 'multi' && m.p++); run.score = d.score || run.score; }
     else if (type === 'decoy') { run.clean = false; }
-    else if (type === 'roundStart') { run.round = d.round; if (run.clean) run.cleanRound = d.round; s.bestRound = Math.max(s.bestRound, d.round); }
+    else if (type === 'roundStart') { run.round = d.round - run.base; if (run.clean) run.cleanRound = run.round; s.bestRound = Math.max(s.bestRound, d.round); }
     else if (type === 'boss') { s.bosses++; save.missions.forEach(m => m.type === 'boss' && m.p++); }
     else if (type === 'turretKill') { s.turretKills++; save.missions.forEach(m => m.type === 'turret' && m.p++); }
     else if (type === 'roundClear') { if (d.perfect) { s.perfect++; save.missions.forEach(m => m.type === 'perfect' && m.p++); } run.score = d.score || run.score; }

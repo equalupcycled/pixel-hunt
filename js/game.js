@@ -431,6 +431,9 @@ let best = store.get('best', 0);
 let M = ECON.MAPS[0];
 let score = 0, runCash = 0, round = 0, shots = 0, hits = 0, streak = 0, bestStreak = 0, missRun = 0, maxMiss = 3, moneyMult = 1, eyeMult = 1;
 let focusCharges = 0, focusMax = 0, focusDur = 3, focusT = 0, reviveUsed = false;
+// missRun = X's used this run (TOTAL, not in a row). fromCkpt = checkpoint round this run started at (0 = fresh, ranked run).
+let fromCkpt = 0, ckptFlash = 0, ckptRound = 0;
+const CKPT_EVERY = 5;
 let roundHits = 0, roundEsc = 0, roundTotal = 0, queue = [], spawnT = 0, diff = null, bossT = null, bossRound = false;
 let introT = 0, clearT = 0, dieT = 0, banner = '', banner2 = '';
 let targets = [], parts = [], floats = [], flashes = [], projs = [], zaps = [], tracers = [];
@@ -478,7 +481,7 @@ function applyGear() {
 function resetRun() {
   if (!curMap || curMap.id !== Meta.save.equip.map) buildBg();
   M = curMap;
-  score = 0; runCash = 0; round = 0; shots = 0; hits = 0; streak = 0; bestStreak = 0; missRun = 0; reviveUsed = false;
+  score = 0; runCash = 0; round = 0; shots = 0; hits = 0; streak = 0; bestStreak = 0; missRun = 0; reviveUsed = false; fromCkpt = 0; ckptFlash = 0;
   applyGear();
   const eq = Meta.save.equip;
   weapons = [makeWeapon(Meta.owns(eq.primary) ? eq.primary : 'shotgun')];
@@ -536,9 +539,19 @@ function startRound() {
       : round === 4 ? MAP_SET[M.id].hint : round === 3 ? "DON'T SHOOT PINK BIRDS" : round === ECON.BOSS_EVERY - 1 ? 'BOSS NEXT ROUND!' : '';
     Sfx.roundStart();
   }
+  if (round % CKPT_EVERY === 0) reachCheckpoint();
   showGameButtons(true);
   Meta.event('roundStart', { round }); notify();
 }
+// Checkpoint = the START of round 5, 10, 15... (per map, persistent). Boss rounds are 10, 20...: their checkpoint is
+// saved as the boss round begins, so continuing puts you right in front of that boss with clean X's.
+function reachCheckpoint() {
+  const c = Meta.save.ckpt || (Meta.save.ckpt = {});
+  const isNew = round > (c[M.id] || 0);
+  if (isNew) { c[M.id] = round; Meta.persist(); }
+  if (round !== fromCkpt) { ckptFlash = 2.6; ckptRound = round; Sfx.buy(); if (bossRound) introT = Math.max(introT, 2.8); }
+}
+function checkpointFor(mapId) { const c = Meta.save.ckpt || {}; return c[mapId] || 0; }
 
 function tImg(t) { return t.kind === 'eyes' ? { width: 12, height: 6 } : SPR[t.set][0]; }
 function groundY(set, sc) { return GROUND + 12 - SPR[set][0].height * sc / 2; }
@@ -614,7 +627,7 @@ function damage(t, dmg, src, info = {}) {
 }
 function kill(t, src, info = {}) {
   const byYou = src !== 'turret';
-  if (byYou) { missRun = 0; streak++; bestStreak = Math.max(bestStreak, streak); }
+  if (byYou) { streak++; bestStreak = Math.max(bestStreak, streak); }
   hits += byYou ? 1 : 0; roundHits++; shotKills++;
   const mult = byYou ? Math.min(Math.max(streak, 1), 5) : 1, wd = wpn.def;
   let pts, cash;
@@ -679,7 +692,7 @@ function escaped(t) {
   if (missRun >= maxMiss) die();
 }
 function die() {
-  state = 'dying'; dieT = 1.6; banner = 'GAME OVER'; banner2 = missRun + ' IN A ROW GOT AWAY';
+  state = 'dying'; dieT = 1.6; banner = 'GAME OVER'; banner2 = missRun + ' GOT AWAY';
   shake = 6; holding = false; drawing = null; Sfx.gameOver(); showGameButtons(false);
 }
 
@@ -941,6 +954,7 @@ function update(dt) {
     if (wpn.id === 'laser') { if (holding && wpn.swapT <= 0) fireLaser(dt); else wpn.beam = null; if (!holding) wpn.beam = null; }
     if (drawing) drawing.t += dt;
   }
+  ckptFlash = Math.max(0, ckptFlash - dt);
   shake = Math.max(0, shake - dt * 25); skyFlash = Math.max(0, skyFlash - dt); whiteFlash = Math.max(0, whiteFlash - dt);
 
   if (state === 'title') {
@@ -1093,6 +1107,7 @@ function roundClear() {
   addCash(bonusCash);
   banner = perfect ? 'PERFECT!' : 'ROUND CLEAR';
   banner2 = '+$' + bonusCash + (perfect ? '  +' + fmt(5000 * round) : '');
+  if (perfect && missRun > 0) { missRun--; banner2 += '  -1 X'; } // a perfect round gives back one X
   if (perfect) score += 5000 * round;
   Sfx.clear(); showGameButtons(false);
   Meta.event('roundClear', { perfect, score }); Meta.persist(); notify();
@@ -1280,12 +1295,13 @@ function revive() {
 let earnedShown = 0, lastRun = null;
 function gameOver() {
   state = 'over';
+  const ranked = !fromCkpt; // only fresh runs from round 1 go on the leaderboard / count as bests
   const mapBest = Meta.save.bestByMap[M.id] || 0;
-  const isBest = score > mapBest, isAll = score > best;
+  const isBest = ranked && score > mapBest, isAll = ranked && score > best;
   if (isAll) { best = score; store.set('best', best); }
-  Meta.endRun({ score, round, earned: runCash });
-  lastRun = { score, round, map: M.id, mapName: M.name, weapon: wpn.id, isBest: isBest && score > 0, isAll: isAll && score > 0 };
-  if (window.Leaderboard && Leaderboard.qualifies(M.id, score)) openNameEntry();
+  Meta.endRun({ score: ranked ? score : 0, round, earned: runCash });
+  lastRun = { score, round, map: M.id, mapName: M.name, weapon: wpn.id, isBest: isBest && score > 0, isAll: isAll && score > 0, fromCkpt };
+  if (ranked && window.Leaderboard && Leaderboard.qualifies(M.id, score)) openNameEntry();
   else showOver(null);
 }
 function showOver(rank) {
@@ -1305,6 +1321,13 @@ function showOver(rank) {
   dbl.disabled = left <= 0;
   dbl.innerHTML = left > 0 ? `&#9654; WATCH AD: 2X EARNINGS<br><small>+$${fmt(earnedShown)} MORE \u00b7 ${left} LEFT TODAY</small>` : '2X USED UP TODAY<br><small>COMES BACK TOMORROW</small>';
   renderNext('go-next'); renderMissions('go-missions');
+  $('go-unranked').textContent = r.fromCkpt ? `CHECKPOINT RUN (FROM ROUND ${r.fromCkpt}) \u00b7 NOT RANKED` : '';
+  show('go-unranked', !!r.fromCkpt);
+  const ck = checkpointFor(r.map);
+  $('btn-ckpt').innerHTML = `CONTINUE FROM ROUND ${ck}<br><small>CHECKPOINT \u00b7 X'S CLEARED \u00b7 NOT RANKED</small>`;
+  show('btn-ckpt', ck > 0);
+  $('btn-again').innerHTML = ck > 0 ? 'START FROM ROUND 1<br><small>RANKED RUN</small>' : 'PLAY AGAIN';
+  $('btn-again').classList.toggle('green', false);
   show('ov-over', true); notify();
 }
 function renderNext(id) {
@@ -1500,13 +1523,19 @@ function toTitle() {
   if (!curMap || curMap.id !== Meta.save.equip.map) buildBg();
   updateTitle(); show('ov-title', true); maybeDaily();
 }
-function newGame() {
+function newGame(fromRound) {
   Sfx.init(); Sfx.click(); Ads.init();
   ['ov-title', 'ov-over', 'ov-pause', 'ov-shop', 'ov-daily', 'ov-board'].forEach(id => show(id, false));
-  targets = []; resetRun(); Meta.startRun(); startRound();
+  targets = []; resetRun();
+  const ck = fromRound > 1 ? fromRound : 0;
+  Meta.startRun({ base: ck ? ck - 1 : 0 });
+  if (ck) { fromCkpt = ck; round = ck - 1; } // normal difficulty for that round, score from 0, X's cleared
+  startRound();
 }
-$('btn-play').addEventListener('click', newGame);
-$('btn-again').addEventListener('click', newGame);
+function continueCheckpoint() { const ck = checkpointFor(Meta.save.equip.map); if (ck) newGame(ck); else newGame(); }
+$('btn-play').addEventListener('click', () => newGame());
+$('btn-again').addEventListener('click', () => newGame());
+$('btn-ckpt').addEventListener('click', continueCheckpoint);
 $('btn-menu').addEventListener('click', () => { Sfx.click(); toTitle(); });
 $('btn-how').addEventListener('click', () => { Sfx.init(); Sfx.click(); show('ov-how', true); });
 $('btn-how-close').addEventListener('click', () => { Sfx.click(); show('ov-how', false); });
@@ -1668,6 +1697,13 @@ function render() {
     text(banner, W / 2, y, 2, state === 'dying' || (bossRound && state === 'intro') ? '#ff5a5a' : '#ffe066', 'center');
     if (banner2) text(banner2, W / 2, y + 14, 1, '#fff', 'center');
   }
+  if (ckptFlash > 0 && (state === 'intro' || state === 'play')) { // CHECKPOINT! ribbon above the round banner
+    const y = H * 0.4 - 40, a = Math.min(1, ckptFlash * 2);
+    ctx.globalAlpha = a; ctx.fillStyle = '#1b6b2a'; ctx.fillRect(0, y - 7, W, 31); ctx.fillStyle = '#ffd23f'; ctx.fillRect(0, y - 7, W, 2); ctx.fillRect(0, y + 22, W, 2);
+    text('CHECKPOINT!', W / 2, y, 2, Math.floor(ckptFlash * 6) % 2 ? '#ffe066' : '#fff', 'center');
+    text('ROUND ' + ckptRound + ' SAVED' + (bossRound ? ' - BOSS NEXT' : ''), W / 2, y + 14, 1, '#cfe0ff', 'center');
+    ctx.globalAlpha = 1;
+  }
 }
 function drawCrosshair() {
   const mouse = cursor && performance.now() - lastTouch > 800;
@@ -1794,7 +1830,7 @@ window.PH = {
   get money() { return Meta.save.bank; }, Meta, get missRun() { return missRun; }, get round() { return round; }, get shells() { return wpn ? wpn.ammo : 0; },
   get boss() { return bossT; }, get projs() { return projs; },
   setMoney(m) { Meta.save.bank = m; Meta.persist(); }, toLogical: (x, y) => ({ x: x / W, y: y / H }), dims: () => ({ W, H, GROUND, SKY_TOP, SKY_BOT, BAR, S, U }),
-  forceClear() { queue = []; targets = []; }, forceDie() { missRun = maxMiss; die(); },
+  forceClear() { queue = []; targets = []; }, forceDie() { missRun = maxMiss; die(); }, get fromCkpt() { return fromCkpt; }, setMiss(n) { missRun = n; }, perfectClear() { queue = []; targets = []; roundHits = roundTotal; }, get maxMiss() { return maxMiss; }, checkpoint: m => checkpointFor(m || Meta.save.equip.map), continueCkpt() { continueCheckpoint(); },
   jumpRound(r) { round = r - 1; targets = []; queue = []; startRound(); },
   spawn(k) { spawn(k); }, setAim(x, y) { aim = { x, y }; lightPos = { x, y }; }, hold(on) { holding = on; },
   grantAll() { ECON.TRACKS.forEach(t => Meta.save.lv[t.id] = t.val.length - 1); Meta.persist(); },

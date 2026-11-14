@@ -226,7 +226,7 @@ with sync_playwright() as p:
     errs.extend(merr)
     c2.close()
 
-    # 10) Infinity progression is isolated from Classic; uncapped levels; safe v4 defaults
+    # 10) Infinity progression is isolated from Classic; uncapped levels; safe v5 defaults (perks start at 0)
     c3 = b.new_context(viewport={'width': 390, 'height': 844}, device_scale_factor=3, is_mobile=True, has_touch=True)
     pg3 = c3.new_page(); e3 = []
     pg3.on('pageerror', lambda e: e3.append(str(e)))
@@ -354,7 +354,7 @@ with sync_playwright() as p:
     if R['migration'].get('lakeCleared'): fails.append('migration granted lake clear without round 30')
     if R['migration'].get('ckptClamped') != 30: fails.append('ckpt not clamped to 30, got %r' % R['migration'].get('ckptClamped'))
     if R['migration'].get('best') != 88000: fails.append('migration overwrote classic best, got %r' % R['migration'].get('best'))
-    if R['migration'].get('v') != 4: fails.append('migration schema not v4, got %r' % R['migration'].get('v'))
+    if R['migration'].get('v') != 5: fails.append('migration schema not v5, got %r' % R['migration'].get('v'))
     if R['migration'].get('infBank') not in (0, None): fails.append('migration should start Infinity wallet at 0, got %r' % R['migration'].get('infBank'))
     if R['migration'].get('infPrimary') not in ('shotgun', None) or R['migration'].get('infBought') not in (0, None):
         fails.append('migration should start Infinity at free shotgun, got %r' % {k: R['migration'].get(k) for k in ('infPrimary','infBought','infLvCap')})

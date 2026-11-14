@@ -6,7 +6,7 @@ window.Meta = (() => {
   const fmt = n => Math.round(n).toLocaleString('en-US');
   const dayStr = (d = new Date()) => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
   const def = () => ({
-    v: 4, bank: 0, lv: Object.fromEntries(E.TRACKS.map(t => [t.id, 0])),
+    v: 5, bank: 0, lv: Object.fromEntries(E.TRACKS.map(t => [t.id, 0])),
     stats: { runs: 0, kills: 0, gold: 0, deer: 0, perfect: 0, multi: 0, bestRound: 0, bestStreak: 0, shots: 0, hits: 0, earned: 0, bosses: 0, turretKills: 0 },
     missions: [], mDone: 0, ach: {}, daily: { last: null, day: -1 }, ads: { date: null, doubles: 0 },
     equip: { primary: 'shotgun', secondary: null, turrets: [], skin: 'classic', cross: 'white', map: 'meadow' },
@@ -50,7 +50,12 @@ window.Meta = (() => {
       save.infEquip = save.infEquip || { primary: 'shotgun', secondary: null, turrets: [] };
       if (!save.infEquip.primary) save.infEquip.primary = 'shotgun';
       if (!Array.isArray(save.infEquip.turrets)) save.infEquip.turrets = [];
-      save.v = Math.max(save.v || 2, 4);
+      // v4 -> v5: Perks tracks (perk.*) are new late-game upgrades. Missing keys start at 0 on both trees.
+      E.TRACKS.filter(tr => tr.group === 'perk').forEach(tr => {
+        if (save.lv[tr.id] == null) save.lv[tr.id] = 0;
+        if (save.infLv[tr.id] == null) save.infLv[tr.id] = 0;
+      });
+      save.v = Math.max(save.v || 2, 5);
     }
   } catch (e) {}
   try { const ob = +localStorage.getItem('pixelhunt.best') || 0; if (ob && !save.bestByMap.meadow) save.bestByMap.meadow = ob; } catch (e) {}

@@ -142,6 +142,46 @@
   GLOBAL.forEach(g => TRACKS.push(Object.assign({ w: 1, req: 0, group: 'gear' }, g)));
   MAPS.forEach(m => { if (m.w) TRACKS.push({ id: 'map.' + m.id, name: 'Map: ' + m.name, icon: 'map', w: m.w, req: m.req, val: [0, 1], group: 'map', of: m.id, unlock: true, desc: v => v ? 'Unlocked' : 'Unlock map' }); });
   TRACKS.push({ id: 'flashlight', name: 'Flashlight', icon: 'scope', w: 1, req: 120, needs: 'map.night', val: [40, 50, 60, 72, 85], group: 'gear', desc: v => `Night light radius ${v}px` });
+
+  // Late-game Perks: expensive, genuinely helpful, and distinct from Gear (Eye, Focus, Lucky Feather, Bounty, gadgets).
+  // In Infinity these are not capped — extendVal keeps growing the bonus.
+  const PERKS = [
+    { id: 'perk.auto', name: 'Auto Reload', icon: 'auto', w: 3.2, req: 28,
+      val: [0, 0.20, 0.12, 0.06, 0.02, 0],
+      desc: (v, l) => !l ? 'When your gun is empty it reloads for you. The laser vents itself when it overheats; the bow nocks itself.'
+        : v <= 0.001 ? 'Auto reload / vent / nock instantly when empty' : `Auto reload / vent / nock ${v.toFixed(2)}s after empty` },
+    { id: 'perk.loader', name: 'Speed Loader', icon: 'loader', w: 2.8, req: 32,
+      val: [1, 0.70, 0.60, 0.50, 0.40, 0.32],
+      desc: (v, l) => !l ? 'Every reload, vent, and nock is faster — all weapons.' : `Reload / vent / nock ${Math.round((1 - v) * 100)}% faster` },
+    { id: 'perk.reserve', name: 'Reserve Ammo', icon: 'reserve', w: 3.0, req: 36,
+      val: [0, 3, 4, 5, 7, 9],
+      desc: (v, l) => !l ? 'Extra shells, rounds, arrows, or belt ammo in every gun, plus more laser heat capacity.' : (v ? `+${v} ammo (laser +${(v * 0.35).toFixed(2)}s heat)` : 'No reserve') },
+    { id: 'perk.combo', name: 'Combo Keeper', icon: 'combo', w: 3.0, req: 40,
+      val: [99, 0, 0, 0, 0, 0],
+      pay: [1, 1.22, 1.30, 1.38, 1.48, 1.60],
+      desc: (v, l) => !l ? 'A miss no longer wipes your streak, and every kill and round bonus pays more.' : ('Misses never break your streak · kills and round bonuses pay +' + Math.round(([1, 1.22, 1.30, 1.38, 1.48, 1.60][Math.min(l, 5)] - 1) * 100) + '%') },
+    { id: 'perk.crit', name: 'Critical Shot', icon: 'crit', w: 3.2, req: 45,
+      val: [0, 0.26, 0.32, 0.38, 0.46, 0.55],
+      desc: (v, l) => !l ? 'Any weapon can crit: double points and cash.' : `${Math.round(v * 100)}% chance to double points and cash` },
+    { id: 'perk.eggsnipe', name: 'Egg Sniper', icon: 'eggsnipe', w: 2.8, req: 48,
+      val: [1, 8, 10, 13, 16, 20],
+      desc: (v, l) => !l ? 'Eggs are worth much more, fall slower, and are easier to smash before they hatch. Boss payouts also get a boost.' : `${v.toFixed(0)}x egg points and cash · eggs fall slower · +${Math.round((0.10 + 0.05 * Math.max(0, l - 1)) * 100)}% boss cash` },
+    { id: 'perk.magnet', name: 'Cash Magnet', icon: 'magnet', w: 3.6, req: 50,
+      val: [0, 0.20, 0.26, 0.32, 0.40, 0.50],
+      desc: (v, l) => !l ? 'At the end of every cleared round, collect a bonus on the cash you earned that round.' : `+${Math.round(v * 100)}% cash at the end of each cleared round` },
+    { id: 'perk.second', name: 'Second Chance', icon: 'second', w: 4.2, req: 55,
+      val: [0, 2, 2, 3, 3, 4],
+      desc: (v, l) => !l ? 'The first escapes each run are ignored — free saves. After a save, time briefly slows so you can recover.' : `${v} ignored escape${v === 1 ? '' : 's'} per run · brief slow-mo after a save` },
+    { id: 'perk.deer', name: 'Deer Whisperer', icon: 'deer', w: 2.8, req: 60,
+      val: [1, 0.50, 0.42, 0.36, 0.30, 0.24],
+      mercy: [0, 99, 99, 99, 99, 99],
+      cash: [1, 1.50, 1.65, 1.80, 2.00, 2.25],
+      desc: (v, l) => !l ? 'Deer and other ground animals run slower and pay more. Ground escapes cost no X, and more deer show up.' : `Ground animals ${Math.round((1 - v) * 100)}% slower · pay +${Math.round(([1, 1.50, 1.65, 1.80, 2.00, 2.25][Math.min(l, 5)] - 1) * 100)}% · ground escapes cost no X · +2 deer/round` },
+    { id: 'perk.bullet', name: 'Bullet Time', icon: 'bullet', w: 3.8, req: 70,
+      val: [1, 0.55, 0.48, 0.42, 0.36, 0.30],
+      desc: (v, l) => !l ? 'Time automatically slows when you are one X from game over, and during every boss round.' : `World runs at ${Math.round(v * 100)}% speed on your last X and on bosses` },
+  ];
+  PERKS.forEach(g => TRACKS.push(Object.assign({ group: 'perk' }, g)));
   const TOTAL_LEVELS = TRACKS.reduce((a, t) => a + t.val.length - 1, 0);
 
   // ---------- prices ----------
@@ -228,7 +268,7 @@
   const DAILY_PCT = [0.08, 0.10, 0.12, 0.14, 0.16, 0.20, 0.35];
   const DOUBLE_ADS_PER_DAY = 3;
 
-  const ECON = { WEAPONS, TURRETS, GLOBAL, MAPS, BOSS_EVERY, CLEAR_ROUND, bossHp, bossTime, bossCash, SKINS, CROSSHAIRS, TRACKS, TOTAL_LEVELS, TURRET_CASH, TURRET_PTS,
+  const ECON = { WEAPONS, TURRETS, GLOBAL, PERKS, MAPS, BOSS_EVERY, CLEAR_ROUND, bossHp, bossTime, bossCash, SKINS, CROSSHAIRS, TRACKS, TOTAL_LEVELS, TURRET_CASH, TURRET_PTS,
     cost, infCost, infVal, extendVal, cappedTrack, nice, curve, difficulty, KILL, killCash, killPts, roundBonus, decoyPenalty,
     MISSION_PCT, DAILY_PCT, DOUBLE_ADS_PER_DAY, BASE, PER_LEVEL, eggPts, eggCash, eggInterval };
   if (typeof module !== 'undefined' && module.exports) module.exports = ECON; else root.ECON = ECON;

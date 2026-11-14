@@ -57,6 +57,7 @@ They only shoot targets that are about to escape, have a few shots per round, an
 
 Gadgets (charges per run): Flak Grenade (tap FLAK, tap the sky), Bird Call (next 3 birds golden), Duck Decoy (birds gather + slow 6 s).
 Gear: Hunter's Eye, Focus Scope (slow-mo), Lucky Feather (4-5 misses allowed), Bounty Hunter ($ multiplier), Flashlight (Night map).
+Perks (late-game, expensive, in a dedicated shop tab; Infinity levels have no cap): Auto Reload, Speed Loader, Reserve Ammo, Combo Keeper, Critical Shot, Egg Sniper, Cash Magnet, Second Chance, Deer Whisperer, Bullet Time.
 Cosmetics: 5 hunter skins, 6 crosshair colors (fixed prices, no gameplay effect).
 
 ## Maps & bosses
@@ -69,7 +70,7 @@ Cosmetics: 5 hunter skins, 6 crosshair colors (fixed prices, no gameplay effect)
 | Night Hunt | 120 | 2.8 / 2.3 | bats, owls, glowing eyes in the bushes; dark - only the flashlight shows them | Bat King |
 
 ## Economy (tuned with tools/econ-sim.js)
-- 239 purchasable levels. Price = 1000 x track weight x (1 + 3% x track level) x CURVE[upgrades owned].
+- 289 purchasable levels (including 50 perk levels). Price = 1000 x track weight x (1 + 3% x track level) x CURVE[upgrades owned].
   The CURVE is the higher pre-total-miss set (kept at John's request). Campaign runs end at the round 30 boss, so late-game earnings per campaign run are a bit lower than an endless climb. Infinity uses the same early-game prices (so the first re-upgrades still take about 6 games each) and then an exponential cost past the Classic cap.
 - Simulated average player: 6.41 games per purchase (p10 4, median 6, p90 9), ~90 h to max everything (~74 h watching 2x ads).
   Examples: Handgun $9,000, Laser Gun $96,000, Night Hunt $230,000.

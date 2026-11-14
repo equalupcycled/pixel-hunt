@@ -211,6 +211,16 @@ const ICONS = {
   feather: ['...........KK...', '.........KKWWK..', '.......KKWWWWK..', '.....KKWWWWWK...', '....KWWWWWKK....', '...KWWWWKK......', '..KWWKKK........', '.KKK............', 'K...............'],
   eye: ['................', '....KKKKKKKK....', '..KKWWWWWWWWKK..', '.KWWWWKKKKWWWWK.', 'KWWWWKCCCCKWWWWK', '.KWWWWKKKKWWWWK.', '..KKWWWWWWWWKK..', '....KKKKKKKK....'],
   coin: ['.....KKKKK......', '...KKYYYYYKK....', '..KYYYKKKYYYK...', '..KYYKYYYYYYK...', '..KYYYKKKYYYK...', '..KYYYYYYKYYK...', '..KYYYKKKYYYK...', '...KKYYYYYKK....', '.....KKKKK......'],
+  auto: ['................', '....KKKKKK......', '...KYYYYYYK.....', '..KYKKKKKKYK....', '..KYK....KYK....', '..KYKKKKKKYK....', '...KYYYYYYK.....', '....KKKKKK......', '......KYYK......'],
+  loader: ['......KK........', '.....KYYK.......', '....KYYYYK......', '...KYYYYYYK.....', '..KKKKYYKKKK....', '.....KYYK.......', '.....KYYK.......', '......KK........'],
+  reserve: ['..KKKKKKKKKK....', '.KYYYYYYYYYK....', '.KYKKKKKKKYK....', '.KYKYYYYYYK.....', '.KYKYYYYYYK.....', '.KYKYYYYYYK.....', '.KYKKKKKKKYK....', '.KYYYYYYYYYK....', '..KKKKKKKKKK....'],
+  combo: ['................', '.KK....KK.......', 'KYYK..KYYK......', 'KYYYKKYYYK......', '.KYYYYYYK.......', '..KYYYYK........', '...KYYK.........', '....KK..........'],
+  crit: ['.KK.............','KYYK....KKKK....','KYYK...KYYYYK...','.KK...KYYKKYYK..','.....KYYK..KYYK.','......KK....KK..','...KKYYKK.......','..KYYYYYYK......','.KKKKKKKKKK.....'],
+  eggsnipe: ['......KKKK......','.....KYYYYK.....','....KYYYYYYK....','....KYYYYYYK....','.....KYYYYK.....','......KKKK......','.....KK.........', '....KRRK........','...KKKK.........'],
+  magnet: ['................','..KK.......KK...','..KYYK...KYYK...','...KYYK.KYYK....','....KYYYYYK.....','.....KYYYK......','......KYK.......','.......K........'],
+  second: ['.....KKKKK......','...KKWWWWWKK....','..KWWKKKKKWWK...','..KWWKYYYKWWK...','..KWWKYYYKWWK...','..KWWKKKKKWWK...','...KKWWWWWKK....','.....KKKKK......'],
+  deer: ['............KK..','...........KWWK.','..KKKKKKKKKWWWK.','KKWWWWWWWWWWWKK.','KWWWWWWWWWWWKK..','.KKKKKKKKKWWK...','........KWWK....','........KKKK....'],
+  bullet: ['................','KKKKKKKKKKKKKK..','KYYYYYYYYYYYYK..','KKKKKKKKKKYYYYK.','.........KYYYYK.','..........KYYK..','...........KK...'],
 };
 const ICON_PAL = { K: '#000', S: '#8d97a8', W: '#8a4b1c', E: '#fff', Y: '#ffd23f', R: '#ff3b3b', C: '#8fd3ff', M: '#6a3fb5', G: '#4a7a2a', B: '#5a3a1a' };
 const WSPR = {}; for (const k in ICONS) WSPR[k] = makeSprite(ICONS[k], ICON_PAL);
@@ -446,6 +456,7 @@ let state = 'title', paused = false;
 let best = store.get('best', 0);
 let M = ECON.MAPS[0];
 let score = 0, runCash = 0, round = 0, shots = 0, hits = 0, streak = 0, bestStreak = 0, missRun = 0, maxMiss = 3, moneyMult = 1, eyeMult = 1;
+let secondLeft = 0, roundCash0 = 0, perkAuto = -1, perkLoader = 1, perkReserve = 0, perkCombo = 99, perkComboPay = 1, perkCrit = 0, perkEgg = 1, perkMagnet = 0, perkDeer = 1, perkDeerMercy = 0, perkDeerCash = 1, perkBullet = 1, saveSlowT = 0, deerMercyLeft = 0;
 let focusCharges = 0, focusMax = 0, focusDur = 3, focusT = 0, reviveUsed = false;
 // missRun = X's used this run (TOTAL, not in a row). fromCkpt = checkpoint round this run started at (0 = fresh, ranked run).
 let fromCkpt = 0, ckptFlash = 0, ckptRound = 0;
@@ -472,7 +483,9 @@ const TURRET_X = [62, 118, 40];
 
 function makeWeapon(id) {
   const def = WDEF(id), g = k => Meta.val(id + '.' + k);
-  const w = { id, def, cap: g('cap'), reload: g('reload'), ammo: 0, reloading: false, reloadT: 0, cool: 0, heat: 0, overheated: false, swapT: 0, radius: 5 };
+  const extra = perkReserve || 0;
+  const cap = g('cap') + (id === 'laser' ? extra * 0.35 : extra);
+  const w = { id, def, cap, reload: g('reload') * (perkLoader || 1), ammo: 0, reloading: false, reloadT: 0, cool: 0, heat: 0, overheated: false, swapT: 0, radius: 5, autoT: 0 };
   if (id === 'shotgun') w.radius = g('choke');
   if (id === 'handgun') { w.radius = g('sights'); w.crit = g('crit'); }
   if (id === 'rifle') { w.radius = g('caliber'); w.pierce = g('pierce'); }
@@ -494,6 +507,33 @@ function applyGear() {
   const v = Meta.val;
   focusMax = v('focus'); maxMiss = v('luck'); moneyMult = v('bounty'); eyeMult = v('eye');
   focusDur = ECON.extendVal(Meta.track('focus').dur, Meta.levelOf('focus')) || 3;
+  perkAuto = Meta.levelOf('perk.auto') > 0 ? v('perk.auto') : -1; // -1 = off (player must reload by hand)
+  perkLoader = v('perk.loader') || 1;
+  perkReserve = v('perk.reserve') || 0;
+  perkCombo = Meta.levelOf('perk.combo') > 0 ? v('perk.combo') : 99;
+  const comboT = Meta.track('perk.combo');
+  perkComboPay = (comboT && comboT.pay && Meta.levelOf('perk.combo') > 0) ? (ECON.extendVal(comboT.pay, Meta.levelOf('perk.combo')) || 1) : 1;
+  perkCrit = v('perk.crit') || 0;
+  perkEgg = v('perk.eggsnipe') || 1;
+  perkMagnet = v('perk.magnet') || 0;
+  perkDeer = v('perk.deer') || 1;
+  const deerT = Meta.track('perk.deer');
+  perkDeerMercy = (deerT && deerT.mercy && Meta.levelOf('perk.deer') > 0) ? (deerT.mercy[Math.min(Meta.levelOf('perk.deer'), deerT.mercy.length - 1)] || 0) : 0;
+  perkDeerCash = (deerT && deerT.cash && Meta.levelOf('perk.deer') > 0) ? (deerT.cash[Math.min(Meta.levelOf('perk.deer'), deerT.cash.length - 1)] || 1) : 1;
+  perkBullet = Meta.levelOf('perk.bullet') > 0 ? v('perk.bullet') : 1;
+  secondLeft = v('perk.second') || 0;
+  deerMercyLeft = perkDeerMercy;
+  saveSlowT = 0;
+}
+function worldSlow() {
+  let s = 1;
+  if (perkBullet < 1 && (bossRound || missRun >= maxMiss - 1)) s = Math.min(s, perkBullet);
+  if (saveSlowT > 0) s = Math.min(s, 0.5);
+  return s;
+}
+function breakStreak() {
+  if (perkCombo >= 99) streak = 0;
+  else streak = Math.max(0, streak - perkCombo);
 }
 function resetRun() {
   if (!curMap || curMap.id !== Meta.save.equip.map) buildBg();
@@ -541,7 +581,9 @@ function startRound(opts) {
       queue.push(k);
     }
     if (round >= 4 && !queue.some(k => KIND[k] && KIND[k].g)) queue[Math.floor(rand(1, queue.length))] = pickGround();
+    if (round >= 4 && Meta.levelOf('perk.deer') > 0) { queue.push(pickGround()); queue.push(pickGround()); }
   }
+  roundCash0 = runCash;
   roundTotal = queue.filter(k => k !== 'decoy').length;
   roundHits = 0; roundEsc = 0; spawnT = 0.6; bossT = null; bossKilled = false;
   weapons.forEach(w => { w.ammo = w.id === 'laser' ? 0 : w.cap; w.heat = 0; w.overheated = false; w.reloading = false; });
@@ -595,7 +637,7 @@ function spawn(kind) {
   }
   if (K.g) {
     const dir = 1, sc = K.size * (kind === 'swimgoose' ? 1 : Math.max(0.85, diff.scale));
-    const sp = diff.deerSpeed * (K.spd || 1) * rand(0.9, 1.15) / Math.sqrt(eyeMult);
+    const sp = diff.deerSpeed * (K.spd || 1) * (perkDeer || 1) * rand(0.9, 1.15) / Math.sqrt(eyeMult);
     const y = K.m === 'swim' ? GROUND - 6 : groundY(set, sc);
     targets.push(Object.assign(base, { x: dir > 0 ? -20 : W + 20, y, y0: y, vx: dir * sp, vy: 0, sc, life: 99, hop: 0, hopT: 0 }));
     if (kind === 'deer' || kind === 'wolf' || kind === 'coyote' || kind === 'rabbit' || kind === 'roadrunner') Sfx.rustle();
@@ -638,8 +680,9 @@ function dropEgg(boss) {
     risen: true, anim: 0, hurt: 0, life: 99, g: 0 });
 }
 function smashEgg(t, src) {
-  const pts = Math.round(ECON.eggPts(round) * M.pts / 10) * 10;
-  const cash = Math.max(1, Math.round(ECON.eggCash(round) * moneyMult * M.cash * (src === 'turret' ? ECON.TURRET_CASH : 1)));
+  const mul = perkEgg || 1;
+  const pts = Math.round(ECON.eggPts(round) * M.pts * mul / 10) * 10;
+  const cash = Math.max(1, Math.round(ECON.eggCash(round) * moneyMult * M.cash * mul * (src === 'turret' ? ECON.TURRET_CASH : 1)));
   score += pts; addCash(cash);
   if (src !== 'turret') { hits++; }
   float('+' + fmt(pts), t.x, t.y - 12, '#ffe066', 1.1, 0.9);
@@ -703,6 +746,11 @@ function kill(t, src, info = {}) {
   if (t.kind === 'boss') {
     pts = Math.round(20000 * (round / ECON.BOSS_EVERY) * M.pts / 10) * 10;
     cash = ECON.bossCash(round) * moneyMult * M.cash;
+    if (perkEgg > 1) {
+      const el = Meta.levelOf('perk.eggsnipe');
+      cash *= 1 + 0.10 + 0.05 * Math.max(0, el - 1);
+    }
+    if (byYou && perkComboPay > 1) { cash *= perkComboPay; pts *= perkComboPay; }
     bossKilled = true; Meta.event('boss'); Sfx.bossRoar(); Sfx.bossDown(); shake = 8; whiteFlash = 0.15; bossT = null;
     float('BOSS DOWN!', W / 2, H * 0.32, '#ffd23f', 2.2, 2);
     for (let k = 0; k < 40; k++) parts.push({ x: t.x, y: t.y, vx: rand(-90, 90), vy: rand(-110, 20), c: ['#ffd23f', '#fff', '#ff9a3d'][k % 3], t: 0, life: rand(0.6, 1.4), g: 120, s: 2 });
@@ -712,7 +760,10 @@ function kill(t, src, info = {}) {
     cash = ECON.killCash(pk, round, moneyMult, mult) * M.cash * (byYou ? wd.cash : ECON.TURRET_CASH);
     if (byYou && wd.deerBonus && t.g) cash *= wd.deerBonus;
     if (byYou && wd.goldBonus && t.kind === 'gold') cash *= wd.goldBonus;
+    if (byYou && t.g && perkDeerCash > 1) cash *= perkDeerCash;
+    if (!info.crit && byYou && perkCrit > 0 && Math.random() < perkCrit) info.crit = true;
     if (info.crit) { cash *= 2; pts *= 2; float('CRIT!', t.x, t.y - 30, '#ff5a5a', 1.3, 0.9); }
+    if (byYou && perkComboPay > 1) { cash *= perkComboPay; pts *= perkComboPay; }
     pts = Math.round(pts / 10) * 10;
   }
   cash = Math.max(1, Math.round(cash));
@@ -736,7 +787,7 @@ function feathers(x, y, pal, n) {
 function hitDecoy(t) {
   t.state = 'hit'; t.hitT = 0.3; t.vy = 0;
   const pen = Math.min(Meta.bank(), ECON.decoyPenalty(round));
-  addCash(-pen); streak = 0; Meta.event('decoy');
+  addCash(-pen); breakStreak(); Meta.event('decoy');
   score -= Math.min(score, 1000 * round);
   float('LOVEBIRD! -$' + pen, t.x, t.y - 14, '#ff8fc8', 1.2, 1.4);
   feathers(t.x, t.y, PAL.decoy, 14); Sfx.bad();
@@ -755,7 +806,22 @@ function escaped(t) {
   if (t === bossT) bossT = null;
   if (state !== 'play' && state !== 'intro') return;
   if (t.kind === 'decoy') { float('SAFE', clamp(t.x, 20, W - 20), SKY_TOP + 6, '#ff8fc8', 1, 0.9); return; }
-  missRun++; roundEsc++; streak = 0; skyFlash = 0.5;
+  if (t.g && deerMercyLeft > 0) {
+    deerMercyLeft--;
+    skyFlash = 0.2;
+    float(deerMercyLeft >= 99 ? 'MERCY!' : ('MERCY! ' + (deerMercyLeft >= 99 ? '' : deerMercyLeft + ' LEFT')), clamp(t.x, 30, W - 30), GROUND - 20, '#7dff7a', 1.5, 1.2);
+    try { Sfx.focus(); } catch (e) {}
+    return;
+  }
+  if (secondLeft > 0) {
+    secondLeft--;
+    saveSlowT = Math.max(saveSlowT, 4);
+    skyFlash = 0.28;
+    float('SAVED! ' + secondLeft + ' LEFT', clamp(t.x, 30, W - 30), t.g ? GROUND - 20 : SKY_TOP + 8, '#7dff7a', 1.5, 1.2);
+    try { Sfx.focus(); } catch (e) {}
+    return;
+  }
+  missRun++; roundEsc++; breakStreak(); skyFlash = 0.5;
   float(t.kind === 'boss' ? 'BOSS ESCAPED!' : 'GOT AWAY', clamp(t.x, 30, W - 30), t.g ? GROUND - 20 : SKY_TOP + 8, '#ff5a5a', 1.5, 1.2);
   Sfx.escape();
   if (missRun >= maxMiss) die();
@@ -772,16 +838,28 @@ function emptyMsg(x, y) {
   if (wpn.reloading) float(wpn.id === 'laser' ? 'VENTING' : 'RELOADING', x, y - 8, '#ccc', 1, 0.5);
   else float(wpn.def.reloadName + '!', x, y - 8, '#ff9a3d', 1.2, 0.6);
 }
-function startReload() {
+function needsReload(w) {
+  if (!w || w.reloading) return false;
+  if (w.id === 'laser') return !!w.overheated;
+  return w.ammo <= 0;
+}
+function tickAutoReload(w, dt) {
+  if (perkAuto < 0 || !w || !canAct()) { if (w) w.autoT = 0; return; }
+  if (w.reloading || !needsReload(w)) { w.autoT = 0; return; }
+  w.autoT = (w.autoT || 0) + dt;
+  if (w.autoT >= perkAuto) { w.autoT = 0; startReload(w); }
+}
+function startReload(which) {
   if (!canAct()) return;
-  const w = wpn; if (w.reloading) return;
+  const w = which || wpn; if (!w || w.reloading) return;
   if (w.id === 'laser' ? w.heat <= 0.01 : w.ammo >= w.cap) return;
-  w.reloading = true; w.reloadT = w.reload; holding = holding && w.id !== 'laser';
+  w.reloading = true; w.reloadT = w.reload; w.autoT = 0;
+  if (w === wpn) holding = holding && w.id !== 'laser';
   if (w.id === 'laser') Sfx.vent();
   else if (w.id === 'shotgun') Sfx.shellInsert();
   else if (w.id === 'bow') Sfx.nock();
   else Sfx.magOut();
-  drawing = null;
+  if (w === wpn) drawing = null;
 }
 function finishReload(w) {
   w.reloading = false;
@@ -828,7 +906,7 @@ function fireTap(x, y) {
     if (list.length >= 2) float('PIERCE X' + list.length, x, y - 20, '#9fe0ff', 1.3, 1);
   }
   endShot();
-  if (!any) { streak = 0; float('MISS', x, y - 6, '#fff', 1.5, 0.7); }
+  if (!any) { breakStreak(); float('MISS', x, y - 6, '#fff', 1.5, 0.7); }
 }
 function fireMG(dt) {
   const w = wpn;
@@ -1017,12 +1095,16 @@ function update(dt) {
   if (paused) return;
   let gdt = dt;
   if (focusT > 0) { focusT -= dt; gdt *= 0.38; }
+  if (saveSlowT > 0) saveSlowT = Math.max(0, saveSlowT - dt);
+  const bt = worldSlow();
+  if (bt < 1) gdt *= bt;
   if (hitStop > 0) { hitStop -= dt; gdt = 0; }
   mgSnd -= dt;
   for (const w of weapons) {
     w.cool = Math.max(w.id === 'mg' ? -0.01 : 0, w.cool - dt); w.swapT = Math.max(0, w.swapT - dt);
     if (w.reloading) { w.reloadT -= dt; if (w.reloadT <= 0) finishReload(w); }
     if (w.id === 'laser' && !(holding && w === wpn) && !w.reloading && !w.overheated) w.heat = Math.max(0, w.heat - dt * 0.12);
+    tickAutoReload(w, dt);
   }
   if (canAct() && wpn) {
     if (holding && wpn.id === 'mg' && !wpn.reloading && wpn.swapT <= 0) fireMG(dt);
@@ -1114,9 +1196,10 @@ function updTarget(t, dt) {
   const slow = decoyObj && t.state === 'fly' ? (t.kind === 'boss' ? 0.8 : t.kind === 'egg' ? 0.85 : t.g ? 0.75 : 0.6) : 1;
   if (t.kind === 'egg') {
     if (t.state === 'fly') {
-      t.vy += 150 * dt * slow;
-      t.y += t.vy * dt * slow;
-      t.x += (t.vx || 0) * dt * slow;
+      const eggSlow = slow * (perkEgg > 1 ? 1 / Math.sqrt(perkEgg) : 1);
+      t.vy += 150 * dt * eggSlow;
+      t.y += t.vy * dt * eggSlow;
+      t.x += (t.vx || 0) * dt * eggSlow;
       if (t.y >= t.hatchY || t.y >= GROUND - 14) hatchEgg(t);
     }
     return;
@@ -1200,10 +1283,16 @@ function updBoss(t, dt, rdt) {
 function roundClear() {
   state = 'clear'; clearT = 2.0; holding = false; drawing = null;
   const perfect = roundHits >= roundTotal;
-  const bonusCash = Math.round(ECON.roundBonus(round, perfect) * M.cash);
+  const bonusCash = Math.round(ECON.roundBonus(round, perfect) * M.cash * (perkComboPay > 1 ? perkComboPay : 1));
   addCash(bonusCash);
+  const earned = Math.max(0, runCash - roundCash0);
+  let magnetCash = 0;
+  if (perkMagnet > 0 && earned > 0) {
+    magnetCash = Math.max(1, Math.round(earned * perkMagnet));
+    addCash(magnetCash);
+  }
   banner = perfect ? 'PERFECT!' : 'ROUND CLEAR';
-  banner2 = '+$' + bonusCash + (perfect ? '  +' + fmt(5000 * round) : '');
+  banner2 = '+$' + bonusCash + (perfect ? '  +' + fmt(5000 * round) : '') + (magnetCash ? '  MAGNET +$' + fmt(magnetCash) : '');
   if (perfect && missRun > 0) { missRun--; banner2 += '  -1 X'; } // a perfect round gives back one X
   if (perfect) score += 5000 * round;
   // Campaign ends at the map's clear boss (round 30). Beating it unlocks Infinity; failing it ends the run.
@@ -1315,7 +1404,7 @@ function openShop(from = 'title', keep) {
     const hide = shopInf && (b.dataset.tab === 'maps' || b.dataset.tab === 'style');
     b.classList.toggle('hidden', hide);
     b.classList.toggle('on', b.dataset.tab === shopTab);
-    const g = { weapons: 'weapon', turrets: 'turret', gear: 'gear', maps: 'map' }[b.dataset.tab];
+    const g = { weapons: 'weapon', turrets: 'turret', gear: 'gear', maps: 'map', perks: 'perk' }[b.dataset.tab];
     b.classList.toggle('can', !hide && !!g && tabCan(g));
   });
   const list = $('shop-list'); list.innerHTML = '';
@@ -1362,6 +1451,11 @@ function openShop(from = 'title', keep) {
     });
   } else if (shopTab === 'gear') {
     ECON.TRACKS.filter(t => t.group === 'gear' && t.id !== 'loadout' && t.id !== 'turret.slots').forEach(t => list.appendChild(trackItem(t)));
+  } else if (shopTab === 'perks') {
+    const nte = document.createElement('div'); nte.className = 'note';
+    nte.textContent = 'Late-game perks. Big costs, big help — they work with every gun (including laser vent and bow nock). In Infinity they keep leveling with no cap.';
+    list.appendChild(nte);
+    ECON.TRACKS.filter(t => t.group === 'perk').forEach(t => list.appendChild(trackItem(t)));
   } else if (shopTab === 'maps') {
     ECON.MAPS.forEach(m => {
       const has = Meta.hasMap(m.id), selm = eq.map === m.id;
@@ -1988,6 +2082,14 @@ function drawHud() {
     for (let k = 0; k < 5; k++) { ctx.fillRect(x + 1 + k, 19.5 + k * 1.2, 1, 1.2); ctx.fillRect(x + 5 - k, 19.5 + k * 1.2, 1, 1.2); }
   }
   if (streak >= 2) text('STREAK X' + Math.min(streak, 5), W / 2 + 6, 20, 1, '#ff9a3d', 'center', null);
+  const perkTags = [];
+  if (wpn && wpn.reloading && perkAuto >= 0) perkTags.push('AUTO');
+  if (worldSlow() < 1 && (state === 'play' || state === 'intro')) perkTags.push('BULLET TIME');
+  if ((Meta.val('perk.second') || 0) > 0 && (state === 'play' || state === 'intro' || state === 'clear')) perkTags.push('SAVES ' + secondLeft);
+  if (perkTags.length) {
+    const py = (bossT && live(bossT)) ? 50 : 31;
+    text(perkTags.join('  ·  '), W / 2, py, 1, '#cfe0ff', 'center', null);
+  }
   // boss bar
   if (bossT && live(bossT)) {
     const bx = 4, bw = W - 28;

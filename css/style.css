@@ -144,8 +144,8 @@ ul.how li { margin-bottom: 6px; }
 .mapsel { display: flex; align-items: center; gap: 10px; text-shadow: 2px 2px 0 #000; }
 .mapsel div { display: flex; flex-direction: column; min-width: 150px; }
 .mapsel b { font-size: 18px; color: #fff; } .mapsel small { font-size: 10px; color: #ffe066; }
-#shop-tabs { display: flex; gap: 4px; }
-#shop-tabs button { flex: 1; font: inherit; font-weight: 900; font-size: 11px; padding: 7px 2px; background: #0f1a2e; color: #9fc4ff; border: 2px solid #000; cursor: pointer; position: relative; }
+#shop-tabs { display: flex; flex-wrap: wrap; gap: 3px; }
+#shop-tabs button { flex: 1 1 calc(33% - 3px); font: inherit; font-weight: 900; font-size: 10px; padding: 6px 2px; background: #0f1a2e; color: #9fc4ff; border: 2px solid #000; cursor: pointer; position: relative; }
 #shop-tabs button.on { background: #f5c542; color: #000; }
 #shop-tabs button.can::after { content: '$'; position: absolute; top: -6px; right: -3px; background: #2f9e3a; color: #fff; font-size: 9px; padding: 0 3px; border: 1px solid #000; }
 .note { font-size: 10px; color: #9fc4ff; text-align: left; font-weight: 700; }

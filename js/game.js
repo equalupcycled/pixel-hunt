@@ -477,15 +477,15 @@ function makeTurret(id, i) {
 function applyGear() {
   const v = Meta.val;
   focusMax = v('focus'); maxMiss = v('luck'); moneyMult = v('bounty'); eyeMult = v('eye');
-  focusDur = Meta.track('focus').dur[Meta.save.lv.focus] || 3;
+  focusDur = ECON.extendVal(Meta.track('focus').dur, Meta.levelOf('focus')) || 3;
 }
 function resetRun() {
   if (!curMap || curMap.id !== Meta.save.equip.map) buildBg();
   M = curMap;
   score = 0; runCash = 0; round = 0; shots = 0; hits = 0; streak = 0; bestStreak = 0; missRun = 0; reviveUsed = false; fromCkpt = 0; ckptFlash = 0;
-  infinity = false; bossKilled = false; mapJustCleared = false; failedClear = false;
+  bossKilled = false; mapJustCleared = false; failedClear = false;
   applyGear();
-  const eq = Meta.save.equip;
+  const eq = Meta.activeEquip();
   weapons = [makeWeapon(Meta.owns(eq.primary) ? eq.primary : 'shotgun')];
   if (Meta.val('loadout') && eq.secondary && eq.secondary !== weapons[0].id && Meta.owns(eq.secondary)) weapons.push(makeWeapon(eq.secondary));
   wi = 0; wpn = weapons[0];
@@ -495,7 +495,7 @@ function resetRun() {
   armed = false; decoyObj = null; holding = false; drawing = null; bossT = null;
   targets = []; parts = []; floats = []; projs = []; zaps = []; tracers = [];
 }
-function addCash(n) { n = Math.round(n); Meta.save.bank = Math.max(0, Meta.save.bank + n); runCash += n; }
+function addCash(n) { n = Math.round(n); Meta.addBank(n); runCash += n; }
 function float(text, x, y, color = '#fff', sz = 1, life = 1) { floats.push({ text, x, y, t: 0, life, color, sz }); }
 
 function pickFly() {
@@ -669,7 +669,7 @@ function feathers(x, y, pal, n) {
 }
 function hitDecoy(t) {
   t.state = 'hit'; t.hitT = 0.3; t.vy = 0;
-  const pen = Math.min(Meta.save.bank, ECON.decoyPenalty(round));
+  const pen = Math.min(Meta.bank(), ECON.decoyPenalty(round));
   addCash(-pen); streak = 0; Meta.event('decoy');
   score -= Math.min(score, 1000 * round);
   float('LOVEBIRD! -$' + pen, t.x, t.y - 14, '#ff8fc8', 1.2, 1.4);
@@ -1148,7 +1148,7 @@ function syncGadgets() {
 }
 const iconEl = key => makeSprite(ICONS[key] || ICONS.gun, ICON_PAL);
 const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
-let shopFrom = 'title', shopTab = 'weapons', shopSel = {};
+let shopFrom = 'title', shopTab = 'weapons', shopSel = {}, shopInf = false;
 function lockText(u) {
   const tb = Meta.totalBought();
   if (tb < (u.req || 0)) return `LOCKED: own ${u.req} upgrades (${tb}/${u.req})`;
@@ -1156,22 +1156,32 @@ function lockText(u) {
   return 'LOCKED';
 }
 function trackItem(u) {
-  const l = Meta.save.lv[u.id], maxed = Meta.maxed(u), ok = Meta.eligible(u), c = maxed ? 0 : Meta.costOf(u);
-  const el = document.createElement('div'); el.className = 'item' + (!maxed && ok && Meta.save.bank >= c ? ' can' : '') + (ok ? '' : ' locked');
-  const cur = u.names ? u.names[l] : u.desc(u.val[l], l);
-  const next = !ok ? lockText(u) : maxed ? 'MAXED' : 'Next: ' + (u.names ? u.names[l + 1] + ' (' + u.desc(u.val[l + 1], l + 1) + ')' : u.desc(u.val[l + 1], l + 1));
-  const pct = maxed ? 100 : Math.min(100, Math.floor(Meta.save.bank / c * 100));
+  const l = Meta.levelOf(u.id), maxed = Meta.maxed(u), ok = Meta.eligible(u), c = maxed ? 0 : Meta.costOf(u);
+  const el = document.createElement('div'); el.className = 'item' + (!maxed && ok && Meta.bank() >= c ? ' can' : '') + (ok ? '' : ' locked');
+  const curDesc = () => u.names ? (u.names[Math.min(l, u.names.length - 1)] || u.names[u.names.length - 1]) : u.desc(Meta.val(u.id), l);
+  const nextDesc = () => {
+    const nl = l + 1;
+    if (u.names) { const nm = u.names[Math.min(nl, u.names.length - 1)]; return 'Next: ' + nm + ' (' + u.desc(ECON.infVal(u, nl), nl) + ')'; }
+    return 'Next: ' + u.desc(ECON.infVal(u, nl), nl);
+  };
+  const cur = curDesc();
+  const next = !ok ? lockText(u) : maxed ? 'MAXED' : nextDesc();
+  const pct = maxed ? 100 : Math.min(100, Math.floor(Meta.bank() / c * 100));
   const mid = document.createElement('div');
-  const lv = u.unlock ? '' : `<span class="lvl">LV ${l}/${u.val.length - 1}</span>`;
+  const uncapped = Meta.isInf() && !ECON.cappedTrack(u);
+  const lv = u.unlock ? '' : `<span class="lvl">${uncapped || Meta.isInf() ? 'LV ' + l : 'LV ' + l + '/' + (u.val.length - 1)}</span>`;
+  const pips = u.unlock ? '' : (uncapped && l >= u.val.length
+    ? `<div class="pips"><i class="on"></i><span class="lvl">+${l - (u.val.length - 1)}</span></div>`
+    : `<div class="pips">${u.val.slice(1).map((_, i) => `<i class="${i < l ? 'on' : ''}"></i>`).join('')}</div>`);
   mid.innerHTML = `<div class="nm">${esc(u.name.toUpperCase())} ${lv}</div>${u.unlock ? '' : `<div class="ds">${esc(cur)}</div>`}<div class="ds dim">${esc(next)}</div>
-    ${u.unlock ? '' : `<div class="pips">${u.val.slice(1).map((_, i) => `<i class="${i < l ? 'on' : ''}"></i>`).join('')}</div>`}
+    ${pips}
     ${maxed || !ok ? '' : `<div class="prog"><i style="width:${pct}%"></i></div>`}`;
   const b = document.createElement('button'); b.className = 'pbtn' + (maxed ? ' max' : '');
   b.textContent = maxed ? (u.unlock ? 'OWNED' : 'MAX') : !ok ? 'LOCKED' : '$' + fmt(c);
-  b.disabled = maxed || !ok || Meta.save.bank < c; b.dataset.id = u.id;
+  b.disabled = maxed || !ok || Meta.bank() < c; b.dataset.id = u.id;
   b.addEventListener('click', () => {
     if (!Meta.buy(u.id)) return;
-    Sfx.buy(); afterBuy(); toast(u.unlock ? 'UNLOCKED!' : 'UPGRADED!', u.name + (u.unlock ? '' : ' LV ' + Meta.save.lv[u.id]), 0);
+    Sfx.buy(); afterBuy(); toast(u.unlock ? 'UNLOCKED!' : 'UPGRADED!', u.name + (u.unlock ? '' : ' LV ' + Meta.levelOf(u.id)), 0);
     if (u.group === 'weapon' && u.unlock) { Meta.equipWeapon(u.of, 'primary'); toast('EQUIPPED', WDEF(u.of).name, 0); }
     if (u.group === 'map') { Meta.selectMap(u.of); buildBg(); }
     if (u.group === 'turret' && u.unlock) Meta.mountTurret(u.of, true);
@@ -1191,23 +1201,38 @@ function card(iconKey, title, sub, badge, expanded, onToggle) {
 }
 function btn(label, cls, fn, disabled) { const b = document.createElement('button'); b.className = 'pbtn ' + (cls || ''); b.innerHTML = label; b.disabled = !!disabled; b.addEventListener('click', e => { e.stopPropagation(); Sfx.click(); fn(); }); return b; }
 function tabCan(group) {
-  return ECON.TRACKS.some(t => t.group === group && !Meta.maxed(t) && Meta.eligible(t) && Meta.costOf(t) <= Meta.save.bank);
+  return ECON.TRACKS.some(t => t.group === group && !Meta.maxed(t) && Meta.eligible(t) && Meta.costOf(t) <= Meta.bank());
 }
 function openShop(from = 'title', keep) {
-  shopFrom = from === 'round' ? 'title' : from; // armory is only between runs (title / game over)
+  shopFrom = from === 'round' ? 'title' : from; // upgrades are only between runs (title / game over)
+  Meta.setMode(shopInf ? 'infinity' : 'campaign');
   if (!keep) $('shop-list').scrollTop = 0;
   const scroll = $('shop-list').scrollTop;
-  $('shop-money').textContent = fmt(Meta.save.bank);
-  $('shop-sub').textContent = `UPGRADES ARE PERMANENT \u00b7 ${Meta.totalBought()}/${ECON.TOTAL_LEVELS} OWNED`;
+  $('shop-money').textContent = fmt(Meta.bank());
+  $('shop-sub').textContent = shopInf
+    ? ('INFINITY WALLET · NO LEVEL CAP · SEPARATE FROM CLASSIC · ' + Meta.totalBought() + ' BOUGHT')
+    : ('CLASSIC · UPGRADES ARE PERMANENT · ' + Meta.totalBought() + '/' + ECON.TOTAL_LEVELS + ' OWNED');
   $('btn-next').innerHTML = 'BACK';
+  const anyClear = ECON.MAPS.some(m => Meta.isCleared(m.id));
+  const modes = $('shop-modes');
+  modes.classList.toggle('hidden', !anyClear);
+  modes.innerHTML = '';
+  if (anyClear) {
+    modes.appendChild(btn('CLASSIC', 'small' + (!shopInf ? ' on' : ''), () => { shopInf = false; Meta.setMode('campaign'); openShop(shopFrom, true); }));
+    modes.appendChild(btn('INFINITY', 'small' + (shopInf ? ' on' : ''), () => { shopInf = true; Meta.setMode('infinity'); if (shopTab === 'maps' || shopTab === 'style') shopTab = 'weapons'; openShop(shopFrom, true); }));
+  }
   document.querySelectorAll('#shop-tabs button').forEach(b => {
+    const hide = shopInf && (b.dataset.tab === 'maps' || b.dataset.tab === 'style');
+    b.classList.toggle('hidden', hide);
     b.classList.toggle('on', b.dataset.tab === shopTab);
     const g = { weapons: 'weapon', turrets: 'turret', gear: 'gear', maps: 'map' }[b.dataset.tab];
-    b.classList.toggle('can', !!g && tabCan(g));
+    b.classList.toggle('can', !hide && !!g && tabCan(g));
   });
   const list = $('shop-list'); list.innerHTML = '';
+
   const midRun = false; // shop is never mid-run; kept so equip/mount buttons stay enabled between runs
-  const eq = Meta.save.equip;
+  const eq = Meta.activeEquip();
+  if (shopInf) { const nte = document.createElement('div'); nte.className = 'note'; nte.textContent = 'Infinity starts you over with the free shotgun. Money and upgrades here are shared across every Infinity map, and never touch Classic.'; list.appendChild(nte); }
   if (shopTab === 'weapons') {
     const sel = shopSel.weapon || eq.primary;
     ECON.WEAPONS.forEach(w => {
@@ -1371,8 +1396,9 @@ function showOver(rank) {
 function renderNext(id) {
   const nx = Meta.cheapestNext(), el = $(id);
   if (!nx.t) { el.innerHTML = '<div class="nx-t">ALL UPGRADES MAXED!</div>'; return; }
-  const pct = Math.min(100, Math.floor(Meta.save.bank / nx.c * 100));
-  el.innerHTML = `<div class="nx-t${pct >= 100 ? ' ready' : ''}">${pct >= 100 ? 'READY TO BUY: ' : 'BANK $' + fmt(Meta.save.bank) + ' \u00b7 NEXT: '}${esc(nx.t.name.toUpperCase())} $${fmt(nx.c)}</div><div class="prog big"><i style="width:${pct}%"></i><span>${pct}%</span></div>`;
+  const pct = Math.min(100, Math.floor(Meta.bank() / nx.c * 100));
+  const label = Meta.isInf() ? 'INFINITY $' : 'BANK $';
+  el.innerHTML = `<div class="nx-t${pct >= 100 ? ' ready' : ''}">${pct >= 100 ? 'READY TO BUY: ' : label + fmt(Meta.bank()) + ' · NEXT: '}${esc(nx.t.name.toUpperCase())} $${fmt(nx.c)}</div><div class="prog big"><i style="width:${pct}%"></i><span>${pct}%</span></div>`;
 }
 function renderMissions(id) {
   $(id).innerHTML = Meta.save.missions.map(m => {
@@ -1388,7 +1414,7 @@ $('btn-double').addEventListener('click', () => {
     $('btn-double').classList.add('hidden'); renderNext('go-next');
   });
 });
-$('btn-go-shop').addEventListener('click', () => { Sfx.click(); show('ov-over', false); openShop('over'); });
+$('btn-go-shop').addEventListener('click', () => { Sfx.click(); shopInf = !!(infinity || (lastRun && lastRun.infinity)); show('ov-over', false); openShop('over'); });
 
 // ---------------- leaderboard name entry (free text, max 12 chars) ----------------
 let lastEntryTs = 0;
@@ -1544,11 +1570,11 @@ function openMissions() {
 }
 $('btn-missions').addEventListener('click', () => { Sfx.init(); Sfx.click(); openMissions(); });
 $('btn-missions-close').addEventListener('click', () => { Sfx.click(); show('ov-missions', false); });
-$('btn-armory').addEventListener('click', () => { Sfx.init(); Sfx.click(); show('ov-title', false); openShop('title'); });
+$('btn-armory').addEventListener('click', () => { Sfx.init(); Sfx.click(); shopInf = false; Meta.setMode('campaign'); show('ov-title', false); openShop('title'); });
 
 // ---------- title ----------
 function cycleMap(d) {
-  const own = ECON.MAPS.filter(m => Meta.hasMap(m.id)); if (own.length < 2) { toast('MORE MAPS', 'Unlock maps in the Armory', 0); return; }
+  const own = ECON.MAPS.filter(m => Meta.hasMap(m.id)); if (own.length < 2) { toast('MORE MAPS', 'Unlock maps in Upgrades', 0); return; }
   const i = own.findIndex(m => m.id === Meta.save.equip.map);
   Meta.selectMap(own[(i + d + own.length) % own.length].id); buildBg(); targets = []; updateTitle();
 }
@@ -1557,7 +1583,8 @@ $('btn-map-next').addEventListener('click', () => { Sfx.init(); Sfx.click(); cyc
 function updateTitle() {
   const m = mapDef();
   $('title-best').textContent = fmt(best);
-  $('title-bank').textContent = '$' + fmt(Meta.save.bank);
+  const anyClear = ECON.MAPS.some(m => Meta.isCleared(m.id));
+  $('title-bank').textContent = '$' + fmt(Meta.save.bank) + (anyClear ? '  ·  INF $' + fmt(Meta.save.infBank || 0) : '');
   $('title-map').textContent = m.name.toUpperCase() + (Meta.isCleared(m.id) ? '  \u2605' : '');
   const bestLine = 'MAP BEST ' + fmt(Meta.save.bestByMap[m.id] || 0) + ' \u00b7 $ x' + m.cash;
   $('title-mapbest').textContent = Meta.isCleared(m.id)
@@ -1580,14 +1607,17 @@ function updateTitle() {
 function toTitle() {
   ['ov-over', 'ov-pause', 'ov-shop', 'ov-continue', 'ov-board', 'ov-name'].forEach(id => show(id, false));
   paused = false; state = 'title'; targets = []; projs = []; holding = false; drawing = null; showGameButtons(false); Meta.persist();
+  Meta.setMode('campaign'); shopInf = false;
   if (!curMap || curMap.id !== Meta.save.equip.map) buildBg();
   updateTitle(); show('ov-title', true); maybeDaily();
 }
 function newGame(fromRound, opts) {
   Sfx.init(); Sfx.click(); Ads.init();
   ['ov-title', 'ov-over', 'ov-pause', 'ov-shop', 'ov-daily', 'ov-board'].forEach(id => show(id, false));
-  targets = []; resetRun();
   infinity = !!(opts && opts.infinity);
+  Meta.setMode(infinity ? 'infinity' : 'campaign');
+  shopInf = !!infinity;
+  targets = []; resetRun();
   const ck = fromRound > 1 ? fromRound : 0;
   Meta.startRun({ base: ck ? ck - 1 : 0 });
   if (ck) { fromCkpt = ck; round = ck - 1; } // normal difficulty for that round, score from 0, X's cleared
@@ -1829,7 +1859,7 @@ function drawHud() {
   text(infinity ? 'INF ROUND' : 'ROUND', W - 4, 3, 1, infinity ? '#ffd23f' : '#9fc4ff', 'right', null);
   const rlabel = infinity ? String(round) : (round + '/' + ECON.CLEAR_ROUND);
   text(rlabel, W - 4, 10, 1.5, bossRound ? '#ff5a5a' : '#fff', 'right');
-  text('$' + fmt(Meta.save.bank), 4, 20, 1, '#7dff7a');
+  text('$' + fmt(Meta.bank()), 4, 20, 1, '#7dff7a');
   const mx = W - 4 - maxMiss * 8;
   text('MISS', mx - 3, 20, 1, '#ff9a9a', 'right', null);
   for (let i = 0; i < maxMiss; i++) {
@@ -1899,9 +1929,9 @@ requestAnimationFrame(frame);
 // debug/test hooks (used by tools/test_playwright.py)
 window.PH = {
   get state() { return state; }, get targets() { return targets; }, get score() { return score; }, get weapon() { return wpn; }, get turrets() { return turrets; },
-  get money() { return Meta.save.bank; }, Meta, get missRun() { return missRun; }, get round() { return round; }, get shells() { return wpn ? wpn.ammo : 0; },
+  get money() { return Meta.bank(); }, Meta, get missRun() { return missRun; }, get round() { return round; }, get shells() { return wpn ? wpn.ammo : 0; },
   get boss() { return bossT; }, get projs() { return projs; },
-  setMoney(m) { Meta.save.bank = m; Meta.persist(); }, setScore(n) { score = n; }, setCash(n) { runCash = n; }, toLogical: (x, y) => ({ x: x / W, y: y / H }), dims: () => ({ W, H, GROUND, SKY_TOP, SKY_BOT, BAR, S, U }),
+  setMoney(m) { Meta.setBank(m); Meta.persist(); }, setScore(n) { score = n; }, setCash(n) { runCash = n; }, toLogical: (x, y) => ({ x: x / W, y: y / H }), dims: () => ({ W, H, GROUND, SKY_TOP, SKY_BOT, BAR, S, U }),
   forceClear() { queue = []; targets = []; }, forceDie() { missRun = maxMiss; die(); }, get fromCkpt() { return fromCkpt; }, get infinity() { return infinity; }, get reviveUsed() { return reviveUsed; },
   setMiss(n) { missRun = n; }, perfectClear() { queue = []; targets = []; roundHits = roundTotal; }, get maxMiss() { return maxMiss; },
   checkpoint: (m, inf) => checkpointFor(m || Meta.save.equip.map, inf != null ? inf : infinity), continueCkpt() { continueCheckpoint(); },
@@ -1910,7 +1940,7 @@ window.PH = {
   forceMapClear() { infinity = false; bossKilled = true; round = ECON.CLEAR_ROUND; bossRound = true; queue = []; targets = []; projs = []; mapJustCleared = false; failedClear = false; if (state !== 'play') state = 'play'; },
   startInfinity() { newGame(0, { infinity: true }); },
   spawn(k) { spawn(k); }, setAim(x, y) { aim = { x, y }; lightPos = { x, y }; }, hold(on) { holding = on; },
-  grantAll() { ECON.TRACKS.forEach(t => Meta.save.lv[t.id] = t.val.length - 1); Meta.persist(); },
+  grantAll() { Meta.withMode('campaign', () => { ECON.TRACKS.forEach(t => { Meta.save.lv[t.id] = t.val.length - 1; }); }); Meta.persist(); },
   makeCard: o => makeCard(o || {}).toDataURL('image/png'),
   rebuild() { buildBg(); }, toTitle() { toTitle(); }, openShop(tab) { shopTab = tab || shopTab; openShop('title'); }, openBoard(m) { openBoard(m, 'title'); },
 };

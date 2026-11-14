@@ -127,6 +127,37 @@ with sync_playwright() as p:
       mapbest: document.getElementById('title-mapbest').innerText
     })""")
     pg.screenshot(path=OUT + f'100-map-select-infinity-unlocked-{TAG}.png')
+    ev("document.getElementById('btn-armory').scrollIntoView({block:'center'})")
+    pg.screenshot(path=OUT + f'104-title-upgrades-{TAG}.png')
+    R['title_upgrades_label'] = ev("document.getElementById('btn-armory').innerText.trim()")
+
+    # 6b) Classic vs Infinity Upgrades shop from title (map already cleared)
+    tap('#btn-armory'); pg.wait_for_timeout(500)
+    R['shop_classic'] = ev("""({
+      title: (document.querySelector('#ov-shop h2')||{}).innerText,
+      sub: document.getElementById('shop-sub').innerText,
+      money: document.getElementById('shop-money').innerText,
+      modes: document.getElementById('shop-modes').innerText.replace(/\\s+/g,' ').trim(),
+      modesVis: !document.getElementById('shop-modes').classList.contains('hidden'),
+      mapsVis: !document.querySelector('#shop-tabs button[data-tab="maps"]').classList.contains('hidden'),
+      btn: document.getElementById('btn-armory') ? document.getElementById('btn-armory').innerText : ''
+    })""")
+    pg.screenshot(path=OUT + f'105-upgrades-classic-{TAG}.png')
+    ev("""(()=>{const b=[...document.querySelectorAll('#shop-modes .pbtn')].find(x=>/INFINITY/.test(x.textContent)); if(b) b.click();})()""")
+    pg.wait_for_timeout(400)
+    R['shop_infinity_from_title'] = ev("""({
+      sub: document.getElementById('shop-sub').innerText,
+      money: document.getElementById('shop-money').innerText,
+      mapsVis: !document.querySelector('#shop-tabs button[data-tab="maps"]').classList.contains('hidden'),
+      styleVis: !document.querySelector('#shop-tabs button[data-tab="style"]').classList.contains('hidden'),
+      note: (document.querySelector('#shop-list .note')||{}).textContent||'',
+      anyMax: [...document.querySelectorAll('#shop-list .pbtn')].some(b=>b.textContent.trim()==='MAX'),
+      lvSample: (document.querySelector('#shop-list .lvl')||{}).textContent||''
+    })""")
+    ev("document.getElementById('ov-shop').scrollIntoView({block:'center'})")
+    pg.screenshot(path=OUT + f'106-upgrades-infinity-{TAG}.png')
+    ev("document.getElementById('btn-next').click()"); pg.wait_for_timeout(300)
+    if vis('#ov-daily'): ev("document.getElementById('ov-daily').classList.add('hidden')")
 
     # 7) play infinity, HUD, separate high score
     tap('#btn-infinity'); pg.wait_for_timeout(1000)
@@ -186,10 +217,122 @@ with sync_playwright() as p:
       hasInfBest: PH.Meta.save.bestInfinityByMap && typeof PH.Meta.save.bestInfinityByMap==='object',
       infBtn: !document.getElementById('btn-infinity').classList.contains('hidden'),
       bank: PH.Meta.save.bank,
-      best: PH.Meta.save.bestByMap.meadow
+      best: PH.Meta.save.bestByMap.meadow,
+      infBank: PH.Meta.save.infBank,
+      infPrimary: (PH.Meta.save.infEquip||{}).primary,
+      infLvCap: PH.Meta.save.infLv && PH.Meta.save.infLv['shotgun.cap'] || 0,
+      infBought: Object.values(PH.Meta.save.infLv||{}).reduce((a,b)=>a+b,0)
     })""")
     errs.extend(merr)
     c2.close()
+
+    # 10) Infinity progression is isolated from Classic; uncapped levels; safe v4 defaults
+    c3 = b.new_context(viewport={'width': 390, 'height': 844}, device_scale_factor=3, is_mobile=True, has_touch=True)
+    pg3 = c3.new_page(); e3 = []
+    pg3.on('pageerror', lambda e: e3.append(str(e)))
+    pg3.goto(URL, wait_until='networkidle'); pg3.wait_for_timeout(800)
+    ev3 = pg3.evaluate
+    def vis3(s):
+        return ev3(f"!document.querySelector('{s}').classList.contains('hidden')")
+    if vis3('#ov-daily'): ev3("document.getElementById('ov-daily').classList.add('hidden')")
+    ev3("""(()=>{
+      PH.grantAll();
+      PH.Meta.save.bank = 77777;
+      PH.Meta.save.equip.primary = 'laser';
+      PH.Meta.save.cleared.meadow = 'test';
+      PH.Meta.save.lv['shotgun.cap'] = PH.Meta.save.lv['shotgun.cap'] || 3;
+      PH.Meta.persist();
+    })()""")
+    ev3("PH.toTitle()"); pg3.wait_for_timeout(400)
+    if vis3('#ov-daily'): ev3("document.getElementById('ov-daily').classList.add('hidden')")
+    snap = ev3("""({
+      bank: PH.Meta.save.bank,
+      cap: PH.Meta.save.lv['shotgun.cap'],
+      primary: PH.Meta.save.equip.primary,
+      infBank: PH.Meta.save.infBank,
+      infPrimary: PH.Meta.save.infEquip.primary
+    })""")
+    ev3("document.getElementById('btn-infinity').click()"); pg3.wait_for_timeout(900)
+    R['inf_start_gear'] = ev3("""({
+      infinity: PH.infinity,
+      mode: PH.Meta.mode,
+      bank: PH.Meta.bank(),
+      infBank: PH.Meta.save.infBank,
+      campaignBank: PH.Meta.save.bank,
+      campaignCap: PH.Meta.save.lv['shotgun.cap'],
+      campaignPrimary: PH.Meta.save.equip.primary,
+      infPrimary: PH.Meta.activeEquip().primary,
+      infSecondary: PH.Meta.activeEquip().secondary,
+      infTurrets: (PH.Meta.activeEquip().turrets||[]).length,
+      infCap: PH.Meta.levelOf('shotgun.cap'),
+      moneyHud: PH.money
+    })""")
+    ev3("AD_CONFIG.interstitialSeconds=1; AD_CONFIG.rewardedSeconds=1; PH.forceDie()")
+    pg3.wait_for_function("!document.getElementById('ov-continue').classList.contains('hidden') || !document.getElementById('ov-ad').classList.contains('hidden') || !document.getElementById('ov-name').classList.contains('hidden') || !document.getElementById('ov-over').classList.contains('hidden')", timeout=8000)
+    if vis3('#ov-continue'): ev3("document.getElementById('btn-norevive').click()"); pg3.wait_for_timeout(400)
+    if vis3('#ov-ad'):
+        pg3.wait_for_function("(()=>{const b=document.querySelector('.ad-close');return b&&!b.disabled})()", timeout=8000)
+        r = ev3("(()=>{const e=document.querySelector('.ad-close');const r=e.getBoundingClientRect();return [r.x+r.width/2,r.y+r.height/2]})()")
+        pg3.touchscreen.tap(*r); pg3.wait_for_timeout(600)
+    if vis3('#ov-name'): ev3("document.getElementById('btn-name-skip') && document.getElementById('btn-name-skip').click() || document.getElementById('ov-name').classList.add('hidden')")
+    ev3("document.getElementById('btn-go-shop').click()"); pg3.wait_for_timeout(500)
+    cap_id = ev3("ECON.TRACKS.find(t=>t.id==='shotgun.cap').val.length-1")
+    ev3("""(()=>{
+      PH.Meta.setMode('infinity');
+      PH.Meta.setBank(5000000);
+      PH.Meta.persist();
+      let n=0;
+      while (PH.Meta.levelOf('shotgun.cap') <= ECON.TRACKS.find(t=>t.id==='shotgun.cap').val.length-1 && n<40) {
+        if (!PH.Meta.buy('shotgun.cap')) break;
+        n++;
+      }
+    })()""")
+    ev3("document.getElementById('btn-next').click()"); pg3.wait_for_timeout(200)
+    ev3("document.getElementById('btn-go-shop').click()"); pg3.wait_for_timeout(400)
+    R['inf_uncapped'] = ev3("""(()=>{
+      const capTrack = ECON.TRACKS.find(t=>t.id==='shotgun.cap');
+      const item = [...document.querySelectorAll('#shop-list .item')].find(el => /BARREL/.test(el.innerText));
+      const lv = item ? (item.querySelector('.lvl')||{}).textContent : '';
+      const btns = item ? [...item.querySelectorAll('.pbtn')].map(b=>b.textContent.trim()) : [];
+      return {
+        sub: document.getElementById('shop-sub').innerText,
+        goShop: document.getElementById('btn-go-shop').innerText.trim(),
+        mapsVis: !document.querySelector('#shop-tabs button[data-tab="maps"]').classList.contains('hidden'),
+        level: PH.Meta.levelOf('shotgun.cap'),
+        cap: capTrack.val.length-1,
+        maxed: PH.Meta.maxed(capTrack),
+        lvText: lv,
+        btns,
+        anyMax: [...document.querySelectorAll('#shop-list .pbtn')].some(b=>b.textContent.trim()==='MAX'),
+        campaignCap: PH.Meta.save.lv['shotgun.cap'],
+        campaignBank: PH.Meta.save.bank,
+        infBank: PH.Meta.save.infBank,
+        classicOnToggle: null
+      };
+    })()""")
+    ev3("""(()=>{const b=[...document.querySelectorAll('#shop-modes .pbtn')].find(x=>/CLASSIC/.test(x.textContent)); if(b) b.click();})()""")
+    pg3.wait_for_timeout(300)
+    R['toggle_classic'] = ev3("""({
+      sub: document.getElementById('shop-sub').innerText,
+      money: document.getElementById('shop-money').innerText.replace(/[^0-9]/g,''),
+      mode: PH.Meta.mode,
+      bank: PH.Meta.bank(),
+      campaignBank: PH.Meta.save.bank,
+      mapsVis: !document.querySelector('#shop-tabs button[data-tab="maps"]').classList.contains('hidden')
+    })""")
+    ev3("""(()=>{const b=[...document.querySelectorAll('#shop-modes .pbtn')].find(x=>/INFINITY/.test(x.textContent)); if(b) b.click();})()""")
+    pg3.wait_for_timeout(300)
+    R['toggle_inf'] = ev3("""({
+      sub: document.getElementById('shop-sub').innerText,
+      mode: PH.Meta.mode,
+      bank: PH.Meta.bank(),
+      campaignBank: PH.Meta.save.bank
+    })""")
+    ev3("document.querySelector('#ov-shop').scrollIntoView({block:'center'})")
+    pg3.screenshot(path=OUT + f'106-upgrades-infinity-uncapped-{TAG}.png')
+    R['inf_start_gear']['before'] = snap
+    errs.extend(e3)
+    c3.close()
 
     for k,v in R.items():
         print(f'{k:22}', json.dumps(v))
@@ -211,6 +354,43 @@ with sync_playwright() as p:
     if R['migration'].get('lakeCleared'): fails.append('migration granted lake clear without round 30')
     if R['migration'].get('ckptClamped') != 30: fails.append('ckpt not clamped to 30, got %r' % R['migration'].get('ckptClamped'))
     if R['migration'].get('best') != 88000: fails.append('migration overwrote classic best, got %r' % R['migration'].get('best'))
+    if R['migration'].get('v') != 4: fails.append('migration schema not v4, got %r' % R['migration'].get('v'))
+    if R['migration'].get('infBank') not in (0, None): fails.append('migration should start Infinity wallet at 0, got %r' % R['migration'].get('infBank'))
+    if R['migration'].get('infPrimary') not in ('shotgun', None) or R['migration'].get('infBought') not in (0, None):
+        fails.append('migration should start Infinity at free shotgun, got %r' % {k: R['migration'].get(k) for k in ('infPrimary','infBought','infLvCap')})
+    if R.get('title_upgrades_label') != 'UPGRADES': fails.append('title button is not UPGRADES, got %r' % R.get('title_upgrades_label'))
+    if R.get('shop_classic') and 'CLASSIC' not in (R['shop_classic'].get('sub') or ''): fails.append('classic shop not labeled, %r' % R.get('shop_classic'))
+    if R.get('shop_infinity_from_title'):
+        s = R['shop_infinity_from_title']
+        if 'INFINITY' not in (s.get('sub') or ''): fails.append('infinity shop not labeled, %r' % s)
+        if s.get('mapsVis') or s.get('styleVis'): fails.append('infinity shop showed maps/style tabs, %r' % s)
+        if '/' in (s.get('lvSample') or '') and 'MAX' in (s.get('lvSample') or ''): fails.append('infinity lv label looks capped, %r' % s.get('lvSample'))
+    g = R.get('inf_start_gear') or {}
+    if not g.get('infinity'): fails.append('did not enter infinity for isolation test')
+    if g.get('infPrimary') != 'shotgun' or g.get('infSecondary') or g.get('infTurrets') or g.get('infCap') not in (0, None):
+        fails.append('infinity did not start on free shotgun, %r' % g)
+    if g.get('campaignPrimary') != 'laser' or g.get('campaignCap') != (g.get('before') or {}).get('cap'):
+        fails.append('entering infinity mutated campaign loadout, %r' % g)
+    if (g.get('campaignBank') or 0) < 77777:
+        fails.append('entering infinity spent campaign money, %r' % g)
+    if g.get('bank') not in (0,):
+        fails.append('infinity wallet should start at 0, %r' % g)
+    u = R.get('inf_uncapped') or {}
+    if not u or u.get('level', 0) <= u.get('cap', 99) or u.get('maxed'):
+        fails.append('could not buy past classic cap, %r' % u)
+    if not (u.get('lvText') or '').startswith('LV ') or '/' in (u.get('lvText') or '') or 'MAX' in (u.get('lvText') or ''):
+        fails.append('infinity UI should show uncapped LV N, %r' % u)
+    if 'MAX' in (u.get('btns') or []):
+        fails.append('infinity buy button says MAX past cap, %r' % u)
+    if u.get('campaignCap') != g.get('campaignCap') or u.get('campaignBank') != g.get('campaignBank'):
+        fails.append('infinity buy mutated campaign, %r' % (u, g.get('campaignBank'), g.get('campaignCap')))
+    tc = R.get('toggle_classic') or {}
+    if tc.get('mode') != 'campaign' or tc.get('bank') != g.get('campaignBank'):
+        fails.append('classic toggle mixed wallets, %r' % tc)
+    if not tc.get('mapsVis'): fails.append('classic shop hid maps tab')
+    ti = R.get('toggle_inf') or {}
+    if ti.get('mode') != 'infinity' or ti.get('campaignBank') != g.get('campaignBank'):
+        fails.append('infinity toggle mixed wallets, %r' % ti)
     if errs: fails.append('js errors: ' + '; '.join(errs))
     print('FAILS', fails)
     b.close()

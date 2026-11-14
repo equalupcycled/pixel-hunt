@@ -202,3 +202,13 @@ h2.gold, #go-title.gold { color: #ffe066; }
 .badge.dim { background: #2a3a55; color: #cfe0ff; }
 #cont-detail { font-size: 13px; color: #cfe0ff; }
 .clearprog { text-shadow: 2px 2px 0 #000; }
+
+/* UPGRADES is a bit longer than ARMORY was; keep it on one line next to MISSIONS / TITLE */
+#btn-armory, #btn-go-shop { letter-spacing: 0.4px; padding-left: 10px; padding-right: 10px; white-space: nowrap; }
+.row #btn-armory, .row #btn-missions { flex: 1; min-width: 0; }
+
+#shop-modes { display: flex; gap: 6px; justify-content: center; margin: 6px 0 2px; width: 92%; max-width: 320px; }
+#shop-modes.hidden { display: none !important; }
+#shop-modes .pbtn { flex: 1; }
+#shop-modes .pbtn.on { background: #f5c542; color: #000; }
+#shop-sub { white-space: normal; line-height: 1.3; }

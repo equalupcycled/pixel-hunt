@@ -214,3 +214,58 @@ console.log('Milestones:'); unl.forEach(r => console.log(`  #${r.n + 1} ${r.name
 console.log('#   | purchase                 | cost       | avg run $ | games | rounds | min/run | hours | weapon');
 const pick = args.includes('--table') ? out.rows : out.rows.filter((r, i) => i % 15 === 0 || i === out.rows.length - 1);
 pick.forEach(r => console.log(`${String(r.n + 1).padStart(3)} | ${r.name.padEnd(24)} | ${String(r.cost.toLocaleString()).padStart(10)} | ${String(Math.round(r.estCash)).padStart(9)} | ${String(r.runs).padStart(5)} | ${r.rounds.toFixed(1).padStart(6)} | ${(r.time / 60).toFixed(1).padStart(7)} | ${r.hours.toFixed(1).padStart(5)} | ${r.equip}`));
+
+
+// Infinity early-game: start from the free shotgun and a $0 wallet (maps stay campaign-only).
+// In-cap costs match Classic, so the first re-upgrades should still take about 6 games each.
+function planInf(maxBuys) {
+  const lv = {}; E.TRACKS.forEach(t => lv[t.id] = 0);
+  let n = 0, equip = 'shotgun', newest = 'shotgun', est = avg(lv, equip);
+  const steps = [];
+  const maxed = t => E.cappedTrack(t) ? lv[t.id] >= t.val.length - 1 : false;
+  const avail = t => !maxed(t) && t.group !== 'map' && n >= (t.req || 0) && (!t.needs || lv[t.needs]);
+  while (steps.length < maxBuys) {
+    const all = E.TRACKS.filter(avail);
+    if (!all.length) break;
+    let pick = all.find(t => t.unlock);
+    if (!pick && (lv['turret.slots'] || 0) === 0 && T('turret.slots') && avail(T('turret.slots'))) pick = T('turret.slots');
+    if (!pick) {
+      const focus = all.filter(t => t.group !== 'weapon' || t.of === equip || t.of === newest);
+      const pool = focus.length ? focus : all;
+      pool.sort((a, b) => a.w * (1 + E.PER_LEVEL * lv[a.id]) - b.w * (1 + E.PER_LEVEL * lv[b.id]));
+      pick = pool[0];
+    }
+    const cost = E.infCost(pick, lv[pick.id], n);
+    steps.push({ n, id: pick.id, name: pick.name + (pick.unlock ? '' : ' ' + (lv[pick.id] + 1)), w: pick.w, lvl: lv[pick.id], estCash: est.cash, rounds: est.rounds, time: est.time, equip, cost });
+    lv[pick.id]++; n++;
+    if (pick.unlock && pick.group === 'weapon') newest = pick.of;
+    if (pick.group === 'weapon' || n % 8 === 0) { const b = bestWeapon(lv); equip = b.w; est = b.e; } else est = avg(lv, equip);
+  }
+  return { steps };
+}
+function playoutInf(steps, { ads = false } = {}) {
+  let bank = 0, runs = 0, hours = 0, day = 0, dayRun = 0;
+  const rows = [];
+  for (const s of steps) {
+    const c = s.cost;
+    let k = 0;
+    while (bank < c) {
+      const cash = s.estCash * (0.6 + rnd() * 0.8);
+      bank += cash * (ads && dayRun < E.DOUBLE_ADS_PER_DAY ? 2 : 1); runs++; k++; hours += s.time / 3600;
+      if (runs % 2 === 0) bank += c * E.MISSION_PCT;
+      if (++dayRun >= 6) { dayRun = 0; bank += c * E.DAILY_PCT[day++ % 7]; }
+    }
+    bank -= c;
+    rows.push({ ...s, runs: k, hours });
+  }
+  return { rows, runs, hours };
+}
+if (!args.includes('--fit') && !args.includes('--balance')) {
+  const { steps: infSteps } = planInf(40);
+  const infOut = playoutInf(infSteps);
+  const irs = infOut.rows.map(r => r.runs);
+  const ipct = q => { const s = [...irs].sort((a, b) => a - b); return s[Math.floor(q * (s.length - 1))]; };
+  console.log(`Infinity early (first ${irs.length} purchases, shared wallet, start from shotgun): games=${infOut.runs} hours=${infOut.hours.toFixed(1)} games/purchase avg=${(infOut.runs / irs.length).toFixed(2)} p10=${ipct(0.1)} median=${ipct(0.5)} p90=${ipct(0.9)}`);
+  const first = infOut.rows[0], mid = infOut.rows[Math.min(9, infOut.rows.length - 1)];
+  console.log(`  first buy ${first.name} $${first.cost.toLocaleString()} in ${first.runs} games; 10th ${mid.name} $${mid.cost.toLocaleString()} in ${mid.runs} games`);
+}

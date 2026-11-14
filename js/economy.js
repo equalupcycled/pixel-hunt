@@ -84,7 +84,7 @@
   const GLOBAL = [
     { id: 'eye', name: "Hunter's Eye", icon: 'eye', val: [1, 1.06, 1.12, 1.18, 1.24, 1.3, 1.36, 1.43, 1.5], desc: v => v > 1 ? `Targets cross ${Math.round((1 - 1 / v) * 100)}% slower` : 'Targets cross the screen slower' },
     { id: 'focus', name: 'Focus Scope', icon: 'scope', w: 1.1, val: [0, 1, 1, 2, 2, 3, 3], dur: [0, 2.5, 3.5, 3.5, 4.5, 4.5, 5.5],
-      desc: (v, l) => v ? `${v} slow-mo/round, ${[0, 2.5, 3.5, 3.5, 4.5, 4.5, 5.5][l]}s` : 'Slow-mo ability (F)' },
+      desc: (v, l) => v ? `${v} slow-mo/round, ${extendVal([0, 2.5, 3.5, 3.5, 4.5, 4.5, 5.5], l)}s` : 'Slow-mo ability (F)' },
     { id: 'luck', name: 'Lucky Feather', icon: 'feather', w: 2.5, val: [3, 4, 5], desc: v => `${v} misses (X) allowed per run` },
     { id: 'bounty', name: 'Bounty Hunter', icon: 'coin', val: [1, 1.2, 1.4, 1.6, 1.8, 2, 2.25, 2.5, 2.75, 3], desc: v => `x${v} money` },
     { id: 'loadout', name: 'Gun Sling', icon: 'gun', w: 1.6, req: 30, unlock: true, val: [0, 1], desc: v => v ? '2 weapons, SWAP mid-run' : 'Carry a 2nd weapon' },
@@ -159,6 +159,35 @@
   }
   function cost(track, level, totalBought) { return nice(BASE * (track.w || 1) * curve(totalBought) * (1 + PER_LEVEL * level)); }
 
+  // Infinity: same prices through the vanilla track, then exponential cost past the original cap.
+  // Values past the cap keep growing/shrinking with diminishing (but never-zero) returns.
+  const INF_OVER = 1.22;
+  function cappedTrack(track) { return !!(track && (track.unlock || track.group === 'map' || track.id === 'turret.slots')); }
+  function extendVal(arr, level) {
+    const a = arr || [0], lv = Math.max(0, level | 0);
+    if (lv < a.length) return a[lv];
+    const v0 = a[Math.max(0, a.length - 2)], v1 = a[a.length - 1], extra = lv - (a.length - 1);
+    if (v1 === v0) return v1;
+    if (v1 > v0) {
+      let v = v1, step = v1 - v0;
+      for (let i = 0; i < extra; i++) { step = Math.max(step * 0.72, Math.abs(v1) * 0.012, 0.01); v += step; }
+      return a.every(x => Number.isInteger(x)) ? Math.round(v) : +v.toFixed(4);
+    }
+    const floor = Math.max(0.04, Math.min(Math.abs(v1) * 0.2, 0.2));
+    return +Math.max(floor, floor + (v1 - floor) * Math.pow(0.78, extra)).toFixed(4);
+  }
+  function infVal(track, level) {
+    if (!track) return 0;
+    if (cappedTrack(track)) return track.val[Math.min(Math.max(0, level | 0), track.val.length - 1)];
+    return extendVal(track.val, level);
+  }
+  function infCost(track, level, totalBought) {
+    const cap = track.val.length - 1;
+    const base = cost(track, Math.min(level, cap), totalBought);
+    const over = Math.max(0, level - cap);
+    return over ? nice(base * Math.pow(INF_OVER, over)) : base;
+  }
+
   // ---------- difficulty ----------
   function difficulty(r) {
     const late = Math.max(0, r - 15); // after round 15 it keeps getting harder so even a maxed arsenal eventually falls
@@ -190,7 +219,7 @@
   const DOUBLE_ADS_PER_DAY = 3;
 
   const ECON = { WEAPONS, TURRETS, GLOBAL, MAPS, BOSS_EVERY, CLEAR_ROUND, bossHp, bossTime, bossCash, SKINS, CROSSHAIRS, TRACKS, TOTAL_LEVELS, TURRET_CASH, TURRET_PTS,
-    cost, nice, curve, difficulty, KILL, killCash, killPts, roundBonus, decoyPenalty,
+    cost, infCost, infVal, extendVal, cappedTrack, nice, curve, difficulty, KILL, killCash, killPts, roundBonus, decoyPenalty,
     MISSION_PCT, DAILY_PCT, DOUBLE_ADS_PER_DAY, BASE, PER_LEVEL };
   if (typeof module !== 'undefined' && module.exports) module.exports = ECON; else root.ECON = ECON;
 })(typeof window !== 'undefined' ? window : globalThis);

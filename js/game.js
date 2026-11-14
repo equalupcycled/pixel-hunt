@@ -373,7 +373,7 @@ function mapThumb(id) {
 }
 // ---------------- sizing ----------------
 function resize() {
-  const vw = window.innerWidth, vh = window.innerHeight;
+  const vw = window.innerWidth || document.documentElement.clientWidth, vh = window.innerHeight || document.documentElement.clientHeight;
   let cw = Math.min(vw, vh * 0.62);
   H = Math.round(clamp(W * vh / cw, 300, 420));
   let ch = cw * H / W;
@@ -390,6 +390,10 @@ function resize() {
 }
 const darkC = document.createElement('canvas'), darkX = darkC.getContext('2d');
 window.addEventListener('resize', resize);
+window.addEventListener('orientationchange', () => setTimeout(resize, 250));
+if (window.visualViewport) visualViewport.addEventListener('resize', () => { // iOS toolbar show/hide; ignore the on-screen keyboard
+  if (document.activeElement && document.activeElement.tagName === 'INPUT') return;
+  clearTimeout(resize.t); resize.t = setTimeout(resize, 120); });
 
 // ---------------- content tables ----------------
 const MAP_SET = {
@@ -1154,7 +1158,7 @@ function card(iconKey, title, sub, badge, expanded, onToggle) {
   const ic = typeof iconKey === 'string' ? iconEl(iconKey) : iconKey;
   const mid = document.createElement('div'); mid.innerHTML = `<div class="nm">${esc(title)}${badge ? ` <span class="badge">${badge}</span>` : ''}</div><div class="ds">${esc(sub)}</div>`;
   h.append(ic, mid);
-  if (onToggle) { const ch = document.createElement('div'); ch.className = 'chev'; ch.textContent = expanded ? '\u25B2' : '\u25BC'; h.appendChild(ch); h.addEventListener('click', onToggle); }
+  if (onToggle) { const ch = document.createElement('div'); ch.className = 'chev'; ch.textContent = expanded ? '\u25B2' : '\u25BC'; h.appendChild(ch); h.dataset.tap = '1'; h.addEventListener('click', onToggle); }
   c.appendChild(h); return c;
 }
 function btn(label, cls, fn, disabled) { const b = document.createElement('button'); b.className = 'pbtn ' + (cls || ''); b.innerHTML = label; b.disabled = !!disabled; b.addEventListener('click', e => { e.stopPropagation(); Sfx.click(); fn(); }); return b; }
@@ -1517,7 +1521,7 @@ $('btn-resume').addEventListener('click', togglePause);
 $('btn-quit').addEventListener('click', () => { Sfx.click(); toTitle(); });
 function syncMute() { document.querySelectorAll('.mute-btn').forEach(b => b.textContent = 'SOUND: ' + (Sfx.muted ? 'OFF' : 'ON')); }
 document.querySelectorAll('.mute-btn').forEach(b => b.addEventListener('click', () => { Sfx.init(); Sfx.setMuted(!Sfx.muted); syncMute(); Sfx.click(); }));
-const press = (id, fn) => $(id).addEventListener('pointerdown', e => { e.preventDefault(); e.stopPropagation(); Sfx.init(); fn(); });
+const press = (id, fn) => { const el = $(id); el.dataset.press = '1'; el.addEventListener('pointerdown', e => { e.preventDefault(); e.stopPropagation(); Sfx.init(); fn(); }); };
 press('btn-reload', startReload); press('btn-focus', useFocus); press('btn-swap', swapWeapon);
 press('btn-flak', () => useGadget('flak')); press('btn-call', () => useGadget('call')); press('btn-decoy', () => useGadget('decoy'));
 // ---------------- render ----------------
@@ -1774,10 +1778,12 @@ function drawHud() {
 
 // ---------------- loop ----------------
 let last = performance.now();
+let frameErrs = 0;
 function frame(now) {
+  requestAnimationFrame(frame); // schedule first: one bad frame must never freeze the game
   const dt = clamp((now - last) / 1000, 0, 0.05); last = now;
-  update(dt); render();
-  requestAnimationFrame(frame);
+  try { update(dt); render(); frameErrs = 0; }
+  catch (e) { if (++frameErrs === 1 || frameErrs % 300 === 0) { console.error(e); window.PH_ERR && PH_ERR(e); } }
 }
 resize(); resetRun(); syncMute(); toTitle();
 requestAnimationFrame(frame);

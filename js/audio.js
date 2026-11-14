@@ -5,18 +5,28 @@ window.Sfx = (() => {
   let muted = false;
   try { muted = localStorage.getItem('pixelhunt.muted') === '1'; } catch (e) {}
 
-  function init() {
-    if (ac) { if (ac.state === 'suspended') ac.resume(); return; }
-    const AC = window.AudioContext || window.webkitAudioContext;
-    if (!AC) return;
-    ac = new AC();
-    master = ac.createGain();
-    master.gain.value = muted ? 0 : 0.45;
-    master.connect(ac.destination);
-    noiseBuf = ac.createBuffer(1, ac.sampleRate * 1, ac.sampleRate);
-    const d = noiseBuf.getChannelData(0);
-    for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+  // Never let audio break input: any WebAudio failure (old iOS, in-app browsers, too many
+  // contexts, autoplay policy) just leaves the game silent.
+  function unlock() { // iOS only unlocks audio after a sound starts inside a touchend/click
+    try { const b = ac.createBuffer(1, 1, 22050), s = ac.createBufferSource(); s.buffer = b; s.connect(ac.destination); s.start(0); } catch (e) {}
   }
+  function init() {
+    try {
+      if (ac) { if (ac.state !== 'running') { const r = ac.resume && ac.resume(); if (r && r.catch) r.catch(() => {}); unlock(); } return; }
+      const AC = window.AudioContext || window.webkitAudioContext;
+      if (!AC) return;
+      ac = new AC();
+      master = ac.createGain();
+      master.gain.value = muted ? 0 : 0.45;
+      master.connect(ac.destination);
+      noiseBuf = ac.createBuffer(1, ac.sampleRate * 1, ac.sampleRate);
+      const d = noiseBuf.getChannelData(0);
+      for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+      unlock();
+      const r = ac.resume && ac.resume(); if (r && r.catch) r.catch(() => {});
+    } catch (e) { ac = null; master = null; noiseBuf = null; }
+  }
+  ['touchend', 'pointerup', 'click', 'keydown'].forEach(ev => document.addEventListener(ev, init, { capture: true, passive: true }));
   const ok = () => ac && !muted;
 
   function tone(type, f0, f1, dur, vol = 0.25, delay = 0) {
@@ -47,7 +57,7 @@ window.Sfx = (() => {
   const notes = (seq, type = 'square', vol = 0.15) =>
     seq.forEach(([f, d, at]) => tone(type, f, f, d, vol, at));
 
-  return {
+  const api = {
     init,
     get muted() { return muted; },
     setMuted(m) {
@@ -95,4 +105,10 @@ window.Sfx = (() => {
     letter() { tone('square', 880, 880, 0.03, 0.08); },
     click() { tone('square', 660, 660, 0.03, 0.08); },
   };
+  // wrap every sound so an audio exception can never abort a tap handler
+  Object.keys(api).forEach(k => {
+    const d = Object.getOwnPropertyDescriptor(api, k);
+    if (typeof d.value === 'function') { const f = d.value; api[k] = function () { try { return f.apply(api, arguments); } catch (e) {} }; }
+  });
+  return api;
 })();

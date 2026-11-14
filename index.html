@@ -196,6 +196,7 @@
   <!-- ad layer (managed by js/ads.js) -->
   <div id="ov-ad" class="overlay hidden"></div>
 </div>
+<script src="js/tap.js"></script>
 <script src="js/audio.js"></script>
 <script src="js/ads.js"></script>
 <script src="js/economy.js"></script>
@@ -205,7 +206,8 @@
 <script src="js/game.js"></script>
 <script>
 if ('serviceWorker' in navigator && /^https?:/.test(location.protocol)) {
-  window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
+  window.addEventListener('load', () => navigator.serviceWorker.register('sw.js', { updateViaCache: 'none' })
+    .then(r => { try { r.update(); } catch (e) {} }).catch(() => {}));
 }
 </script>
 </body>

@@ -1215,11 +1215,13 @@ function openShop(from = 'title', keep) {
   $('btn-next').innerHTML = 'BACK';
   const anyClear = ECON.MAPS.some(m => Meta.isCleared(m.id));
   const modes = $('shop-modes');
-  modes.classList.toggle('hidden', !anyClear);
-  modes.innerHTML = '';
-  if (anyClear) {
-    modes.appendChild(btn('CLASSIC', 'small' + (!shopInf ? ' on' : ''), () => { shopInf = false; Meta.setMode('campaign'); openShop(shopFrom, true); }));
-    modes.appendChild(btn('INFINITY', 'small' + (shopInf ? ' on' : ''), () => { shopInf = true; Meta.setMode('infinity'); if (shopTab === 'maps' || shopTab === 'style') shopTab = 'weapons'; openShop(shopFrom, true); }));
+  if (modes) {
+    modes.classList.toggle('hidden', !anyClear);
+    modes.innerHTML = '';
+    if (anyClear) {
+      modes.appendChild(btn('CLASSIC', 'small' + (!shopInf ? ' on' : ''), () => { shopInf = false; Meta.setMode('campaign'); openShop(shopFrom, true); }));
+      modes.appendChild(btn('INFINITY', 'small' + (shopInf ? ' on' : ''), () => { shopInf = true; Meta.setMode('infinity'); if (shopTab === 'maps' || shopTab === 'style') shopTab = 'weapons'; openShop(shopFrom, true); }));
+    }
   }
   document.querySelectorAll('#shop-tabs button').forEach(b => {
     const hide = shopInf && (b.dataset.tab === 'maps' || b.dataset.tab === 'style');

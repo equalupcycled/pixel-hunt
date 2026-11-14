@@ -8,7 +8,7 @@ Retro pixel hunting high-score game. Mobile-first HTML5 canvas, no build step, n
 python3 -m http.server 8080   # then open http://localhost:8080
 ```
 Any static host works (Render static site, GitHub Pages, Netlify, Cloudflare Pages). Publish dir = repo root, no build command.
-(Not deployed yet - waiting on John's OK.)
+Live: https://pixel-hunt-o4vw.onrender.com/ (Render static site, auto-deploys from `main` of https://github.com/equalupcycled/pixel-hunt).
 
 ## Files
 - `index.html` - layout + overlays (title + map select, how-to, armory, pause, continue, game over, name entry, leaderboard, ad layer) + Open Graph tags

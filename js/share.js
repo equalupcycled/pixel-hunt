@@ -7,7 +7,7 @@
 'use strict';
 window.SHARE_CONFIG = {
   // >>> Set this to the public game URL once Pixel Hunt is hosted (also update og:url / og:image in index.html). <<<
-  GAME_URL: '',
+  GAME_URL: 'https://pixel-hunt-o4vw.onrender.com/',
   FALLBACK_URL: 'https://pixelhunt.example.com/', // used only when GAME_URL is empty and the page isn't on http(s)
 };
 window.Share = (() => {

@@ -22,10 +22,12 @@ function attempts(Tw, cap, reload, shotT) {
 // probability that the equipped weapon kills a target, plus per-kill modifiers
 function weaponTry(w, lv, d, kind, slow, st, ammo) {
   const g = k => V(lv, w + '.' + k);
-  const speed = (kind === 'deer' ? d.deerSpeed * 0.8 : d.speed * (kind === 'gold' ? 1.35 : 1)) * (slow ? 0.38 : 1);
+  // Flyers cross left -> right: on-screen time = (linger + 0.7s) x Eye; apparent speed = crossing speed + vertical zig.
+  const cross = (d.life * (kind === 'gold' ? 0.8 : 1) + 0.7) / (kind === 'gold' ? Math.sqrt(1.35) : 1);
+  const speed = (kind === 'deer' ? d.deerSpeed * 0.8 : Math.hypot(202 / (cross * st.eye), d.speed * 0.6 * (kind === 'gold' ? 1.35 : 1))) * (slow ? 0.38 : 1);
   const scale = kind === 'deer' ? 1.6 : d.scale * (kind === 'gold' ? 0.85 : 1);
   const er = kind === 'deer' ? 0 : d.erratic;
-  const Tw = (kind === 'deer' ? 180 / d.deerSpeed : d.life * (kind === 'gold' ? 0.8 : 1)) * st.eye / Math.min(d.conc, 3) * (slow ? 2.2 : 1);
+  const Tw = (kind === 'deer' ? 180 / d.deerSpeed : cross) * st.eye / Math.min(d.conc, 3) * (slow ? 2.2 : 1);
   let p = 0, extra = 0;
   if (w === 'shotgun') p = 1 - Math.pow(1 - aim(g('choke'), scale, speed, er), attempts(Tw, g('cap'), g('reload'), 0.45));
   else if (w === 'handgun') p = 1 - Math.pow(1 - aim(g('sights'), scale, speed, er) * 0.8, attempts(Tw, g('cap'), g('reload'), 0.26));

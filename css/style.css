@@ -568,3 +568,19 @@ h2.gold, #go-title.gold { color: #ffe066; }
   #shop-tabs button .tab-lbl { font-size: 10px; }
   .item .nm, .card .nm { font-size: 15px; }
 }
+
+
+/* Auto Reload rewarded boost */
+.boost-btn {
+  width: 92%;
+  max-width: 320px;
+  font-size: 13px;
+  letter-spacing: 0.3px;
+  min-height: 44px;
+  padding: 8px 10px;
+  white-space: nowrap;
+}
+#ov-over .boost-btn, #ov-pause .boost-btn { width: 100%; max-width: none; }
+.boost-btn.on { background: #1e3a1e !important; color: #7dff7a !important; animation: none; }
+.boost-btn.owned { background: #3a4558 !important; color: #cfe0ff !important; animation: none; }
+.boost-btn:disabled { opacity: 1; }

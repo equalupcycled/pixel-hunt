@@ -503,11 +503,19 @@ function makeTurret(id, i) {
   if (id === 'missile') { t.rate = g('rate'); t.blast = g('blast'); }
   t.ammo = t.ammo0; return t;
 }
+function autoReloadDelay() {
+  if (Meta.levelOf('perk.auto') > 0) return Meta.val('perk.auto');
+  if (Meta.autoBoostActive()) {
+    const tr = Meta.track('perk.auto');
+    return (tr && tr.val && tr.val[1] != null) ? tr.val[1] : 0.20;
+  }
+  return -1;
+}
 function applyGear() {
   const v = Meta.val;
   focusMax = v('focus'); maxMiss = v('luck'); moneyMult = v('bounty'); eyeMult = v('eye');
   focusDur = ECON.extendVal(Meta.track('focus').dur, Meta.levelOf('focus')) || 3;
-  perkAuto = Meta.levelOf('perk.auto') > 0 ? v('perk.auto') : -1; // -1 = off (player must reload by hand)
+  perkAuto = autoReloadDelay(); // -1 = off (player must reload by hand)
   perkLoader = v('perk.loader') || 1;
   perkReserve = v('perk.reserve') || 0;
   perkCombo = Meta.levelOf('perk.combo') > 0 ? v('perk.combo') : 99;
@@ -1089,9 +1097,64 @@ document.addEventListener('visibilitychange', () => { if (document.hidden) Meta.
   if (document.hidden && !paused && canAct()) togglePause(); });
 
 // ---------------- update ----------------
+function fmtBoostClock(ms) {
+  const s = Math.max(0, Math.ceil(ms / 1000));
+  return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0');
+}
+let boostWasOn = false, boostBtnStamp = '';
+function boostOwnedForUi() {
+  const titleOn = $('ov-title') && !$('ov-title').classList.contains('hidden');
+  const overOn = $('ov-over') && !$('ov-over').classList.contains('hidden');
+  if (titleOn) return Meta.withMode('campaign', () => Meta.ownsAutoReload());
+  if (overOn) {
+    const inf = !!(infinity || (lastRun && lastRun.infinity));
+    return Meta.withMode(inf ? 'infinity' : 'campaign', () => Meta.ownsAutoReload());
+  }
+  return Meta.ownsAutoReload();
+}
+function refreshBoostButtons() {
+  const owned = boostOwnedForUi();
+  const left = Meta.autoBoostLeft();
+  const active = !owned && left > 0;
+  const stamp = (owned ? 'own' : active ? 'on:' + fmtBoostClock(left) : 'offer');
+  if (stamp === boostBtnStamp) return;
+  boostBtnStamp = stamp;
+  document.querySelectorAll('.boost-btn').forEach(b => {
+    b.classList.toggle('owned', !!owned);
+    b.classList.toggle('on', !!active);
+    b.disabled = !!(owned || active);
+    if (owned) b.innerHTML = 'You own Auto Reload';
+    else if (active) b.innerHTML = 'AUTO RELOAD ' + fmtBoostClock(left);
+    else b.innerHTML = '&#9654; AD: Auto Reload 15 min';
+  });
+}
+function watchAutoBoost() {
+  const next = autoReloadDelay();
+  const ended = boostWasOn && next < 0 && Meta.levelOf('perk.auto') <= 0;
+  perkAuto = next;
+  if (ended) { toastQ.length = 0; toastBusy = false; toast('Auto Reload ended', '', 0); }
+  boostWasOn = Meta.autoBoostActive() && Meta.levelOf('perk.auto') <= 0;
+  refreshBoostButtons();
+}
+function startAutoBoostAd() {
+  Sfx.init(); Sfx.click(); Ads.init();
+  if (boostOwnedForUi() || Meta.autoBoostActive()) { refreshBoostButtons(); return; }
+  Ads.showRewarded().then(ok => {
+    if (!ok) return;
+    Meta.grantAutoBoost();
+    perkAuto = autoReloadDelay();
+    boostWasOn = true;
+    boostBtnStamp = '';
+    toast('AUTO RELOAD ON', '15 minutes', 0);
+    Sfx.gold();
+    refreshBoostButtons();
+  });
+}
+
 function update(dt) {
   for (const c of clouds) { c.x += c.v * dt; if (c.x > W + 10) c.x = -c.img.width - 10; }
   for (const f of snow) { f.y += f.v * dt; f.x += Math.sin(f.p + f.y * 0.05) * 6 * dt; if (f.y > H) { f.y = -2; f.x = rand(0, W); } }
+  watchAutoBoost();
   if (paused) return;
   let gdt = dt;
   if (focusT > 0) { focusT -= dt; gdt *= 0.38; }
@@ -1721,7 +1784,7 @@ function showOver(rank) {
   const showInf = Meta.isCleared(r.map) && !r.infinity;
   $('btn-go-infinity').innerHTML = 'PLAY INFINITY<br><small>ENDLESS \u00b7 SEPARATE HIGH SCORE</small>';
   show('btn-go-infinity', showInf);
-  show('ov-over', true); notify();
+  show('ov-over', true); notify(); boostBtnStamp = ''; refreshBoostButtons();
 }
 function renderNext(id) {
   const nx = Meta.cheapestNext(), el = $(id);
@@ -1934,6 +1997,7 @@ function updateTitle() {
     el.innerHTML = `<div class="nx-t">CLEAR ${prog.cur}/${prog.need} \u00b7 BEAT THE ROUND ${prog.need} BOSS</div><div class="prog"><i style="width:${pct}%"></i><span>${pct}%</span></div>`;
   }
   renderNext('title-next');
+  boostBtnStamp = ''; refreshBoostButtons();
 }
 function toTitle() {
   ['ov-over', 'ov-pause', 'ov-shop', 'ov-continue', 'ov-board', 'ov-name', 'ov-how', 'ov-about', 'ov-missions', 'ov-daily'].forEach(id => show(id, false));
@@ -1974,11 +2038,12 @@ $('btn-how').addEventListener('click', () => { Sfx.init(); Sfx.click(); show('ov
 $('btn-how-close').addEventListener('click', () => { Sfx.click(); show('ov-how', false); });
 function togglePause() {
   if (!(state === 'play' || state === 'intro')) return;
-  paused = !paused; holding = false; drawing = null; show('ov-pause', paused); if (!paused) Sfx.click();
+  paused = !paused; holding = false; drawing = null; show('ov-pause', paused); if (!paused) Sfx.click(); boostBtnStamp = ''; refreshBoostButtons();
 }
 $('btn-pause').addEventListener('click', togglePause);
 $('btn-resume').addEventListener('click', togglePause);
 $('btn-quit').addEventListener('click', () => { Sfx.click(); toTitle(); });
+['btn-auto-boost-t', 'btn-auto-boost-o', 'btn-auto-boost-p'].forEach(id => { const el = $(id); if (el) el.addEventListener('click', startAutoBoostAd); });
 function syncAudio() {
   document.querySelectorAll('.sfx-btn').forEach(b => {
     const on = Sfx.sfxOn; b.classList.toggle('off', !on);
@@ -2229,12 +2294,26 @@ function drawHud() {
   }
   if (streak >= 2) text('STREAK X' + Math.min(streak, 5), W / 2 + 6, 20, 1, '#ff9a3d', 'center', null);
   const perkTags = [];
-  if (wpn && wpn.reloading && perkAuto >= 0) perkTags.push('AUTO');
+  if (Meta.autoBoostActive() && Meta.levelOf('perk.auto') <= 0 && (state === 'play' || state === 'intro' || state === 'clear')) {
+    perkTags.push('AUTO ' + fmtBoostClock(Meta.autoBoostLeft()));
+  } else if (wpn && wpn.reloading && perkAuto >= 0) perkTags.push('AUTO');
   if (worldSlow() < 1 && (state === 'play' || state === 'intro')) perkTags.push('BULLET TIME');
   if ((Meta.val('perk.second') || 0) > 0 && (state === 'play' || state === 'intro' || state === 'clear')) perkTags.push('SAVES ' + secondLeft);
   if (perkTags.length) {
     const py = (bossT && live(bossT)) ? 50 : 31;
-    text(perkTags.join('  ·  '), W / 2, py, 1, '#cfe0ff', 'center', null);
+    const label = perkTags.join('  ·  ');
+    const boostChip = perkTags[0] && perkTags[0].indexOf('AUTO ') === 0;
+    if (boostChip) {
+      const tw = label.length * 4 + 8;
+      const tx = W / 2 - tw / 2;
+      ctx.fillStyle = 'rgba(8,28,12,0.85)';
+      ctx.fillRect(tx, py - 1, tw, 9);
+      ctx.fillStyle = '#7dff7a';
+      ctx.fillRect(tx, py - 1, tw, 1);
+      text(label, W / 2, py, 1, '#7dff7a', 'center', null);
+    } else {
+      text(label, W / 2, py, 1, '#cfe0ff', 'center', null);
+    }
   }
   // boss bar
   if (bossT && live(bossT)) {
@@ -2306,6 +2385,16 @@ window.PH = {
   reviveNow() { reviveUsed = true; revive(); },
   forceMapClear() { infinity = false; bossKilled = true; round = ECON.CLEAR_ROUND; bossRound = true; queue = []; targets = []; projs = []; mapJustCleared = false; failedClear = false; if (state !== 'play') state = 'play'; },
   startInfinity() { newGame(0, { infinity: true }); },
+  newGame(from, opts) { newGame(from || 0, opts); },
+  togglePause() { togglePause(); },
+  get paused() { return paused; },
+
+  autoBoostLeft: () => Meta.autoBoostLeft(), autoBoostActive: () => Meta.autoBoostActive(),
+  grantAutoBoost() { Meta.grantAutoBoost(); perkAuto = autoReloadDelay(); boostWasOn = Meta.autoBoostActive(); boostBtnStamp = ''; refreshBoostButtons(); },
+  setAutoBoostMs(ms) { return Meta.setAutoBoostMs(ms); },
+  setNow(fnOrMs) { Meta.setNow(fnOrMs); boostBtnStamp = ''; watchAutoBoost(); },
+  autoReloadDelay: () => autoReloadDelay(), get perkAuto() { return perkAuto; },
+
   spawn(k) { spawn(k); }, setAim(x, y) { aim = { x, y }; lightPos = { x, y }; }, hold(on) { holding = on; },
   grantAll() { Meta.withMode('campaign', () => { ECON.TRACKS.forEach(t => { Meta.save.lv[t.id] = t.val.length - 1; }); }); Meta.persist(); },
   makeCard: o => makeCard(o || {}).toDataURL('image/png'),

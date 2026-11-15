@@ -1129,11 +1129,11 @@ let boostWasOn = false, boostBtnStamp = '';
 function boostOwnedForUi() {
   const titleOn = $('ov-title') && !$('ov-title').classList.contains('hidden');
   const overOn = $('ov-over') && !$('ov-over').classList.contains('hidden');
-  if (titleOn) return Meta.withMode('campaign', () => Meta.ownsAutoReload());
   if (overOn) {
     const inf = !!(infinity || (lastRun && lastRun.infinity));
     return Meta.withMode(inf ? 'infinity' : 'campaign', () => Meta.ownsAutoReload());
   }
+  if (titleOn) return Meta.withMode('campaign', () => Meta.ownsAutoReload());
   return Meta.ownsAutoReload();
 }
 function refreshBoostButtons() {
@@ -1201,7 +1201,7 @@ function update(dt) {
   ckptFlash = Math.max(0, ckptFlash - dt);
   shake = Math.max(0, shake - dt * 25); skyFlash = Math.max(0, skyFlash - dt); whiteFlash = Math.max(0, whiteFlash - dt);
 
-  if (state === 'title') {
+  if (titleScene()) {
     if (targets.length < 3 && Math.random() < 0.02) {
       const sp = rand(25, 45), fl = MAP_SET[curMap.id].fly[0][0];
       const k = Math.random() < 0.2 ? 'gold' : fl, K = KIND[k];
@@ -1406,6 +1406,7 @@ function roundClear() {
 }
 // ---------------- overlays / UI ----------------
 function show(id, on) { $(id).classList.toggle('hidden', !on); }
+const titleScene = () => state === 'title' || !!( $('ov-title') && !$('ov-title').classList.contains('hidden') );
 function showGameButtons(on) {
   show('btn-pause', on); show('btn-reload', on); show('btn-focus', on && focusMax > 0);
   show('btn-swap', on && weapons.length > 1);
@@ -1776,6 +1777,20 @@ function finishRun(opts) {
 }
 function gameOver() { finishRun({ cleared: false }); }
 function victory() { finishRun({ cleared: true }); }
+
+function showTitleBehindOver() {
+  ['ov-pause', 'ov-shop', 'ov-continue', 'ov-board', 'ov-how', 'ov-about', 'ov-missions', 'ov-daily', 'ov-adfree'].forEach(id => show(id, false));
+  paused = false;
+  showGameButtons(false);
+  titleBrowseMap = null;
+  Meta.setMode('campaign'); shopInf = false;
+  if (!curMap || curMap.id !== Meta.save.equip.map) buildBg();
+  targets = []; projs = []; parts = []; floats = []; holding = false; drawing = null;
+  Sfx.setMusic('menu');
+  updateTitle(); refreshAdFreeUI();
+  show('ov-title', true);
+}
+
 function showOver(rank) {
   const r = lastRun;
   $('go-title').textContent = r.cleared ? 'MAP CLEARED!' : 'GAME OVER';
@@ -1821,7 +1836,7 @@ function showOver(rank) {
   const showInf = Meta.isCleared(r.map) && !r.infinity;
   $('btn-go-infinity').innerHTML = 'PLAY INFINITY<br><small>ENDLESS \u00b7 SEPARATE HIGH SCORE</small>';
   show('btn-go-infinity', showInf);
-  show('ov-over', true); notify(); boostBtnStamp = ''; refreshBoostButtons();
+  showTitleBehindOver(); show('ov-over', true); notify(); boostBtnStamp = ''; refreshBoostButtons();
 }
 function renderNext(id) {
   const nx = Meta.cheapestNext(), el = $(id);
@@ -2096,6 +2111,7 @@ $('btn-go-infinity').addEventListener('click', () => newGame(0, { infinity: true
 $('btn-again').addEventListener('click', () => newGame(0, { infinity: !!(lastRun && lastRun.infinity) }));
 $('btn-ckpt').addEventListener('click', continueCheckpoint);
 $('btn-menu').addEventListener('click', () => { Sfx.click(); toTitle(); });
+$('btn-over-close').addEventListener('click', () => { Sfx.click(); toTitle(); });
 $('btn-how').addEventListener('click', () => { Sfx.init(); Sfx.click(); show('ov-how', true); });
 $('btn-how-close').addEventListener('click', () => { Sfx.click(); show('ov-how', false); });
 function togglePause() {
@@ -2265,7 +2281,7 @@ function render() {
   if (decoyObj) { const bob = Math.sin(performance.now() / 200) * 1.5; ctx.drawImage(DECOY_SPR, decoyObj.x - 8, decoyObj.y - 4 + bob, 16, 8); ctx.strokeStyle = 'rgba(159,224,255,0.5)'; ctx.lineWidth = 0.6; ctx.beginPath(); ctx.arc(decoyObj.x, decoyObj.y, 14 + Math.sin(performance.now() / 150) * 3, 0, 6.3); ctx.stroke(); }
   for (const t of targets) drawTarget(t);
   ctx.drawImage(fg, 0, 0, W, H);
-  if (state !== 'title') { drawTurrets(); drawHunter(); }
+  if (!titleScene()) { drawTurrets(); drawHunter(); }
   drawProjs();
   for (const p of parts) { ctx.fillStyle = p.c; ctx.globalAlpha = Math.min(1, (p.life - p.t) * 3); ctx.fillRect(p.x, p.y, p.s, p.s); }
   ctx.globalAlpha = 1;
@@ -2291,7 +2307,7 @@ function render() {
   }
   ctx.globalAlpha = 1;
   if (state === 'play' || state === 'intro') drawCrosshair();
-  if (state === 'title') return drawTitle();
+  if (titleScene()) return drawTitle();
   drawHud();
   if ((state === 'intro' || state === 'clear' || state === 'dying') && banner) {
     const y = H * 0.4;
@@ -2530,7 +2546,7 @@ window.PH = {
   flakDmg: l => ECON.flakDmg(l), dmgLine, fireTap,
   grantAll() { Meta.withMode('campaign', () => { ECON.TRACKS.forEach(t => { Meta.save.lv[t.id] = t.val.length - 1; }); }); Meta.persist(); },
   makeCard: o => makeCard(o || {}).toDataURL('image/png'),
-  rebuild() { buildBg(); }, toTitle() { toTitle(); }, openShop(tab) { shopTab = tab || shopTab; openShop('title'); }, openBoard(m) { openBoard(m, 'title'); },
+  rebuild() { buildBg(); }, toTitle() { toTitle(); }, showOver(rank) { showOver(rank); }, openShop(tab) { shopTab = tab || shopTab; openShop('title'); }, openBoard(m) { openBoard(m, 'title'); },
   get banner() { return banner; }, get banner2() { return banner2; },
   get browseMap() { return titleBrowseMap || Meta.save.equip.map; },
   hasMap: id => Meta.hasMap(id),

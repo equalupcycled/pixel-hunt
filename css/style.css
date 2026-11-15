@@ -584,6 +584,11 @@ h2.gold, #go-title.gold { color: #ffe066; }
   padding: 8px 10px;
   white-space: nowrap;
 }
+#ov-over {
+  z-index: 8;
+  justify-content: flex-start;
+  padding-top: max(72px, calc(var(--safe-top, 0px) + 64px));
+}
 #ov-over .boost-btn, #ov-pause .boost-btn { width: 100%; max-width: none; }
 .boost-btn.on { background: #1e3a1e !important; color: #7dff7a !important; animation: none; }
 .boost-btn.owned { background: #3a4558 !important; color: #cfe0ff !important; animation: none; }

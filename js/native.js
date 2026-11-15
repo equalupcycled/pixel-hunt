@@ -48,7 +48,7 @@ window.PH_handleBack = function PH_handleBack() {
   if (vis('ov-name')) return true; // don't drop a high-score name
   if (vis('ov-continue')) return tap('btn-norevive');
   if (vis('ov-pause')) return tap('btn-quit');
-  if (vis('ov-over')) return tap('btn-menu');
+  if (vis('ov-over')) return tap('btn-over-close') || tap('btn-menu');
   if (vis('ov-title')) {
     const App = window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.App;
     if (App && App.exitApp) App.exitApp();

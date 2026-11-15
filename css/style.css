@@ -588,3 +588,7 @@ h2.gold, #go-title.gold { color: #ffe066; }
 .boost-btn.on { background: #1e3a1e !important; color: #7dff7a !important; animation: none; }
 .boost-btn.owned { background: #3a4558 !important; color: #cfe0ff !important; animation: none; }
 .boost-btn:disabled { opacity: 1; }
+
+#title-map.is-locked { color: #ffd36a; }
+.clearprog.is-locked .nx-t { color: #ffd36a; }
+#btn-play:disabled { opacity: 0.5; }

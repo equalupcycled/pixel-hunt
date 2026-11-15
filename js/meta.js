@@ -6,7 +6,7 @@ window.Meta = (() => {
   const fmt = n => Math.round(n).toLocaleString('en-US');
   const dayStr = (d = new Date()) => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
   const def = () => ({
-    v: 7, bank: 0, lv: Object.fromEntries(E.TRACKS.map(t => [t.id, 0])),
+    v: 8, bank: 0, lv: Object.fromEntries(E.TRACKS.map(t => [t.id, 0])),
     stats: { runs: 0, kills: 0, gold: 0, deer: 0, perfect: 0, multi: 0, bestRound: 0, bestStreak: 0, shots: 0, hits: 0, earned: 0, bosses: 0, turretKills: 0 },
     missions: [], mDone: 0, ach: {}, daily: { last: null, day: -1 }, ads: { date: null, doubles: 0 },
     equip: { primary: 'shotgun', secondary: null, turrets: [], skin: 'classic', cross: 'white', map: 'meadow' },
@@ -30,7 +30,7 @@ window.Meta = (() => {
       save = merge(def(), s);
       // clamp campaign levels; Infinity levels may go past the original cap (except unlocks / turret pads / maps)
       E.TRACKS.forEach(t => { save.lv[t.id] = Math.max(0, Math.min(t.val.length - 1, save.lv[t.id] | 0)); });
-      Object.keys(save.lv).forEach(k => { if (!E.TRACKS.find(t => t.id === k)) delete save.lv[k]; });
+      Object.keys(save.lv).forEach(k => { if (k.startsWith('map.')) return; if (!E.TRACKS.find(t => t.id === k)) delete save.lv[k]; });
       // v2 -> v3: Infinity / map-clear fields. Anyone who already reached the clear round is granted the clear (and Infinity).
       save.cleared = save.cleared || {};
       save.bestInfinityByMap = save.bestInfinityByMap || {};
@@ -67,6 +67,9 @@ window.Meta = (() => {
         if (save.infLv[tr.id] == null) save.infLv[tr.id] = 0;
       });
       save.v = Math.max(save.v || 2, 7);
+      // v7 -> v8: maps unlock by clearing the previous map, not by purchase or "own N upgrades".
+      // Keep access to any map already bought (lv['map.*']) or already played. Do not refund.
+      save.v = Math.max(save.v || 2, 8);
     }
   } catch (e) {}
   try { const ob = +localStorage.getItem('pixelhunt.best') || 0; if (ob && !save.bestByMap.meadow) save.bestByMap.meadow = ob; } catch (e) {}
@@ -85,18 +88,44 @@ window.Meta = (() => {
   function withMode(m, fn) { const prev = mode; setMode(m); try { return fn(); } finally { mode = prev; } }
   const track = id => E.TRACKS.find(t => t.id === id);
   const levelOf = id => levels()[id] || 0;
-  const totalBought = () => Object.values(levels()).reduce((a, b) => a + b, 0);
+  const totalBought = () => E.TRACKS.reduce((a, t) => a + (levels()[t.id] | 0), 0);
   const maxed = t => {
     if (isInf()) return E.cappedTrack(t) && levelOf(t.id) >= t.val.length - 1;
     return levelOf(t.id) >= t.val.length - 1;
   };
   const eligible = t => {
     if (isInf() && t.group === 'map') return false;
-    return totalBought() >= (t.req || 0) && (!t.needs || levelOf(t.needs) > 0);
+    if (totalBought() < (t.req || 0)) return false;
+    if (t.needsMap && !hasMap(t.needsMap)) return false;
+    if (t.needs) {
+      if (String(t.needs).startsWith('map.')) {
+        if (!hasMap(t.needs.slice(4))) return false;
+      } else if (levelOf(t.needs) <= 0) return false;
+    }
+    return true;
   };
   const owns = w => { const d = E.WEAPONS.find(x => x.id === w); return d && (!d.ownW || levelOf('own.' + w) > 0); };
   const hasTurret = id => levelOf('own.' + id) > 0;
-  const hasMap = id => { const m = E.MAPS.find(x => x.id === id); return m && (!m.w || save.lv['map.' + id] > 0); };
+  const playedMap = (s, id) => !!(
+    (s.roundByMap && (s.roundByMap[id] | 0) > 0) ||
+    (s.bestByMap && (s.bestByMap[id] | 0) > 0) ||
+    (s.roundInfinityByMap && (s.roundInfinityByMap[id] | 0) > 0) ||
+    (s.bestInfinityByMap && (s.bestInfinityByMap[id] | 0) > 0) ||
+    (s.cleared && s.cleared[id]) ||
+    (s.ckpt && (s.ckpt[id] | 0) > 0) ||
+    (s.ckptInf && (s.ckptInf[id] | 0) > 0)
+  );
+  const hasMap = id => {
+    const maps = E.MAPS;
+    const i = maps.findIndex(m => m.id === id);
+    if (i < 0) return false;
+    if (i === 0) return true; // Meadow is always open
+    const prev = maps[i - 1].id;
+    if (save.cleared && save.cleared[prev]) return true;
+    if ((save.lv['map.' + id] | 0) > 0) return true; // legacy purchase — keep access, no refund
+    if (playedMap(save, id)) return true; // already hunted here
+    return false;
+  };
   const isCleared = id => !!save.cleared[id];
   function markCleared(id) {
     if (save.cleared[id]) return false;
@@ -310,6 +339,12 @@ window.Meta = (() => {
   function grantAutoBoost() { save.autoBoostUntil = now() + boostMs; persist(); return save.autoBoostUntil; }
   function clearAutoBoost() { save.autoBoostUntil = 0; persist(); }
   function ownsAutoReload() { return levelOf('perk.auto') > 0; }
+
+  if (save.equip && !hasMap(save.equip.map)) {
+    const owned = E.MAPS.filter(m => hasMap(m.id));
+    save.equip.map = (owned[owned.length - 1] || E.MAPS[0]).id;
+  }
+
   return {
     get save() { return save; }, persist, track, val, maxed, costOf, totalBought, cheapestNext, anyAffordable, buy,
     eligible, owns, hasTurret, hasMap, isCleared, markCleared, clearProgress, equipWeapon, mountTurret, buyCosmetic, selectMap,

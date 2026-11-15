@@ -374,10 +374,10 @@ function buildBgFor(mapId, w, h, ground) {
   }
   return { bg: c, fg: fgc };
 }
-let curMap = null;
+let curMap = null, titleBrowseMap = null;
 function mapDef(id) { return ECON.MAPS.find(m => m.id === (id || Meta.save.equip.map)) || ECON.MAPS[0]; }
-function buildBg() {
-  curMap = mapDef();
+function buildBg(id) {
+  curMap = mapDef(id || titleBrowseMap || Meta.save.equip.map);
   const o = buildBgFor(curMap.id, W, H, GROUND); bg = o.bg; fg = o.fg;
   clouds = [];
   const nc = curMap.id === 'night' ? 0 : curMap.id === 'desert' ? 2 : 4;
@@ -592,7 +592,7 @@ function bossIdFor(r) { if (M.id === 'meadow') return (r / ECON.BOSS_EVERY) % 2 
 
 function startRound(opts) {
   if (!(opts && opts.restart)) round++;
-  diff = Object.assign({}, ECON.difficulty(round));
+  diff = Object.assign({}, ECON.difficulty(round, M));
   diff.speed *= M.speed; diff.deerSpeed *= M.speed; diff.life *= M.life; diff.scale *= M.size;
   bossRound = round % ECON.BOSS_EVERY === 0;
   queue = [];
@@ -1388,8 +1388,12 @@ function roundClear() {
   failedClear = campaignEnd && !bossKilled;
   if (mapJustCleared) {
     const first = !Meta.isCleared(M.id);
+    const nxt = ECON.nextMap(M.id);
+    const newly = first && nxt && !Meta.hasMap(nxt.id);
     banner = 'MAP CLEARED!';
-    banner2 = first ? 'INFINITY MODE UNLOCKED' : M.name.toUpperCase() + ' COMPLETE';
+    if (newly) banner2 = 'NEW MAP UNLOCKED: ' + nxt.name.toUpperCase() + '!';
+    else if (first) banner2 = 'INFINITY MODE UNLOCKED';
+    else banner2 = M.name.toUpperCase() + ' COMPLETE';
     if (perfect) banner2 += '  +$' + bonusCash;
     clearT = 3.2;
   } else if (failedClear) {
@@ -1431,7 +1435,6 @@ function tabCanFor(tab) {
   if (tab === 'weapons') return ECON.TRACKS.some(t => (t.group === 'weapon' || t.id === 'loadout') && trackAffordable(t));
   if (tab === 'turrets') return ECON.TRACKS.some(t => (t.group === 'turret' || t.id === 'turret.slots') && trackAffordable(t));
   if (tab === 'perks') return ECON.TRACKS.some(t => t.group === 'perk' && trackAffordable(t));
-  if (tab === 'maps') return !shopInf && ECON.TRACKS.some(t => t.group === 'map' && trackAffordable(t));
   if (tab === 'style' && !shopInf) {
     const eq = Meta.activeEquip();
     return ECON.SKINS.some(s => !Meta.save.cosm.includes(s.id) && Meta.bank() >= s.cost)
@@ -1599,6 +1602,7 @@ function flashBought() {
   if (el) { el.classList.add('bought'); try { el.scrollIntoView({ block: 'nearest' }); } catch (e) {} }
 }
 function openShop(from = 'title', keep) {
+  if (shopTab === 'maps') shopTab = 'weapons';
   shopFrom = from === 'round' ? 'title' : from; // upgrades are only between runs (title / game over)
   Meta.setMode(shopInf ? 'infinity' : 'campaign');
   closeShopDetail();
@@ -1616,11 +1620,11 @@ function openShop(from = 'title', keep) {
     modes.innerHTML = '';
     if (anyClear) {
       modes.appendChild(btn('CLASSIC', 'small' + (!shopInf ? ' on' : ''), () => { shopInf = false; Meta.setMode('campaign'); openShop(shopFrom, true); }));
-      modes.appendChild(btn('INFINITY', 'small' + (shopInf ? ' on' : ''), () => { shopInf = true; Meta.setMode('infinity'); if (shopTab === 'maps' || shopTab === 'style') shopTab = 'weapons'; openShop(shopFrom, true); }));
+      modes.appendChild(btn('INFINITY', 'small' + (shopInf ? ' on' : ''), () => { shopInf = true; Meta.setMode('infinity'); if (shopTab === 'style') shopTab = 'weapons'; openShop(shopFrom, true); }));
     }
   }
   document.querySelectorAll('#shop-tabs button').forEach(b => {
-    const hide = shopInf && (b.dataset.tab === 'maps' || b.dataset.tab === 'style');
+    const hide = shopInf && b.dataset.tab === 'style';
     b.classList.toggle('hidden', hide);
     b.classList.toggle('on', b.dataset.tab === shopTab);
     b.classList.toggle('can', !hide && tabCanFor(b.dataset.tab));
@@ -1683,22 +1687,6 @@ function openShop(from = 'title', keep) {
     nte.textContent = 'Late-game perks. Big costs, big help — they work with every gun (including laser vent and bow nock). In Infinity they keep leveling with no cap.';
     list.appendChild(nte);
     ECON.TRACKS.filter(t => t.group === 'perk').forEach(t => list.appendChild(trackItem(t)));
-  } else if (shopTab === 'maps') {
-    ECON.MAPS.forEach(m => {
-      const has = Meta.hasMap(m.id), selm = eq.map === m.id;
-      const th = document.createElement('canvas'); th.width = W; th.height = 120; th.getContext('2d').drawImage(mapThumb(m.id), 0, 0); th.className = 'thumb' + (has ? '' : ' dim');
-      const c = document.createElement('div'); c.className = 'card map' + (selm ? ' sel' : '');
-      const info = document.createElement('div'); info.className = 'map-info';
-      const bestM = Meta.save.bestByMap[m.id] || 0;
-      const cleared = Meta.isCleared(m.id), prog = Meta.clearProgress(m.id);
-      const clearTag = cleared ? ' <span class="badge">CLEARED</span>' : ` <span class="badge dim">CLEAR ${prog.cur}/${prog.need}</span>`;
-      const infLine = cleared ? ` \u00b7 INF BEST ${fmt(Meta.save.bestInfinityByMap[m.id] || 0)}` : '';
-      info.innerHTML = `<div class="nm">${m.name.toUpperCase()} <span class="badge cashc">$ x${m.cash}</span>${selm ? ' <span class="badge equip">SELECTED</span>' : ''}${clearTag}</div><div class="ds">${esc(m.role)}</div><div class="ds dim">Best ${fmt(bestM)}${infLine} · beat the round ${ECON.CLEAR_ROUND} boss to clear</div>`;
-      c.append(th, info);
-      if (has) c.appendChild(btn(selm ? 'SELECTED' : 'HUNT HERE', 'small' + (selm ? ' on' : ''), () => { Meta.selectMap(m.id); buildBg(); openShop(shopFrom, true); }, midRun || selm));
-      else c.appendChild(trackItem(Meta.track('map.' + m.id)));
-      list.appendChild(c);
-    });
   } else if (shopTab === 'style') {
     const n = document.createElement('div'); n.className = 'note'; n.textContent = 'Cosmetic only: fixed prices.'; list.appendChild(n);
     const mk = (kind, it, preview) => {
@@ -1775,8 +1763,10 @@ function finishRun(opts) {
   const isBest = ranked && score > mapBest;
   const isAll = ranked && !infinity && score > best;
   if (isAll) { best = score; store.set('best', best); }
+  const nxt = !infinity && cleared ? ECON.nextMap(M.id) : null;
+  const unlockedMap = (nxt && !Meta.isCleared(M.id) && !Meta.hasMap(nxt.id)) ? nxt : null;
   Meta.endRun({ score: ranked ? score : 0, round, earned: runCash, ranked, infinity, cleared });
-  lastRun = { score, round, map: M.id, mapName: M.name, weapon: wpn.id, isBest: isBest && score > 0, isAll: isAll && score > 0, fromCkpt, infinity, cleared };
+  lastRun = { score, round, map: M.id, mapName: M.name, weapon: wpn.id, isBest: isBest && score > 0, isAll: isAll && score > 0, fromCkpt, infinity, cleared, unlockedMap: unlockedMap && unlockedMap.name };
   if (ranked && window.Leaderboard && Leaderboard.qualifies(M.id, score, infinity)) openNameEntry();
   else showOver(null);
 }
@@ -1805,7 +1795,12 @@ function showOver(rank) {
   dbl.innerHTML = left > 0 ? `&#9654; WATCH AD: 2X EARNINGS<br><small>+$${fmt(earnedShown)} MORE \u00b7 ${left} LEFT TODAY</small>` : '2X USED UP TODAY<br><small>COMES BACK TOMORROW</small>';
   renderNext('go-next'); renderMissions('go-missions');
   let note = '';
-  if (r.cleared) note = 'MAP CLEARED \u00b7 INFINITY UNLOCKED' + (r.fromCkpt ? ' \u00b7 CHECKPOINT RUN, NOT RANKED' : '');
+  if (r.cleared) {
+    note = r.unlockedMap
+      ? ('NEW MAP UNLOCKED: ' + r.unlockedMap.toUpperCase() + '! \u00b7 INFINITY UNLOCKED')
+      : 'MAP CLEARED \u00b7 INFINITY UNLOCKED';
+    if (r.fromCkpt) note += ' \u00b7 CHECKPOINT RUN, NOT RANKED';
+  }
   else if (r.fromCkpt) note = (r.infinity ? 'INFINITY ' : '') + `CHECKPOINT RUN (FROM ROUND ${r.fromCkpt}) \u00b7 NOT RANKED`;
   else if (r.infinity) note = 'INFINITY RUN \u00b7 RANKED ON THE INFINITY BOARD';
   $('go-unranked').textContent = note;
@@ -2002,47 +1997,65 @@ $('btn-missions-close').addEventListener('click', () => { Sfx.click(); show('ov-
 $('btn-armory').addEventListener('click', () => { Sfx.init(); Sfx.click(); shopInf = false; Meta.setMode('campaign'); show('ov-title', false); openShop('title'); });
 
 // ---------- title ----------
+function shownMap() { return mapDef(titleBrowseMap || Meta.save.equip.map); }
 function cycleMap(d) {
-  const own = ECON.MAPS.filter(m => Meta.hasMap(m.id)); if (own.length < 2) { toast('MORE MAPS', 'Unlock maps in Upgrades', 0); return; }
-  const i = own.findIndex(m => m.id === Meta.save.equip.map);
-  Meta.selectMap(own[(i + d + own.length) % own.length].id); buildBg(); targets = []; updateTitle();
+  const maps = ECON.MAPS;
+  const cur = shownMap();
+  const i = Math.max(0, maps.findIndex(m => m.id === cur.id));
+  const nxt = maps[(i + d + maps.length) % maps.length];
+  if (Meta.hasMap(nxt.id)) { titleBrowseMap = null; Meta.selectMap(nxt.id); }
+  else titleBrowseMap = nxt.id;
+  buildBg(nxt.id); targets = []; updateTitle();
 }
 $('btn-map-prev').addEventListener('click', () => { Sfx.init(); Sfx.click(); cycleMap(-1); });
 $('btn-map-next').addEventListener('click', () => { Sfx.init(); Sfx.click(); cycleMap(1); });
 function updateTitle() {
-  const m = mapDef();
+  const m = shownMap();
+  const unlocked = Meta.hasMap(m.id);
   $('title-best').textContent = fmt(best);
   const anyClear = ECON.MAPS.some(m => Meta.isCleared(m.id));
   $('title-bank').textContent = '$' + fmt(Meta.save.bank) + (anyClear ? '  ·  INF $' + fmt(Meta.save.infBank || 0) : '');
-  $('title-map').textContent = m.name.toUpperCase() + (Meta.isCleared(m.id) ? '  \u2605' : '');
-  const bestLine = 'MAP BEST ' + fmt(Meta.save.bestByMap[m.id] || 0) + ' \u00b7 $ x' + m.cash;
-  $('title-mapbest').textContent = Meta.isCleared(m.id)
+  $('title-map').textContent = m.name.toUpperCase() + (unlocked && Meta.isCleared(m.id) ? '  \u2605' : unlocked ? '' : '  LOCKED');
+  $('title-map').classList.toggle('is-locked', !unlocked);
+  const bestLine = unlocked
+    ? ('MAP BEST ' + fmt(Meta.save.bestByMap[m.id] || 0) + ' \u00b7 $ x' + m.cash)
+    : (ECON.unlockHint(m.id) || 'Locked');
+  $('title-mapbest').textContent = (unlocked && Meta.isCleared(m.id))
     ? bestLine + ' \u00b7 INF BEST ' + fmt(Meta.save.bestInfinityByMap[m.id] || 0)
     : bestLine;
   const eq = Meta.save.equip;
   $('title-loadout').textContent = WDEF(eq.primary).name.toUpperCase() + (Meta.val('loadout') && eq.secondary ? ' + ' + WDEF(eq.secondary).name.toUpperCase() : '') + (eq.turrets.length ? ' \u00b7 ' + eq.turrets.length + ' TURRET' + (eq.turrets.length > 1 ? 'S' : '') : '');
   $('btn-armory').classList.toggle('gold-btn', Meta.anyAffordable());
-  const cleared = Meta.isCleared(m.id), prog = Meta.clearProgress(m.id);
+  const cleared = unlocked && Meta.isCleared(m.id), prog = Meta.clearProgress(m.id);
   show('btn-infinity', cleared);
   const el = $('title-clear');
-  if (cleared) {
+  el.classList.toggle('is-locked', !unlocked);
+  if (!unlocked) {
+    el.innerHTML = '<div class="nx-t">' + (ECON.unlockHint(m.id) || 'Locked') + '</div>';
+  } else if (cleared) {
     el.innerHTML = '<div class="nx-t ready">MAP CLEARED \u00b7 INFINITY UNLOCKED</div>';
   } else {
     const pct = Math.floor(prog.cur / prog.need * 100);
     el.innerHTML = `<div class="nx-t">CLEAR ${prog.cur}/${prog.need} \u00b7 BEAT THE ROUND ${prog.need} BOSS</div><div class="prog"><i style="width:${pct}%"></i><span>${pct}%</span></div>`;
   }
+  const play = $('btn-play');
+  if (play) { play.disabled = !unlocked; play.setAttribute('aria-disabled', unlocked ? 'false' : 'true'); }
   renderNext('title-next');
   boostBtnStamp = ''; refreshBoostButtons();
 }
 function toTitle() {
   ['ov-over', 'ov-pause', 'ov-shop', 'ov-continue', 'ov-board', 'ov-name', 'ov-how', 'ov-about', 'ov-missions', 'ov-daily'].forEach(id => show(id, false));
   paused = false; state = 'title'; targets = []; projs = []; holding = false; drawing = null; showGameButtons(false); Meta.persist();
+  titleBrowseMap = null;
   Meta.setMode('campaign'); shopInf = false;
   if (!curMap || curMap.id !== Meta.save.equip.map) buildBg();
   Sfx.setMusic('menu');
   updateTitle(); show('ov-title', true); maybeDaily();
 }
 function newGame(fromRound, opts) {
+  titleBrowseMap = null;
+  if (!Meta.hasMap(Meta.save.equip.map)) { const owned = ECON.MAPS.filter(m => Meta.hasMap(m.id)); Meta.selectMap((owned[owned.length - 1] || ECON.MAPS[0]).id); }
+
   Sfx.init(); Sfx.click(); Ads.init();
   ['ov-title', 'ov-over', 'ov-pause', 'ov-shop', 'ov-daily', 'ov-board', 'ov-how', 'ov-about', 'ov-missions'].forEach(id => show(id, false));
   infinity = !!(opts && opts.infinity);
@@ -2060,7 +2073,12 @@ function continueCheckpoint() {
   const ck = checkpointFor(Meta.save.equip.map, inf);
   if (ck) newGame(ck, { infinity: inf }); else newGame(0, { infinity: inf });
 }
-$('btn-play').addEventListener('click', () => newGame());
+$('btn-play').addEventListener('click', () => {
+  const m = shownMap();
+  if (!Meta.hasMap(m.id)) { toast('MAP LOCKED', ECON.unlockHint(m.id) || 'Locked', 0); return; }
+  if (titleBrowseMap) { Meta.selectMap(titleBrowseMap); titleBrowseMap = null; }
+  newGame();
+});
 $('btn-infinity').addEventListener('click', () => {
   if (!Meta.isCleared(Meta.save.equip.map)) { toast('INFINITY LOCKED', 'Beat the round ' + ECON.CLEAR_ROUND + ' boss to unlock', 0); return; }
   newGame(0, { infinity: true });
@@ -2453,5 +2471,8 @@ window.PH = {
   grantAll() { Meta.withMode('campaign', () => { ECON.TRACKS.forEach(t => { Meta.save.lv[t.id] = t.val.length - 1; }); }); Meta.persist(); },
   makeCard: o => makeCard(o || {}).toDataURL('image/png'),
   rebuild() { buildBg(); }, toTitle() { toTitle(); }, openShop(tab) { shopTab = tab || shopTab; openShop('title'); }, openBoard(m) { openBoard(m, 'title'); },
+  get banner() { return banner; }, get banner2() { return banner2; },
+  get browseMap() { return titleBrowseMap || Meta.save.equip.map; },
+  hasMap: id => Meta.hasMap(id),
 };
 })();

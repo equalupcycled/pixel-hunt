@@ -104,7 +104,7 @@ async def part_b(b):
     await pg.click('.card-h >> nth=1'); await pg.wait_for_timeout(300)
     await pg.evaluate("document.getElementById('shop-detail')&&document.getElementById('shop-detail').classList.add('hidden')")
     await pg.screenshot(path=OUT + '20-armory-weapons.png')
-    for tab, name in [('turrets', '21-armory-turrets'), ('gear', '22-armory-gear'), ('maps', '23-armory-maps'), ('style', '24-armory-style')]:
+    for tab, name in [('turrets', '21-armory-turrets'), ('gear', '22-armory-gear'), ('style', '24-armory-style')]:
         await pg.click(f'#shop-tabs button[data-tab="{tab}"]'); await pg.wait_for_timeout(300)
         await pg.screenshot(path=OUT + name + '.png')
     await pg.click('#shop-tabs button[data-tab="weapons"]'); await pg.click('#btn-next'); await pg.wait_for_timeout(300)

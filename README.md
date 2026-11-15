@@ -18,7 +18,7 @@ Landing / download page (does not replace the game): https://pixel-hunt-o4vw.onr
 - `css/style.css` - pixel UI styling for the game
 - `js/game.js` - game loop, sprites, pixel font, maps/backgrounds, weapons, turrets, gadgets, bosses, upgrades UI, input
 - `js/economy.js` - weapons, turrets, gear, maps, cosmetics, price formula, difficulty curve, payouts (shared with the simulator)
-- `js/meta.js` - persistent save (schema v4: Classic bank/upgrades/equipment, plus a shared Infinity wallet + upgrade tree, missions, achievements, daily calendar, stats, per-map Classic and Infinity bests, map clears); migrates v1–v3 saves
+- `js/meta.js` - persistent save (schema v8: Classic bank/upgrades/equipment, plus a shared Infinity wallet + upgrade tree, missions, achievements, daily calendar, stats, per-map Classic and Infinity bests, map clears); migrates v1–v7 saves
 - `js/leaderboard.js` - local top-10 per map for Classic and Infinity (`map:inf`) + stubbed online provider
 - `js/share.js` - "Share to Facebook" (Web Share API -> Facebook sharer fallback); `SHARE_CONFIG.GAME_URL`
 - `js/audio.js` - Web Audio synth: per-weapon shots, reloads, animal hit cries, boss roar, and quiet looping chiptune (menu and gameplay). Separate Sound and Music toggles are saved in localStorage.
@@ -34,13 +34,13 @@ Landing / download page (does not replace the game): https://pixel-hunt-o4vw.onr
 - **Watch ad to continue** (once per run): restarts the **same round you lost**, **keeps your score** and cash earned this run, and clears all X's. If the run started at round 1 it stays ranked.
 - **Checkpoints** at the start of rounds 5, 10, 15... are saved per map (Infinity has its own). Game over also offers *Continue from Round N checkpoint* (X's cleared, score from 0, not ranked) or *Start from Round 1* (ranked).
   Rounds 10, 20... are boss rounds, so their checkpoint puts you right in front of the boss.
-- **Clear a map** by defeating its **round 30 boss** (the 3rd boss). That unlocks **Infinity** for that map: endless rounds with ever-scaling difficulty and a **separate Infinity high score**. Map select shows clear progress (N/30) and a CLEARED / Infinity badge. Saves that already reached round 30 are granted the clear on load.
+- **Clear a map** by defeating its **round 30 boss** (the 3rd boss). That unlocks **Infinity** for that map (endless rounds, a **separate Infinity high score**) and automatically unlocks the **next map**. Maps cannot be bought; they unlock in order (Meadow → Lake → Snowy Forest → Desert → Night Hunt) only by clearing the previous one. Map select shows clear progress (N/30) or “Clear Meadow to unlock” for the next locked map, and a celebratory “New map unlocked: Lake!” banner after the clear. Players who already bought or played a map keep it (no refunds). Saves that already reached round 30 are granted the clear on load.
 - **Infinity progression is shared** across every Infinity map, and is **completely separate** from Classic. Entering Infinity starts you over with the free shotgun (no upgrades) and an Infinity wallet of $0. Classic money, upgrades, and loadout are never spent or changed by Infinity play. In Infinity, upgrades have **no level cap** (except one-time unlocks, maps, and the 3 turret pads): each extra level costs more (×1.22 past the Classic cap) and gains shrink but stay nonzero. The Upgrades screen is labeled Classic or Infinity and shows the matching wallet; it is still only reachable from the title screen and game over.
 - Manual reload for every weapon: RELOAD / BOLT / NOCK / VENT button, swipe down (tap weapons) or R / Space.
 - Pink lovebirds are protected: shooting one costs cash + points; letting them go is free. Turrets never shoot them.
 - Every 10th round is a **boss round** (Classic and Infinity) with a health bar. The boss patrols the upper sky, left to right and back, and periodically drops **eggs**. Smash an egg before it hatches for a few points; a hatched bird flies left-to-right and is **1 X** if it escapes. Drop rate rises with boss tier (round 10 / 20 / 30 / Infinity) and harder maps, and each map's boss drops that map's bird types. A timer still counts down: if it hits zero the boss flies off for **1 X** (this keeps fights from lasting forever and is the same skill check as before, just no longer tied to a single pass).
 - The **Upgrades** screen is only available between runs (title screen and game over). There is no shop between rounds or in the pause menu.
-- Money, upgrades and equipment **persist** (localStorage `pixelhunt.save.v1`, schema v4). High score overall in `pixelhunt.best`, per-map Classic and Infinity bests in the save.
+- Money, upgrades and equipment **persist** (localStorage `pixelhunt.save.v1`, schema v8). High score overall in `pixelhunt.best`, per-map Classic and Infinity bests in the save.
 
 ## Arsenal
 | Weapon | Input | Role | Unlock |
@@ -65,17 +65,17 @@ Cosmetics: 5 hunter skins, 6 crosshair colors (fixed prices, no gameplay effect)
 ## Maps & bosses
 | Map | Unlock | $ / pts | Animals | Boss |
 |---|---|---|---|---|
-| Meadow | free | 1.0 / 1.0 | ducks, bluebirds, deer | Giant Eagle / Big Buck |
-| Lake | 18 upgrades | 1.3 / 1.2 | ducks, geese (2 hits) skimming low, swimming geese | Goose King |
-| Snowy Forest | 45 | 1.7 / 1.5 | gliding snow owls, hopping rabbits, wolves (2 hits) | Yeti Owl |
-| Desert | 80 | 2.2 / 1.8 | circling vultures, roadrunners, coyotes (2 hits) | Thunderbird |
-| Night Hunt | 120 | 2.8 / 2.3 | bats, owls, glowing eyes in the bushes; dark - only the flashlight shows them | Bat King |
+| Meadow | always open | 1.0 / 1.0 | ducks, bluebirds, deer | Giant Eagle / Big Buck |
+| Lake | clear Meadow (R30 boss) | 1.3 / 1.2 | ducks, geese (2 hits) skimming low, swimming geese | Goose King |
+| Snowy Forest | clear Lake | 1.7 / 1.5 | gliding snow owls, hopping rabbits, wolves (2 hits) | Yeti Owl |
+| Desert | clear Snowy Forest | 2.2 / 1.8 | circling vultures, roadrunners, coyotes (2 hits) | Thunderbird |
+| Night Hunt | clear Desert | 2.8 / 2.3 | bats, owls, glowing eyes in the bushes; dark - only the flashlight shows them | Bat King |
 
 ## Economy (tuned with tools/econ-sim.js)
-- 333 purchasable levels (including 50 perk levels). Price = 1000 x track weight x (1 + 3% x track level) x CURVE[upgrades owned].
+- 329 purchasable levels (including 50 perk levels; maps are not purchasable). Price = 1000 x track weight x (1 + 3% x track level) x CURVE[upgrades owned].
   The CURVE is the higher pre-total-miss set (kept at John's request). Campaign runs end at the round 30 boss, so late-game earnings per campaign run are a bit lower than an endless climb. Infinity uses the same early-game prices (so the first re-upgrades still take about 6 games each) and then an exponential cost past the Classic cap.
-- Simulated average player: 6.41 games per purchase (p10 4, median 6, p90 9), ~90 h to max everything (~74 h watching 2x ads).
-  Examples: Handgun $9,000, Laser Gun $96,000, Night Hunt $230,000.
+- Simulated average player: 6.71 games per purchase (p10 4, median 6, p90 11), ~154 h to max everything (~128 h watching 2x ads). Maps are no longer purchasable, so the late curve stays on Meadow income unless a map has been cleared.
+  Examples: Handgun $9,000, Laser Gun $96,000.
 - Side income scales with the cheapest next upgrade: missions 10%, daily calendar 8-35%, achievements one-time.
 
 ## Leaderboard

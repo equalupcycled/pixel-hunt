@@ -5,6 +5,7 @@
 //   node tools/econ-sim.js --balance  compare weapons at equal investment
 //   node tools/econ-sim.js --scores   simulated Classic scores at checkpoints (rounds 5/10/15/20/25/30)
 //   node tools/econ-sim.js --boss-rates  mid-game Meadow R10 boss clear rate (target ~87%)
+//   node tools/econ-sim.js --survival  per-round reach/clear rates (default Meadow; --map=lake --n=2000)
 //   node tools/econ-sim.js --perks    compare each perk on vs off at a matching stage
 // The "average player" model: aim accuracy falls with target speed/size/erratic paths; ammo, fire rate
 // and reload give more attempts per target; run ends after N escapes TOTAL (Lucky Feather: 3/4/5); a perfect round
@@ -302,7 +303,15 @@ function run(lv, equip, mapId = 'meadow', start = 1) {
   }
   return { cash, rounds: r - start + 1, reached: r, time };
 }
-function bestMap(lv) { return E.MAPS.filter(m => !m.w || lv['map.' + m.id]).slice(-1)[0].id; }
+function hasMapLv(lv, id, cleared) {
+  const i = E.MAPS.findIndex(m => m.id === id);
+  if (i < 0) return false;
+  if (i === 0) return true;
+  if (lv['map.' + id]) return true;
+  if (cleared && cleared[E.MAPS[i - 1].id]) return true;
+  return false;
+}
+function bestMap(lv, cleared) { return E.MAPS.filter(m => hasMapLv(lv, m.id, cleared)).slice(-1)[0].id; }
 function avgFrom(lv, equip, n, map, start) {
   let c = 0, r = 0, t = 0; const reached = [];
   for (let i = 0; i < n; i++) { const o = run(lv, equip, map, start); c += o.cash; r += o.rounds; t += o.time; reached.push(o.reached); }
@@ -367,7 +376,7 @@ function playout(steps, { ads = false } = {}) {
 function smooth(a, win) { return a.map((_, i) => { let s = 0, c = 0; for (let j = Math.max(0, i - win); j <= Math.min(a.length - 1, i + win); j++) { s += a[j]; c++; } return s / c; }); }
 
 const args = process.argv.slice(2);
-if (!args.includes('--scores') && !args.includes('--boss-rates') && !args.includes('--perks')) {
+if (!args.includes('--scores') && !args.includes('--boss-rates') && !args.includes('--perks') && !args.includes('--survival')) {
 const { steps } = plan();
 if (args.includes('--fit')) {
   const TARGET = 5.0; // cheapest w=1 purchase = 5 average runs of earnings (missions & daily bring it to ~3.5-4 games)
@@ -578,7 +587,7 @@ function runScored(lv, equip, mapId, start) {
       life: d0.life * M.life * (M.dark ? 0.9 + 0.1 * (lv.flashlight || 0) / 4 : 1),
       scale: d0.scale * M.size
     });
-    if (r % 5 === 0) started[r] = true;
+    started[r] = true;
     let hits = 0, total = 0, focusLeft = Math.round(st.focus * st.focusDur / 2.5);
     let tb = 0;
     turrets.forEach(t => {
@@ -700,7 +709,7 @@ function describeLoadout(lv, nLabel) {
     return parts[0];
   });
   bits.push('owned ' + guns.join(', '));
-  const maps = E.MAPS.filter(m => !m.w || lv['map.' + m.id]).map(m => m.name);
+  const maps = E.MAPS.filter(m => hasMapLv(lv, m.id)).map(m => m.name);
   bits.push('maps ' + maps.join('/'));
   return bits.join(' · ');
 }
@@ -837,6 +846,75 @@ function reportBossRates() {
   console.log('New shotgun starting AT R10 with 0 X (fairness if they get there): clear ' + (newC.clear*100).toFixed(1) + '%');
 }
 if (args.includes('--boss-rates')) reportBossRates();
+
+
+function reportSurvival() {
+  const N = +(args.find(a => a.startsWith('--n=')) || '--n=2000').slice(4);
+  const mapId = (args.find(a => a.startsWith('--map=')) || '--map=meadow').slice(6);
+  const marks = [10, 15, 20, 25, 30];
+  const mid = cheapPlan(40);
+  const typ = cheapPlan(90);
+  const typGun = pickBestWeapon(typ.lv, mapId, 60);
+  const stages = [
+    { id: 'new', name: 'New (starter shotgun)', lv: emptyLv(), gun: 'shotgun' },
+    { id: 'mid', name: 'Mid-game (40 upgrades, rifle)', lv: mid.lv, gun: 'rifle' },
+    { id: 'typical', name: 'Typical progress (90 upgrades)', lv: typ.lv, gun: typGun },
+  ];
+  const pct = x => (x * 100).toFixed(1) + '%';
+  console.log('SIMULATED Classic survival (not telemetry). Map=' + mapId + '  N=' + N + ' fresh runs from R1.');
+  console.log('Reach = started that round. Clear = finished the round (started next, or alive at R30).');
+  console.log('Drop = share of players who started r but did not clear it (single-round wipe).');
+  // difficulty dump
+  console.log('');
+  console.log('Difficulty (raw, before map speed/life/size):');
+  console.log('r  count speed  conc  life  errat  scale  intvl  deer  deerSp  decoy');
+  for (let r = 1; r <= 30; r++) {
+    const d = E.difficulty(r, mapId);
+    const row = [r, d.count, d.speed, d.conc, d.life, d.erratic, d.scale, d.interval, d.deer, d.deerSpeed, d.decoy]
+      .map((v, i) => i === 0 ? String(v).padStart(2) : (typeof v === 'number' ? v.toFixed(2).padStart(7) : String(v)));
+    console.log(row.join(' '));
+  }
+  const tables = {};
+  stages.forEach(st => {
+    const reach = {}, clear = {}, drop = {};
+    for (let r = 1; r <= 30; r++) reach[r] = clear[r] = 0;
+    let loadW = st.gun;
+    if (!loadW) {
+      // typ.weapon may be set by cheapPlan
+      loadW = st.gun;
+    }
+    for (let i = 0; i < N; i++) {
+      const o = runScored(st.lv, st.gun, mapId);
+      for (let r = 1; r <= 30; r++) {
+        if (o.started[r]) reach[r]++;
+        const cleared = !!(o.started[r + 1] || (o.alive && o.reached >= r));
+        if (o.started[r] && cleared) clear[r]++;
+      }
+    }
+    console.log('');
+    console.log(st.name + (st.gun ? ' [' + st.gun + ']' : '') + ':');
+    console.log('  r   reach   clear   drop');
+    const row = { reach: {}, clear: {}, drop: {} };
+    for (let r = 1; r <= 30; r++) {
+      const rr = reach[r] / N, cc = clear[r] / N;
+      const dr = reach[r] ? 1 - (clear[r] / reach[r]) : 0;
+      row.reach[r] = rr; row.clear[r] = cc; row.drop[r] = dr;
+      const mark = marks.includes(r) || (r >= 10 && r <= 15) ? ' *' : '';
+      if (marks.includes(r) || (r >= 9 && r <= 16) || r === 1 || r % 5 === 0)
+        console.log('  ' + String(r).padStart(2) + '  ' + pct(rr).padStart(6) + '  ' + pct(cc).padStart(6) + '  ' + pct(dr).padStart(6) + mark);
+    }
+    // flag big single-round drop-offs after R10 among those who arrived
+    const cliffs = [];
+    for (let r = 11; r <= 30; r++) {
+      if (row.drop[r] >= 0.18 && row.reach[r] >= 0.05) cliffs.push('R' + r + ' drop ' + pct(row.drop[r]));
+    }
+    if (cliffs.length) console.log('  Notable drops after R10: ' + cliffs.join(', '));
+    else console.log('  No single-round drop >=18% after R10 (among arrivals, reach>=5%).');
+    tables[st.id] = row;
+  });
+  if (args.includes('--json')) console.log(JSON.stringify({ mapId, N, tables }));
+}
+if (args.includes('--survival')) reportSurvival();
 
 function reportPerks() {
   HUMAN_RELOAD = 0.85; // model tap lag so Auto Reload is measurable

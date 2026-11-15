@@ -105,20 +105,26 @@
 
   // ---------- maps: each harder than the last, with a rising money multiplier ----------
   // diff: multipliers on speed / linger time / size.  animals: [kind for bird slot, alt bird, ground runner, boss]
+  // Maps unlock in order by clearing the previous map's round 30 boss (not by purchase or upgrade count).
   const MAPS = [
-    { id: 'meadow', name: 'Meadow', req: 0, w: 0, cash: 1.0, pts: 1.0, speed: 1.0, life: 1.0, size: 1.0, dark: 0,
+    { id: 'meadow', name: 'Meadow', cash: 1.0, pts: 1.0, speed: 1.0, life: 1.0, size: 1.0, dark: 0,
       role: 'Classic fields. Ducks, bluebirds, deer.', boss: 'eagle' },
-    { id: 'lake', name: 'Lake', req: 18, w: 1.4, cash: 1.3, pts: 1.2, speed: 1.08, life: 0.95, size: 0.97, dark: 0,
+    { id: 'lake', name: 'Lake', cash: 1.3, pts: 1.2, speed: 1.08, life: 0.95, size: 0.97, dark: 0,
       role: 'Ducks & geese skim low over the water. Geese are tougher. Pays 1.3x.', boss: 'goose' },
-    { id: 'snow', name: 'Snowy Forest', req: 45, w: 1.6, cash: 1.7, pts: 1.5, speed: 1.15, life: 0.92, size: 0.95, dark: 0,
+    { id: 'snow', name: 'Snowy Forest', cash: 1.7, pts: 1.5, speed: 1.15, life: 0.92, size: 0.95, dark: 0,
       role: 'Snow owls glide, rabbits zig-zag, wolves sprint. Pays 1.7x.', boss: 'yeti' },
-    { id: 'desert', name: 'Desert', req: 80, w: 1.8, cash: 2.2, pts: 1.8, speed: 1.22, life: 0.88, size: 0.93, dark: 0,
+    { id: 'desert', name: 'Desert', cash: 2.2, pts: 1.8, speed: 1.22, life: 0.88, size: 0.93, dark: 0,
       role: 'Vultures circle, roadrunners dash, coyotes. Heat haze. Pays 2.2x.', boss: 'vulture' },
-    { id: 'night', name: 'Night Hunt', req: 120, w: 2.0, cash: 2.8, pts: 2.3, speed: 1.3, life: 0.85, size: 0.92, dark: 1,
+    { id: 'night', name: 'Night Hunt', cash: 2.8, pts: 2.3, speed: 1.3, life: 0.85, size: 0.92, dark: 1,
       role: 'Bats & owls in the dark - only your flashlight shows them. Pays 2.8x.', boss: 'batking' },
   ];
+  const mapIndex = id => MAPS.findIndex(m => m.id === id);
+  const prevMap = id => { const i = mapIndex(id); return i > 0 ? MAPS[i - 1] : null; };
+  const nextMap = id => { const i = mapIndex(id); return i >= 0 && i < MAPS.length - 1 ? MAPS[i + 1] : null; };
+  const unlockHint = id => { const p = prevMap(id); return p ? ('Clear ' + p.name + ' to unlock') : ''; };
   const BOSS_EVERY = 10;
-  // A map is CLEARED by defeating that map's round 30 boss (the 3rd boss). That unlocks Infinity mode for the map.
+  // A map is CLEARED by defeating that map's round 30 boss (the 3rd boss). That unlocks Infinity mode for the map,
+  // and automatically unlocks the next map in the sequence.
   const CLEAR_ROUND = 30;
   // HP tables. Shotgun starts at DMG 2, so a basic duck (2 HP) still dies in one starter shot.
   // Boss HP is the old hit-count (6, 10, 14, 18...) times that shotgun base, so mid-game clear pacing stays put.
@@ -160,8 +166,8 @@
     tu.tracks.forEach(t => TRACKS.push(Object.assign({}, t, { id: tu.id + '.' + t.k, icon: t.icon || 'turret', w: t.w || 1, req: tu.req, group: 'turret', of: tu.id, needs: 'own.' + tu.id })));
   });
   GLOBAL.forEach(g => TRACKS.push(Object.assign({ w: 1, req: 0, group: 'gear' }, g)));
-  MAPS.forEach(m => { if (m.w) TRACKS.push({ id: 'map.' + m.id, name: 'Map: ' + m.name, icon: 'map', w: m.w, req: m.req, val: [0, 1], group: 'map', of: m.id, unlock: true, desc: v => v ? 'Unlocked' : 'Unlock map' }); });
-  TRACKS.push({ id: 'flashlight', name: 'Flashlight', icon: 'scope', w: 1, req: 120, needs: 'map.night', val: [40, 50, 60, 72, 85], group: 'gear', desc: v => `Night light radius ${v}px` });
+  // Maps are not purchasable tracks; they unlock by clearing the previous map.
+  TRACKS.push({ id: 'flashlight', name: 'Flashlight', icon: 'scope', w: 1, req: 120, needsMap: 'night', val: [40, 50, 60, 72, 85], group: 'gear', desc: v => `Night light radius ${v}px` });
 
   // Late-game Perks: expensive, genuinely helpful, and distinct from Gear (Eye, Focus, Lucky Feather, Bounty, gadgets).
   // In Infinity these are not capped — extendVal keeps growing the bonus.
@@ -253,21 +259,61 @@
   }
 
   // ---------- difficulty ----------
-  function difficulty(r) {
-    const late = Math.max(0, r - 15); // after round 15 it keeps getting harder so even a maxed arsenal eventually falls
-    const late2 = Math.max(0, r - 28); // "storm" phase: endgame runs top out around round 35-45
+  // Rounds 1–10 are unchanged on every map (same values as the previous curve).
+  // Meadow R11–30 climbs gradually so mid-game players are not walled after the R10 boss.
+  // Later maps stay harder than Meadow; their post-R10 ramps are only eased mildly.
+  function difficulty(r, map) {
+    const id = (map && (map.id || map)) || 'meadow';
+    const meadow = id === 'meadow';
+    const gold = Math.min(0.05 + r * 0.01, 0.16);
+    if (r <= 10) {
+      const late = 0, late2 = 0;
+      return {
+        count: Math.min(3 + r, 26),
+        speed: Math.min(26 + (r - 1) * 5.5, 103) + late * 5 + late2 * late2 * 1.2,
+        conc: r < 3 ? 1 : r < 6 ? 2 : r < 10 ? 3 : 4,
+        life: Math.max(0.55, Math.max(2.4, 6.5 - (r - 1) * 0.3) - late * 0.09 - late2 * 0.05),
+        erratic: Math.min(0.9, Math.max(0, (r - 2) * 0.09)),
+        scale: Math.max(0.55, Math.max(0.85, 1.5 - (r - 1) * 0.05) - late * 0.012 - late2 * 0.01),
+        gold,
+        decoy: r >= 3 ? Math.min(0.05 + (r - 3) * 0.02, 0.22) : 0,
+        deer: r >= 4 ? Math.min(0.14 + (r - 4) * 0.025, 0.32) : 0,
+        deerSpeed: Math.min(48 + (r - 4) * 8, 150) + late * 5,
+        interval: Math.max(0.45, 1.5 - r * 0.07),
+      };
+    }
+    if (meadow) {
+      // After the R10 boss, regular waves ease off (the old wall) then climb gradually toward a fair R30.
+      const k = r - 10;
+      const late = Math.max(0, r - 24);
+      return {
+        count: r < 21 ? 10 : r < 25 ? 11 : r < 28 ? 12 : 14,
+        speed: 64 + k * 1.0 + late * 2.2,
+        conc: r < 25 ? 3 : r < 29 ? 4 : 5,
+        life: Math.max(2.8, 4.20 - k * 0.05),
+        erratic: Math.min(0.68, 0.52 + k * 0.006),
+        scale: Math.max(0.92, 1.14 - k * 0.007),
+        gold,
+        decoy: Math.min(0.18, 0.14 + k * 0.002),
+        deer: Math.min(0.24, 0.16 + k * 0.002),
+        deerSpeed: 84 + k * 1.6 + late * 1.5,
+        interval: Math.max(0.76, 0.93 - k * 0.006),
+      };
+    }
+    const late = Math.max(0, r - 15);
+    const late2 = Math.max(0, r - 28);
     return {
       count: Math.min(3 + r, 26),
-      speed: Math.min(26 + (r - 1) * 5.5, 103) + late * 5 + late2 * late2 * 1.2,
-      conc: r < 3 ? 1 : r < 6 ? 2 : r < 10 ? 3 : r < 16 ? 4 : r < 24 ? 5 : 6,
-      life: Math.max(0.55, Math.max(2.4, 6.5 - (r - 1) * 0.3) - late * 0.09 - late2 * 0.05),
-      erratic: Math.min(0.9, Math.max(0, (r - 2) * 0.09)),
-      scale: Math.max(0.55, Math.max(0.85, 1.5 - (r - 1) * 0.05) - late * 0.012 - late2 * 0.01),
-      gold: Math.min(0.05 + r * 0.01, 0.16),
-      decoy: r >= 3 ? Math.min(0.05 + (r - 3) * 0.02, 0.22) : 0,
-      deer: r >= 4 ? Math.min(0.14 + (r - 4) * 0.025, 0.32) : 0,
-      deerSpeed: Math.min(48 + (r - 4) * 8, 150) + late * 5,
-      interval: Math.max(0.45, 1.5 - r * 0.07),
+      speed: Math.min(75.5 + (r - 10) * 4.2, 103) + late * 4 + late2 * late2 * 1.2,
+      conc: r < 13 ? 4 : r < 18 ? 5 : 6,
+      life: Math.max(0.55, Math.max(2.4, 6.5 - (r - 1) * 0.28) - late * 0.07 - late2 * 0.04),
+      erratic: Math.min(0.85, 0.72 + (r - 10) * 0.012),
+      scale: Math.max(0.55, Math.max(0.82, 1.05 - (r - 10) * 0.018) - late * 0.010 - late2 * 0.01),
+      gold,
+      decoy: Math.min(0.22, 0.19 + (r - 10) * 0.006),
+      deer: Math.min(0.32, 0.29 + (r - 10) * 0.008),
+      deerSpeed: Math.min(96 + (r - 10) * 6, 150) + late * 4,
+      interval: Math.max(0.50, 0.80 - (r - 10) * 0.022),
     };
   }
   const KILL = { bird: { pts: 500, cash: 5 }, blue: { pts: 750, cash: 7 }, gold: { pts: 2500, cash: 25 }, deer: { pts: 1500, cash: 15 },
@@ -292,7 +338,7 @@
   const DAILY_PCT = [0.08, 0.10, 0.12, 0.14, 0.16, 0.20, 0.35];
   const DOUBLE_ADS_PER_DAY = 3;
 
-  const ECON = { WEAPONS, TURRETS, GLOBAL, PERKS, MAPS, BOSS_EVERY, CLEAR_ROUND, BASE_SHOT_DMG, HP, kindHp, hitsNeeded, flakDmg, dmgOf, bossHp, bossTime, bossCash, SKINS, CROSSHAIRS, TRACKS, TOTAL_LEVELS, TURRET_CASH, TURRET_PTS,
+  const ECON = { WEAPONS, TURRETS, GLOBAL, PERKS, MAPS, mapIndex, prevMap, nextMap, unlockHint, BOSS_EVERY, CLEAR_ROUND, BASE_SHOT_DMG, HP, kindHp, hitsNeeded, flakDmg, dmgOf, bossHp, bossTime, bossCash, SKINS, CROSSHAIRS, TRACKS, TOTAL_LEVELS, TURRET_CASH, TURRET_PTS,
     cost, infCost, infVal, extendVal, cappedTrack, nice, curve, difficulty, KILL, killCash, killPts, roundBonus, decoyPenalty,
     MISSION_PCT, DAILY_PCT, DOUBLE_ADS_PER_DAY, BASE, PER_LEVEL, eggPts, eggCash, eggInterval };
   if (typeof module !== 'undefined' && module.exports) module.exports = ECON; else root.ECON = ECON;

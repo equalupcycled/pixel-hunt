@@ -30,13 +30,13 @@ with sync_playwright() as p:
       const bought = PH.Meta.totalBought();
       const hg = ECON.TRACKS.find(t=>t.id==='own.handgun');
       const ls = ECON.TRACKS.find(t=>t.id==='own.laser');
-      const night = ECON.TRACKS.find(t=>t.id==='map.night');
       // costs as a fresh save (0 upgrades) and at the unlock thresholds
       const at = (t, total) => ECON.cost(t, 0, total);
       return {
         handgun_at_req: at(hg, hg.req),
         laser_at_req: at(ls, ls.req),
-        night_at_req: at(night, night.req),
+        mapTracks: ECON.TRACKS.filter(t=>t.group==='map'||(t.id||'').startsWith('map.')).length,
+        totalLevels: ECON.TOTAL_LEVELS,
         curve0: ECON.curve(0)
       };
     })()""")
@@ -139,7 +139,7 @@ with sync_playwright() as p:
       money: document.getElementById('shop-money').innerText,
       modes: document.getElementById('shop-modes').innerText.replace(/\\s+/g,' ').trim(),
       modesVis: !document.getElementById('shop-modes').classList.contains('hidden'),
-      mapsVis: !document.querySelector('#shop-tabs button[data-tab="maps"]').classList.contains('hidden'),
+      mapsVis: !!document.querySelector('#shop-tabs button[data-tab="maps"]'),
       btn: document.getElementById('btn-armory') ? document.getElementById('btn-armory').innerText : ''
     })""")
     pg.screenshot(path=OUT + f'105-upgrades-classic-{TAG}.png')
@@ -148,7 +148,7 @@ with sync_playwright() as p:
     R['shop_infinity_from_title'] = ev("""({
       sub: document.getElementById('shop-sub').innerText,
       money: document.getElementById('shop-money').innerText,
-      mapsVis: !document.querySelector('#shop-tabs button[data-tab="maps"]').classList.contains('hidden'),
+      mapsVis: !!document.querySelector('#shop-tabs button[data-tab="maps"]'),
       styleVis: !document.querySelector('#shop-tabs button[data-tab="style"]').classList.contains('hidden'),
       note: (document.querySelector('#shop-list .note')||{}).textContent||'',
       anyMax: [...document.querySelectorAll('#shop-list .pbtn')].some(b=>b.textContent.trim()==='MAX'),
@@ -227,7 +227,7 @@ with sync_playwright() as p:
     errs.extend(merr)
     c2.close()
 
-    # 10) Infinity progression is isolated from Classic; uncapped levels; safe v7 defaults (perks start at 0, autoBoostUntil 0, dmg tracks at 0)
+    # 10) Infinity progression is isolated from Classic; uncapped levels; safe v8 defaults (perks start at 0, autoBoostUntil 0, dmg tracks at 0)
     c3 = b.new_context(viewport={'width': 390, 'height': 844}, device_scale_factor=3, is_mobile=True, has_touch=True)
     pg3 = c3.new_page(); e3 = []
     pg3.on('pageerror', lambda e: e3.append(str(e)))
@@ -298,7 +298,7 @@ with sync_playwright() as p:
       return {
         sub: document.getElementById('shop-sub').innerText,
         goShop: document.getElementById('btn-go-shop').innerText.trim(),
-        mapsVis: !document.querySelector('#shop-tabs button[data-tab="maps"]').classList.contains('hidden'),
+        mapsVis: !!document.querySelector('#shop-tabs button[data-tab="maps"]'),
         level: PH.Meta.levelOf('shotgun.cap'),
         cap: capTrack.val.length-1,
         maxed: PH.Meta.maxed(capTrack),
@@ -319,7 +319,7 @@ with sync_playwright() as p:
       mode: PH.Meta.mode,
       bank: PH.Meta.bank(),
       campaignBank: PH.Meta.save.bank,
-      mapsVis: !document.querySelector('#shop-tabs button[data-tab="maps"]').classList.contains('hidden')
+      mapsVis: !!document.querySelector('#shop-tabs button[data-tab="maps"]')
     })""")
     ev3("""(()=>{const b=[...document.querySelectorAll('#shop-modes .pbtn')].find(x=>/INFINITY/.test(x.textContent)); if(b) b.click();})()""")
     pg3.wait_for_timeout(300)
@@ -355,13 +355,16 @@ with sync_playwright() as p:
     if R['migration'].get('lakeCleared'): fails.append('migration granted lake clear without round 30')
     if R['migration'].get('ckptClamped') != 30: fails.append('ckpt not clamped to 30, got %r' % R['migration'].get('ckptClamped'))
     if R['migration'].get('best') != 88000: fails.append('migration overwrote classic best, got %r' % R['migration'].get('best'))
-    if R['migration'].get('v') != 7: fails.append('migration schema not v7, got %r' % R['migration'].get('v'))
+    if R['migration'].get('v') != 8: fails.append('migration schema not v8, got %r' % R['migration'].get('v'))
     if R['migration'].get('autoBoostUntil') not in (0, None): fails.append('migration should start autoBoostUntil at 0, got %r' % R['migration'].get('autoBoostUntil'))
     if R['migration'].get('infBank') not in (0, None): fails.append('migration should start Infinity wallet at 0, got %r' % R['migration'].get('infBank'))
     if R['migration'].get('infPrimary') not in ('shotgun', None) or R['migration'].get('infBought') not in (0, None):
         fails.append('migration should start Infinity at free shotgun, got %r' % {k: R['migration'].get(k) for k in ('infPrimary','infBought','infLvCap')})
     if R.get('title_upgrades_label') != 'UPGRADES': fails.append('title button is not UPGRADES, got %r' % R.get('title_upgrades_label'))
     if R.get('shop_classic') and 'CLASSIC' not in (R['shop_classic'].get('sub') or ''): fails.append('classic shop not labeled, %r' % R.get('shop_classic'))
+    if R.get('shop_classic') and R['shop_classic'].get('mapsVis'): fails.append('classic shop still has a MAPS tab, %r' % R.get('shop_classic'))
+    if R.get('prices', {}).get('mapTracks'): fails.append('map tracks still purchasable, %r' % R.get('prices'))
+    if R.get('prices', {}).get('totalLevels') not in (329, None): fails.append('TOTAL_LEVELS expected 329, %r' % R.get('prices'))
     if R.get('shop_infinity_from_title'):
         s = R['shop_infinity_from_title']
         if 'INFINITY' not in (s.get('sub') or ''): fails.append('infinity shop not labeled, %r' % s)
@@ -389,7 +392,7 @@ with sync_playwright() as p:
     tc = R.get('toggle_classic') or {}
     if tc.get('mode') != 'campaign' or tc.get('bank') != g.get('campaignBank'):
         fails.append('classic toggle mixed wallets, %r' % tc)
-    if not tc.get('mapsVis'): fails.append('classic shop hid maps tab')
+    if tc.get('mapsVis'): fails.append('classic shop still has a MAPS tab, %r' % tc)
     ti = R.get('toggle_inf') or {}
     if ti.get('mode') != 'infinity' or ti.get('campaignBank') != g.get('campaignBank'):
         fails.append('infinity toggle mixed wallets, %r' % ti)

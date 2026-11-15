@@ -179,7 +179,7 @@ with sync_playwright() as p:
         print(f'{k:16}', json.dumps(v))
     print('errors', errs)
     fails = []
-    if R.get('fresh', {}).get('v') != 7: fails.append('fresh schema not v7, %r' % R.get('fresh'))
+    if R.get('fresh', {}).get('v') != 8: fails.append('fresh schema not v8, %r' % R.get('fresh'))
     if R.get('fresh', {}).get('until') not in (0, None): fails.append('fresh until not 0')
     if 'AD' not in (R.get('fresh', {}).get('titleBtn') or '') or R.get('fresh', {}).get('disabled'):
         fails.append('title button not offered, %r' % R.get('fresh'))

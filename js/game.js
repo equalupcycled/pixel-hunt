@@ -434,7 +434,7 @@ const KIND = {
   goose: { set: 'goose', m: 'skim', hp: 4, size: 1.12, spd: 0.85 },
   owl: { set: 'owl', m: 'glide', spd: 0.95, hp: 3 }, bat: { set: 'bat', m: 'flutter', size: 0.85, spd: 1.1, hp: 2 },
   vulture: { set: 'vulture', m: 'circle', size: 1.1, spd: 0.9, hp: 4 },
-  deer: { set: 'deer', m: 'run', g: 1, size: 1.6, hp: 4 }, swimgoose: { set: 'goose', m: 'swim', g: 1, size: 1.2, hp: 4, spd: 0.45 },
+  deer: { set: 'deer', m: 'run', g: 1, size: 1.6, hp: 4 }, fawn: { set: 'deer', m: 'run', g: 1, size: 0.95, hp: 2, spd: 0.78 }, swimgoose: { set: 'goose', m: 'swim', g: 1, size: 1.2, hp: 4, spd: 0.45 },
   rabbit: { set: 'rabbit', m: 'hop', g: 1, size: 1.25, spd: 0.9, hp: 3 }, wolf: { set: 'wolf', m: 'run', g: 1, size: 1.5, spd: 1.2, hp: 5 },
   roadrunner: { set: 'roadrunner', m: 'run', g: 1, size: 1.25, spd: 1.55, hp: 3 }, coyote: { set: 'coyote', m: 'run', g: 1, size: 1.5, spd: 1.05, hp: 5 },
   eyes: { set: null, m: 'peek', g: 1, size: 1, hp: 3 },
@@ -589,6 +589,7 @@ function pickFly() {
 }
 function pickGround() { const g = MAP_SET[M.id].ground; return g[Math.floor(Math.random() * g.length)]; }
 function bossIdFor(r) { if (M.id === 'meadow') return (r / ECON.BOSS_EVERY) % 2 === 1 ? 'eagle' : 'buck'; return M.boss; }
+function isGroundBoss(t) { return !!(t && t.m === 'brun'); }
 
 function startRound(opts) {
   if (!(opts && opts.restart)) round++;
@@ -651,7 +652,13 @@ function spawn(kind) {
     t.x0 = 18; t.x1 = W - 18; t.x = t.x0;
     const cross = Math.max(3.4, 5.5 - Math.floor(round / ECON.BOSS_EVERY) * 0.35) * eyeMult;
     t.vx = (t.x1 - t.x0) / cross; t.risen = true; t.leaving = false;
-    t.y = SKY_TOP + 52; t.y0 = t.y; t.dropT = 1.6 * eyeMult;
+    if (isGroundBoss(t)) {
+      // Patrol the ground band, just above the grass/hunter — not in the sky and not in the HUD.
+      t.y = Math.min(groundY(b.set, b.sc), GROUND - 6);
+    } else {
+      t.y = SKY_TOP + 52;
+    }
+    t.y0 = t.y; t.hop = 0; t.dropT = 1.6 * eyeMult;
     targets.push(t); bossT = t; shake = 5; Sfx.deer();
     return;
   }
@@ -668,7 +675,7 @@ function spawn(kind) {
     const sp = diff.deerSpeed * (K.spd || 1) * (perkDeer || 1) * rand(0.9, 1.15) / Math.sqrt(eyeMult);
     const y = K.m === 'swim' ? GROUND - 6 : groundY(set, sc);
     targets.push(Object.assign(base, { x: dir > 0 ? -20 : W + 20, y, y0: y, vx: dir * sp, vy: 0, sc, life: 99, hop: 0, hopT: 0 }));
-    if (kind === 'deer' || kind === 'wolf' || kind === 'coyote' || kind === 'rabbit' || kind === 'roadrunner') Sfx.rustle();
+    if (kind === 'deer' || kind === 'fawn' || kind === 'wolf' || kind === 'coyote' || kind === 'rabbit' || kind === 'roadrunner') Sfx.rustle();
     return;
   }
   targets.push(makeFlyer(kind, K, set, base));
@@ -741,13 +748,32 @@ function maybeDropEgg(t, dt) {
   if (state !== 'play' || t.leaving) return;
   const tier = Math.max(1, Math.floor(round / ECON.BOSS_EVERY));
   const cap = 2 + tier;
-  const liveAdds = targets.filter(o => o !== t && live(o) && (o.kind === 'egg' || o.hatched)).length;
+  const liveAdds = isGroundBoss(t)
+    ? targets.filter(o => o !== t && live(o) && o.kind === 'fawn').length
+    : targets.filter(o => o !== t && live(o) && (o.kind === 'egg' || o.hatched)).length;
   if (liveAdds >= cap) { t.dropT = Math.max(t.dropT, 0.35); return; }
   t.dropT -= dt;
   if (t.dropT > 0) return;
   if (t.x < 24 || t.x > W - 24) return;
   t.dropT = ECON.eggInterval(round, M) * rand(0.82, 1.18);
-  dropEgg(t);
+  if (isGroundBoss(t)) dropFawn(t);
+  else dropEgg(t);
+}
+
+function dropFawn(boss) {
+  const K = KIND.fawn;
+  const sc = K.size;
+  const sp = diff.deerSpeed * (K.spd || 1) * (perkDeer || 1) * rand(0.9, 1.15) / Math.sqrt(eyeMult);
+  const y = groundY(K.set, sc);
+  // Spawn just ahead of the buck so the fawn is visible and not hidden inside the boss sprite.
+  const x = clamp((boss && boss.x || 40) + 22 + rand(0, 6), 14, W - 70);
+  targets.push({
+    kind: 'fawn', set: K.set, m: K.m, hp: ECON.kindHp('fawn'), hp0: ECON.kindHp('fawn'),
+    state: 'fly', anim: rand(0, 1), hurt: 0, g: 1,
+    x, y, y0: y, vx: Math.abs(sp), vy: 0, sc, life: 99, hop: 0, hopT: 0, risen: true
+  });
+  roundTotal++;
+  Sfx.rustle();
 }
 
 // ---------------- damage, kills, misses ----------------
@@ -788,8 +814,13 @@ function kill(t, src, info = {}) {
     for (let k = 0; k < 40; k++) parts.push({ x: t.x, y: t.y, vx: rand(-90, 90), vy: rand(-110, 20), c: ['#ffd23f', '#fff', '#ff9a3d'][k % 3], t: 0, life: rand(0.6, 1.4), g: 120, s: 2 });
   } else {
     const pk = payKind(t.kind);
-    pts = ECON.killPts(pk, round, mult) * M.pts * (byYou ? wd.pts : ECON.TURRET_PTS);
-    cash = ECON.killCash(pk, round, moneyMult, mult) * M.cash * (byYou ? wd.cash : ECON.TURRET_CASH);
+    if (t.kind === 'fawn') {
+      pts = Math.round(ECON.fawnPts(round) * M.pts * (byYou ? wd.pts : ECON.TURRET_PTS) / 10) * 10;
+      cash = ECON.fawnCash(round) * moneyMult * M.cash * (byYou ? wd.cash : ECON.TURRET_CASH);
+    } else {
+      pts = ECON.killPts(pk, round, mult) * M.pts * (byYou ? wd.pts : ECON.TURRET_PTS);
+      cash = ECON.killCash(pk, round, moneyMult, mult) * M.cash * (byYou ? wd.cash : ECON.TURRET_CASH);
+    }
     if (byYou && wd.deerBonus && t.g) cash *= wd.deerBonus;
     if (byYou && wd.goldBonus && t.kind === 'gold') cash *= wd.goldBonus;
     if (byYou && t.g && perkDeerCash > 1) cash *= perkDeerCash;
@@ -1363,7 +1394,8 @@ function updBoss(t, dt, rdt) {
   } else if (t.state === 'hit') { t.hitT -= rdt; if (t.hitT <= 0) { t.state = 'fall'; t.vy = 10; t.fallT = 1.2; Sfx.fall(); } }
   else if (t.state === 'fall') {
     t.vy += 200 * dt; t.y += t.vy * dt;
-    if (t.y > GROUND + 20) { t.state = 'gone'; Sfx.thud(); shake = 6; }
+    const floor = isGroundBoss(t) ? GROUND + 8 : GROUND + 20;
+    if (t.y > floor) { t.y = floor; t.state = 'gone'; Sfx.thud(); shake = 6; }
   }
 }
 
@@ -2162,6 +2194,14 @@ function drawTarget(t) {
   const set = SPR[t.set]; if (!set) return;
   const flick = t.hurt > 0 && Math.floor(t.hurt * 40) % 2 === 0;
   const a = flick ? 0.35 : 1;
+  if (t.kind === 'boss' && isGroundBoss(t)) {
+    const fr = set[Math.floor(t.anim * 10) % 2];
+    if (t.state === 'hit') spr(set[0], t.x, t.y - (t.hop || 0), t.sc, t.vx < 0, false, a);
+    else if (t.state === 'fall') spr(fr, t.x, t.y + 4, t.sc, t.vx < 0, true, Math.min(1, (t.fallT || 0) * 2));
+    else spr(fr, t.x, t.y - (t.hop || 0), t.sc, t.vx < 0, false, a);
+    if (t.crown && live(t)) { const img = set[0]; ctx.drawImage(CROWN, t.x - 5, t.y - (t.hop || 0) - img.height * t.sc / 2 - 5, 10, 6); }
+    return;
+  }
   if (t.g) {
     const fr = t.m === 'swim' ? set[1] : set[Math.floor(t.anim * 10) % 2];
     if (t.state === 'fall') spr(fr, t.x, t.y + 4, t.sc, t.vx < 0, true, Math.min(1, (t.fallT || 0) * 2));
@@ -2527,6 +2567,10 @@ window.PH = {
   setMiss(n) { missRun = n; }, perfectClear() { queue = []; targets = []; roundHits = roundTotal; }, get maxMiss() { return maxMiss; },
   checkpoint: (m, inf) => checkpointFor(m || Meta.save.equip.map, inf != null ? inf : infinity), continueCkpt() { continueCheckpoint(); },
   jumpRound(r) { round = r - 1; targets = []; queue = []; startRound(); },
+  skipIntro() { if (state === 'intro') { state = 'play'; introT = 0; } },
+  hideBanners() { ckptFlash = 0; banner = ''; banner2 = ''; },
+  dropFawn(boss) { dropFawn(boss || bossT); },
+  isGroundBoss: (t) => isGroundBoss(t),
   reviveNow() { reviveUsed = true; revive(); },
   forceMapClear() { infinity = false; bossKilled = true; round = ECON.CLEAR_ROUND; bossRound = true; queue = []; targets = []; projs = []; mapJustCleared = false; failedClear = false; if (state !== 'play') state = 'play'; },
   startInfinity() { newGame(0, { infinity: true }); },

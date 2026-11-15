@@ -20,7 +20,7 @@ const V = (lv, id) => T(id).val[lv[id] || 0];
 // Human tap-to-reload lag is off by default so the fitted ~6 games/purchase curve stays put.
 // --perks turns it on so Auto Reload (and manual reloads) can be measured fairly.
 let HUMAN_RELOAD = 0;
-const GROUND = new Set(['deer', 'wolf', 'coyote', 'rabbit', 'roadrunner', 'swimgoose', 'eyes']);
+const GROUND = new Set(['deer', 'fawn', 'wolf', 'coyote', 'rabbit', 'roadrunner', 'swimgoose', 'eyes']);
 function P(lv, id) {
   const tr = T(id); if (!tr) return 0;
   const n = lv[id] | 0;
@@ -139,10 +139,12 @@ function weaponTry(w, lv, d, kind, slow, st, ammo, ctx) {
   const kHits = needHitsFor(w, lv, kind, ctx);
   // Flyers cross left -> right: on-screen time = (linger + 0.7s) x Eye; apparent speed = crossing speed + vertical zig.
   const cross = (d.life * (kind === 'gold' ? 0.8 : 1) + 0.7) / (kind === 'gold' ? Math.sqrt(1.35) : 1);
-  let speed = (kind === 'deer' || GROUND.has(kind) ? d.deerSpeed * 0.8 : Math.hypot(202 / (cross * st.eye), d.speed * 0.6 * (kind === 'gold' ? 1.35 : 1))) * (slow ? 0.38 : 1);
-  let scale = (kind === 'deer' || GROUND.has(kind)) ? 1.6 : d.scale * (kind === 'gold' ? 0.85 : 1);
-  const er = (kind === 'deer' || GROUND.has(kind)) ? 0 : d.erratic;
-  let Tw = (kind === 'deer' || GROUND.has(kind) ? 180 / d.deerSpeed : cross) * st.eye / Math.min(d.conc, 3) * (slow ? 2.2 : 1);
+  const ground = kind === 'deer' || GROUND.has(kind);
+  const fawn = kind === 'fawn';
+  let speed = (ground ? d.deerSpeed * (fawn ? 0.78 : 1) * 0.8 : Math.hypot(202 / (cross * st.eye), d.speed * 0.6 * (kind === 'gold' ? 1.35 : 1))) * (slow ? 0.38 : 1);
+  let scale = ground ? (fawn ? 0.95 : 1.6) : d.scale * (kind === 'gold' ? 0.85 : 1);
+  const er = ground ? 0 : d.erratic;
+  let Tw = (ground ? (fawn ? 170 : 180) / d.deerSpeed : cross) * st.eye / Math.min(d.conc, 3) * (slow ? 2.2 : 1);
   ({ speed, scale, Tw } = applyPerkWorld({ speed, scale, Tw, er }, kind, lv, ctx));
   let p = 0, extra = 0;
   if (w === 'shotgun') p = atLeastK(aim(g('choke'), scale, speed, er), shotAttempts(Tw, mods.cap, mods.reload, 0.45, ammo, lv), kHits);
@@ -180,8 +182,8 @@ function pickFlyMap(mapId) {
   for (const [k, p] of set) { acc += p; if (x < acc) return k; }
   return set[0][0];
 }
-// Shared boss-round model: patrol + escape timer + eggs (no bonus starting flyers).
-// tryFn is weaponTry or weaponTryScore.
+// Shared boss-round model: patrol + escape timer + eggs (flying bosses) or fawns (ground bosses).
+// tryFn is weaponTry or weaponTryScore. Egg Sniper does not apply to fawns; Deer Whisperer does.
 function simBossFight(wId, lv, d, st, ammo, r, M, mapId, tryFn, missRun) {
   const ctx = { boss: true, missRun: missRun || 0, maxMiss: st.maxMiss || 3 };
   const tm = E.bossTime(r) * (st.eye || 1);
@@ -200,26 +202,46 @@ function simBossFight(wId, lv, d, st, ammo, r, M, mapId, tryFn, missRun) {
   if (fightT > delay) nEggs = Math.max(0, Math.round((fightT - delay) / interval + (rnd() - 0.4)));
   const tier = Math.max(1, Math.floor(r / E.BOSS_EVERY));
   nEggs = Math.min(nEggs, 2 + tier);
+  const groundBoss = E.isGroundBossId(E.bossIdFor(mapId, r));
   const eggMul = (lv['perk.eggsnipe'] | 0) ? P(lv, 'perk.eggsnipe') : 1;
   let cash = 0, score = 0, escapes = 0, birdsKilled = 0, smashed = 0;
-  for (let i = 0; i < nEggs; i++) {
-    const pEgg = Math.min(0.97, tryFn(wId, lv, d, 'egg', false, st, ammo, ctx).p * 1.28 * (eggMul > 1 ? Math.sqrt(eggMul) : 1));
-    if (rnd() < pEgg) {
-      smashed++;
-      cash += E.eggCash(r) * (st.mm || 1) * M.cash * eggMul;
-      score += Math.round(E.eggPts(r) * M.pts * eggMul / 10) * 10;
-    } else {
-      const kind = pickFlyMap(mapId);
-      const pBird = tryFn(wId, lv, d, kind, false, st, ammo, ctx).p;
-      if (rnd() < pBird) {
+  const escapeKinds = [];
+  if (groundBoss) {
+    for (let i = 0; i < nEggs; i++) {
+      const pFawn = Math.min(0.985, tryFn(wId, lv, d, 'fawn', false, st, ammo, ctx).p * 1.62);
+      if (rnd() < pFawn) {
+        smashed++;
         birdsKilled++;
-        const pk = kind === 'swimgoose' ? 'goose' : kind;
-        cash += E.killCash(pk, r, st.mm || 1, 1) * M.cash;
-        if (E.killPts) score += Math.round(E.killPts(pk, r, 1) * M.pts / 10) * 10;
-      } else escapes++;
+        cash += E.fawnCash(r) * (st.mm || 1) * M.cash * deerCashMul(lv, 'fawn');
+        score += Math.round(E.fawnPts(r) * M.pts / 10) * 10;
+      } else {
+        escapes++;
+        escapeKinds.push('fawn');
+      }
+    }
+  } else {
+    for (let i = 0; i < nEggs; i++) {
+      const pEgg = Math.min(0.97, tryFn(wId, lv, d, 'egg', false, st, ammo, ctx).p * 1.28 * (eggMul > 1 ? Math.sqrt(eggMul) : 1));
+      if (rnd() < pEgg) {
+        smashed++;
+        cash += E.eggCash(r) * (st.mm || 1) * M.cash * eggMul;
+        score += Math.round(E.eggPts(r) * M.pts * eggMul / 10) * 10;
+      } else {
+        const kind = pickFlyMap(mapId);
+        const pBird = tryFn(wId, lv, d, kind, false, st, ammo, ctx).p;
+        if (rnd() < pBird) {
+          birdsKilled++;
+          const pk = kind === 'swimgoose' ? 'goose' : kind;
+          cash += E.killCash(pk, r, st.mm || 1, 1) * M.cash;
+          if (E.killPts) score += Math.round(E.killPts(pk, r, 1) * M.pts / 10) * 10;
+        } else {
+          escapes++;
+          escapeKinds.push(kind);
+        }
+      }
     }
   }
-  return { killed, cash, score, escapes, birdsKilled, smashed, nEggs, fightT };
+  return { killed, cash, score, escapes, escapeKinds, birdsKilled, smashed, nEggs, fightT, groundBoss };
 }
 
 function run(lv, equip, mapId = 'meadow', start = 1) {
@@ -250,7 +272,7 @@ function run(lv, equip, mapId = 'meadow', start = 1) {
       else if (takeX()) { alive = false; break; }
       cash += b.cash;
       let dead = false;
-      for (let e = 0; e < b.escapes && !dead; e++) if (takeX()) dead = true;
+      for (const k of (b.escapeKinds || Array(b.escapes).fill(null))) { if (takeX(k)) { dead = true; break; } }
       if (dead) { alive = false; break; }
       time += 12; continue;
     }
@@ -487,6 +509,7 @@ const KIND_INFO = {
   roadrunner: { g: 1, size: 1.25, spd: 1.55 }, coyote: { g: 1, size: 1.5, spd: 1.05, hp: 2 },
   eyes: { g: 1, size: 1 },
   egg: { size: 0.7, spd: 0.55, life: 1.2 },
+  fawn: { g: 1, size: 0.95, spd: 0.78, hp: 2 },
 };
 function atLeastK(a, n, k) {
   if (k <= 0) return 1;
@@ -642,7 +665,7 @@ function runScored(lv, equip, mapId, start) {
       else if (takeX()) { alive = false; break; }
       score += b.score;
       hits += b.birdsKilled; total += b.birdsKilled + b.escapes;
-      if (b.escapes) { for (let e = 0; e < b.escapes && alive; e++) if (takeX()) alive = false; }
+      if (b.escapes) { for (const k of (b.escapeKinds || Array(b.escapes).fill(null))) { if (takeX(k)) { alive = false; break; } } }
     } else {
       const queue = [];
       for (let i = 0; i < d.count; i++) {
@@ -827,23 +850,25 @@ function reportBossRates() {
     }
     return { start: start / n, finish: fin / n };
   }
-  function rateFromCkpt(lv, w, n) {
-    // Begin at the start of round 10 with a clean miss bar (checkpoint / "new player who got here").
-    let clear = 0, died = 0, kill = 0;
+  function rateFromCkpt(lv, w, n, start) {
+    // Begin at the start of `start` with a clean miss bar (checkpoint / "new player who got here").
+    let clear = 0, died = 0;
     for (let i = 0; i < n; i++) {
-      const o = runScoredFrom(lv, w, meadow, 10);
-      if (o.endScore[10] != null) clear++;
+      const o = runScoredFrom(lv, w, meadow, start);
+      if (o.endScore[start] != null) clear++;
       else died++;
     }
     return { clear: clear / n, die: died / n };
   }
   const midR = rateFromFresh(mid.lv, 'rifle', N);
-  const midC = rateFromCkpt(mid.lv, 'rifle', N);
-  const newC = rateFromCkpt(emptyLv(), 'shotgun', N);
+  const midC = rateFromCkpt(mid.lv, 'rifle', N, 10);
+  const newC = rateFromCkpt(emptyLv(), 'shotgun', N, 10);
+  const mid20 = rateFromCkpt(mid.lv, 'rifle', N, 20);
   console.log('SIMULATED boss-round clear rates (not telemetry). N=' + N);
   console.log('Mid-game (40 upgrades, rifle) Meadow fresh runs: reach R10 ' + (midR.start*100).toFixed(1) + '%  finish/clear R10 ' + (midR.finish*100).toFixed(1) + '%  (target ~87%)');
   console.log('Mid-game starting AT R10 with 0 X (checkpoint): clear ' + (midC.clear*100).toFixed(1) + '%');
   console.log('New shotgun starting AT R10 with 0 X (fairness if they get there): clear ' + (newC.clear*100).toFixed(1) + '%');
+  console.log('Mid-game starting AT R20 with 0 X (checkpoint): clear ' + (mid20.clear*100).toFixed(1) + '%  (keep near prior ~100%)');
 }
 if (args.includes('--boss-rates')) reportBossRates();
 

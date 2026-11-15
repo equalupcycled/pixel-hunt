@@ -132,7 +132,7 @@
   const HP = {
     bird: 2, blue: 2, gold: 2, decoy: 1,
     goose: 4, owl: 3, bat: 2, vulture: 4,
-    deer: 4, swimgoose: 4, rabbit: 3, wolf: 5, roadrunner: 3, coyote: 5, eyes: 3, egg: 2,
+    deer: 4, swimgoose: 4, rabbit: 3, wolf: 5, roadrunner: 3, coyote: 5, eyes: 3, egg: 2, fawn: 2,
   };
   const kindHp = k => HP[k] || 2;
   const hitsNeeded = (hp, dmg) => Math.max(1, Math.ceil((hp || 1) / Math.max(1, dmg || 1)));
@@ -191,7 +191,7 @@
       desc: (v, l) => !l ? 'Any weapon can crit: double points and cash.' : `${Math.round(v * 100)}% chance to double points and cash` },
     { id: 'perk.eggsnipe', name: 'Egg Sniper', icon: 'eggsnipe', w: 2.8, req: 48,
       val: [1, 8, 10, 13, 16, 20],
-      desc: (v, l) => !l ? 'Eggs are worth much more, fall slower, and are easier to smash before they hatch. Boss payouts also get a boost.' : `${v.toFixed(0)}x egg points and cash · eggs fall slower · +${Math.round((0.10 + 0.05 * Math.max(0, l - 1)) * 100)}% boss cash` },
+      desc: (v, l) => !l ? 'Eggs dropped by flying bosses are worth much more, fall slower, and are easier to smash before they hatch. Does not affect fawns from ground bosses. Boss payouts also get a boost.' : `${v.toFixed(0)}x egg points and cash · eggs fall slower · not fawns · +${Math.round((0.10 + 0.05 * Math.max(0, l - 1)) * 100)}% boss cash` },
     { id: 'perk.magnet', name: 'Cash Magnet', icon: 'magnet', w: 3.6, req: 50,
       val: [0, 0.20, 0.26, 0.32, 0.40, 0.50],
       desc: (v, l) => !l ? 'At the end of every cleared round, collect a bonus on the cash you earned that round.' : `+${Math.round(v * 100)}% cash at the end of each cleared round` },
@@ -202,7 +202,7 @@
       val: [1, 0.50, 0.42, 0.36, 0.30, 0.24],
       mercy: [0, 99, 99, 99, 99, 99],
       cash: [1, 1.50, 1.65, 1.80, 2.00, 2.25],
-      desc: (v, l) => !l ? 'Deer and other ground animals run slower and pay more. Ground escapes cost no X, and more deer show up.' : `Ground animals ${Math.round((1 - v) * 100)}% slower · pay +${Math.round(([1, 1.50, 1.65, 1.80, 2.00, 2.25][Math.min(l, 5)] - 1) * 100)}% · ground escapes cost no X · +2 deer/round` },
+      desc: (v, l) => !l ? 'Deer, fawns, and other ground animals run slower and pay more. Ground escapes (including fawns) cost no X, and more deer show up.' : `Ground animals ${Math.round((1 - v) * 100)}% slower · pay +${Math.round(([1, 1.50, 1.65, 1.80, 2.00, 2.25][Math.min(l, 5)] - 1) * 100)}% · ground escapes cost no X (including fawns) · +2 deer/round` },
     { id: 'perk.bullet', name: 'Bullet Time', icon: 'bullet', w: 3.8, req: 70,
       val: [1, 0.55, 0.48, 0.42, 0.36, 0.30],
       desc: (v, l) => !l ? 'Time automatically slows when you are one X from game over, and during every boss round.' : `World runs at ${Math.round(v * 100)}% speed on your last X and on bosses` },
@@ -332,6 +332,16 @@
     const mapMul = (map && map.speed) || 1;
     return Math.max(1.15, (4.05 - (tier - 1) * 0.55) / mapMul);
   }
+  // Fawns dropped by ground bosses (Big Buck, and any later brun bosses). Payout sits near eggs so Meadow R20 clear rate stays in the same band. Egg Sniper does not apply.
+  const fawnPts = r => Math.round((260 + 13 * r) / 10) * 10;
+  const fawnCash = r => 4 + Math.floor(r / 5);
+  const BOSS_MOVE = { eagle: 'bfly', buck: 'brun', goose: 'bfly', yeti: 'bfly', vulture: 'bfly', batking: 'bfly' };
+  const isGroundBossId = id => BOSS_MOVE[id] === 'brun';
+  function bossIdFor(mapId, r) {
+    if (mapId === 'meadow') return (r / BOSS_EVERY) % 2 === 1 ? 'eagle' : 'buck';
+    const m = MAPS.find(x => x.id === mapId);
+    return (m && m.boss) || 'eagle';
+  }
 
 
   const MISSION_PCT = 0.10;
@@ -340,6 +350,6 @@
 
   const ECON = { WEAPONS, TURRETS, GLOBAL, PERKS, MAPS, mapIndex, prevMap, nextMap, unlockHint, BOSS_EVERY, CLEAR_ROUND, BASE_SHOT_DMG, HP, kindHp, hitsNeeded, flakDmg, dmgOf, bossHp, bossTime, bossCash, SKINS, CROSSHAIRS, TRACKS, TOTAL_LEVELS, TURRET_CASH, TURRET_PTS,
     cost, infCost, infVal, extendVal, cappedTrack, nice, curve, difficulty, KILL, killCash, killPts, roundBonus, decoyPenalty,
-    MISSION_PCT, DAILY_PCT, DOUBLE_ADS_PER_DAY, BASE, PER_LEVEL, eggPts, eggCash, eggInterval };
+    MISSION_PCT, DAILY_PCT, DOUBLE_ADS_PER_DAY, BASE, PER_LEVEL, eggPts, eggCash, eggInterval, fawnPts, fawnCash, BOSS_MOVE, isGroundBossId, bossIdFor };
   if (typeof module !== 'undefined' && module.exports) module.exports = ECON; else root.ECON = ECON;
 })(typeof window !== 'undefined' ? window : globalThis);

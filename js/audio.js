@@ -183,12 +183,13 @@ window.Sfx = (() => {
     squawk() { cryBird(880); },
     cry(kind) {
       const k = kind || 'bird';
-      if (k === 'deer') {
-        // "buah" bleat / grunt
-        tone('sawtooth', 280, 160, 0.10, 0.11);
-        tone('sawtooth', 190, 120, 0.16, 0.10, 0.08);
-        tone('triangle', 140, 100, 0.18, 0.06, 0.10);
-        noise(0.12, 0.12, 500, 90, 0.08);
+      if (k === 'deer' || k === 'fawn') {
+        // "buah" bleat / grunt; fawns are a higher-pitched bleat
+        const hi = k === 'fawn' ? 1.55 : 1;
+        tone('sawtooth', 280 * hi, 160 * hi, 0.10, 0.11);
+        tone('sawtooth', 190 * hi, 120 * hi, 0.16, 0.10, 0.08);
+        tone('triangle', 140 * hi, 100 * hi, 0.18, 0.06, 0.10);
+        noise(0.12, 0.12, 500 * hi, 90, 0.08);
       } else if (k === 'wolf') {
         tone('sawtooth', 420, 260, 0.18, 0.09);
         tone('triangle', 300, 180, 0.22, 0.07, 0.06);

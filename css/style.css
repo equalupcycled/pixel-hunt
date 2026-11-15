@@ -602,14 +602,21 @@ h2.gold, #go-title.gold { color: #ffe066; }
   box-shadow: 0 0 0 2px #7a5a00, 0 3px 0 #5a4000;
 }
 #ov-over .adfree-buy, #ov-pause .adfree-buy { width: 100%; max-width: none; }
-.adfree-note, .adfree-owned {
+.adfree-owned {
   width: min(92%, 340px);
   margin: 4px auto 6px;
   text-align: center;
   opacity: .9;
   line-height: 1.35;
   text-shadow: 1px 1px 0 #000;
+  color: #9dff9a;
 }
-#ov-over .adfree-note, #ov-pause .adfree-note,
 #ov-over .adfree-owned, #ov-pause .adfree-owned { width: 100%; }
-.adfree-owned { color: #9dff9a; }
+#ov-adfree .panel { text-align: center; }
+#ov-adfree #adfree-confirm-copy { margin: 8px 8px 14px; line-height: 1.4; }
+#ov-adfree .adfree-buy-confirm {
+  background: #e0a800 !important;
+  color: #1a1200 !important;
+  width: 100%;
+}
+#ov-adfree #btn-adfree-cancel { width: 100%; margin-top: 8px; }

@@ -71,7 +71,7 @@ window.Meta = (() => {
       // v7 -> v8: maps unlock by clearing the previous map, not by purchase or "own N upgrades".
       // Keep access to any map already bought (lv['map.*']) or already played. Do not refund.
       save.v = Math.max(save.v || 2, 8);
-      // v8 -> v9: per-device Remove Ads flag (Stripe one-time purchase).
+      // v8 -> v9: per-device Remove Ads flag.
       if (save.adFree == null) save.adFree = false;
       else save.adFree = !!save.adFree;
       if (save.adFreeSession == null) save.adFreeSession = '';
@@ -353,13 +353,10 @@ window.Meta = (() => {
   }
 
 
-  const CHECKOUT_SID = /^cs_[a-zA-Z0-9_]{12,}$/;
   const isAdFree = () => !!save.adFree;
-  function grantAdFree(sessionId) {
-    const sid = String(sessionId || '').trim();
-    if (!CHECKOUT_SID.test(sid)) return false;
+  function grantAdFree(source) {
     save.adFree = true;
-    save.adFreeSession = sid;
+    save.adFreeSession = String(source || 'simulated');
     persist();
     return true;
   }

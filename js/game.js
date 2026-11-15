@@ -2053,7 +2053,7 @@ function updateTitle() {
   boostBtnStamp = ''; refreshBoostButtons();
 }
 function toTitle() {
-  ['ov-over', 'ov-pause', 'ov-shop', 'ov-continue', 'ov-board', 'ov-name', 'ov-how', 'ov-about', 'ov-missions', 'ov-daily'].forEach(id => show(id, false));
+  ['ov-over', 'ov-pause', 'ov-shop', 'ov-continue', 'ov-board', 'ov-name', 'ov-how', 'ov-about', 'ov-missions', 'ov-daily', 'ov-adfree'].forEach(id => show(id, false));
   paused = false; state = 'title'; targets = []; projs = []; holding = false; drawing = null; showGameButtons(false); Meta.persist();
   titleBrowseMap = null;
   Meta.setMode('campaign'); shopInf = false;
@@ -2448,7 +2448,7 @@ function frame(now) {
   catch (e) { if (++frameErrs === 1 || frameErrs % 300 === 0) { console.error(e); window.PH_ERR && PH_ERR(e); } }
 }
 
-// ---------------- Remove Ads (one-time Stripe purchase, per-device) ----------------
+// ---------------- Remove Ads (per-device). Simulated purchase today; swap completeRemoveAdsPurchase later for real billing.
 function adFreePriceLabel() {
   const cfg = window.ADFREE_CONFIG || {};
   return cfg.priceLabel || '$2.99';
@@ -2459,47 +2459,47 @@ function refreshAdFreeUI() {
     b.classList.toggle('hidden', on);
     b.textContent = 'REMOVE ADS ' + adFreePriceLabel();
   });
-  document.querySelectorAll('.adfree-note').forEach(n => n.classList.toggle('hidden', on));
   document.querySelectorAll('.adfree-owned').forEach(n => n.classList.toggle('hidden', !on));
+  const sheet = $('ov-adfree');
+  if (sheet && on) show('ov-adfree', false);
   refreshBoostButtons();
 }
-function consumeAdFreeReturn() {
-  let sid = '';
-  try {
-    const u = new URL(location.href);
-    sid = (u.searchParams.get('adfree') || '').trim();
-    if (sid) {
-      u.searchParams.delete('adfree');
-      const rest = u.searchParams.toString();
-      history.replaceState({}, '', u.pathname + (rest ? '?' + rest : '') + u.hash);
-    }
-  } catch (e) { return false; }
-  if (!sid) return false;
-  if (!Meta.grantAdFree(sid)) return false;
-  refreshAdFreeUI();
-  toast('THANKS! ADS REMOVED', 'This purchase stays on this device. Keep using this device, or reopen your success link to restore it.', 0);
-  return true;
+function showRemoveAdsConfirm(on) {
+  show('ov-adfree', !!on);
 }
-function openRemoveAds() {
+// Single entry point used by every REMOVE ADS button. Later this can open a real checkout instead of the confirm sheet.
+function purchaseRemoveAds() {
   Sfx.init(); Sfx.click();
   if (Meta.isAdFree()) { refreshAdFreeUI(); return; }
-  const url = (window.ADFREE_CONFIG || {}).paymentLink;
-  if (!url) return;
-  if (window.PH_openUrl) window.PH_openUrl(url);
-  else window.open(url, '_blank', 'noopener,noreferrer');
+  showRemoveAdsConfirm(true);
+}
+// Called after the player confirms (or, later, after a real payment succeeds).
+function completeRemoveAdsPurchase() {
+  Sfx.init(); Sfx.click();
+  if (!Meta.grantAdFree('simulated')) return false;
+  showRemoveAdsConfirm(false);
+  refreshAdFreeUI();
+  toast('THANKS! ADS REMOVED', 'This purchase stays on this device.', 0);
+  Sfx.gold();
+  return true;
+}
+function cancelRemoveAdsPurchase() {
+  Sfx.click();
+  showRemoveAdsConfirm(false);
 }
 
 refreshAdFreeUI();
 resize(); resetRun(); syncAudio(); toTitle();
-consumeAdFreeReturn();
 
 requestAnimationFrame(frame);
 
 
 ['btn-adfree-t', 'btn-adfree-p', 'btn-adfree-o'].forEach(id => {
   const el = $(id);
-  if (el) el.addEventListener('click', openRemoveAds);
+  if (el) el.addEventListener('click', purchaseRemoveAds);
 });
+if ($('btn-adfree-buy')) $('btn-adfree-buy').addEventListener('click', completeRemoveAdsPurchase);
+if ($('btn-adfree-cancel')) $('btn-adfree-cancel').addEventListener('click', cancelRemoveAdsPurchase);
 
 // debug/test hooks (used by tools/test_playwright.py)
 window.PH = {
@@ -2535,8 +2535,8 @@ window.PH = {
   get browseMap() { return titleBrowseMap || Meta.save.equip.map; },
   hasMap: id => Meta.hasMap(id),
   isAdFree: () => Meta.isAdFree(),
-  grantAdFree(sid) { const ok = Meta.grantAdFree(sid); refreshAdFreeUI(); return ok; },
+  grantAdFree(src) { const ok = Meta.grantAdFree(src || 'simulated'); refreshAdFreeUI(); return ok; },
   clearAdFree() { Meta.clearAdFree(); refreshAdFreeUI(); },
-  openRemoveAds, consumeAdFreeReturn, refreshAdFreeUI,
+  purchaseRemoveAds, completeRemoveAdsPurchase, cancelRemoveAdsPurchase, refreshAdFreeUI,
 };
 })();

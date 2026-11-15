@@ -3,12 +3,11 @@
 // Native (Capacitor + @capacitor-community/admob): uses real AdMob ads automatically.
 // >>> Put your real AdMob IDs in AD_CONFIG below (see README "Ads / AdMob"). <<<
 'use strict';
-// One-time "Remove Ads" purchase (Stripe Payment Link). Price can be changed later in Stripe + this label.
+// One-time "Remove Ads" purchase. Today this is a simulated confirm sheet (no charge).
+// Real billing can later replace purchaseRemoveAds() / completeRemoveAdsPurchase() in js/game.js.
 window.ADFREE_CONFIG = {
   priceLabel: '$2.99',
-  paymentLink: 'https://buy.stripe.com/3cIbJ22s95fo54L9W82kw00',
-  productId: 'prod_VdCdJiVd7UGQRa',
-  priceId: 'price_1UbwEfK4ysz4eginjAoUxv6u',
+  mode: 'simulated',
 };
 
 window.AD_CONFIG = {

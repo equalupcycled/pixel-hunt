@@ -1,7 +1,6 @@
-# Remove Ads ($2.99 one-time, per-device). usage: python3 tools/test_adfree.py URL TAG
+# Remove Ads ($2.99 simulated purchase, per-device). usage: python3 tools/test_adfree.py URL TAG
 import json, sys
 from playwright.sync_api import sync_playwright
-from urllib.parse import urlparse, parse_qs
 
 URL = sys.argv[1] if len(sys.argv) > 1 else 'http://127.0.0.1:8799/'
 TAG = sys.argv[2] if len(sys.argv) > 2 else 'local'
@@ -20,6 +19,10 @@ with sync_playwright() as p:
     def hide_daily():
         ev("document.getElementById('ov-daily')&&document.getElementById('ov-daily').classList.add('hidden')")
 
+    def tap(sel):
+        r = ev(f"(()=>{{const e=document.querySelector('{sel}');e.scrollIntoView({{block:'center'}});const r=e.getBoundingClientRect();return [r.x+r.width/2,r.y+r.height/2]}})()")
+        pg.touchscreen.tap(*r); pg.wait_for_timeout(400)
+
     def wait_death_ui():
         pg.wait_for_function(
             "!document.getElementById('ov-continue').classList.contains('hidden')"
@@ -30,16 +33,6 @@ with sync_playwright() as p:
         )
         pg.wait_for_timeout(300)
 
-    def tap(sel):
-        r = ev(f"(()=>{{const e=document.querySelector('{sel}');e.scrollIntoView({{block:'center'}});const r=e.getBoundingClientRect();return [r.x+r.width/2,r.y+r.height/2]}})()")
-        pg.touchscreen.tap(*r); pg.wait_for_timeout(400)
-
-    def txt(id_):
-        return ev(f"(document.getElementById('{id_}')||{{}}).innerText||''")
-
-    def cls(sel):
-        return ev(f"(document.querySelector('{sel}')||{{}}).className||''")
-
     R = {}
     pg.goto(URL, wait_until='networkidle'); pg.wait_for_timeout(400)
     ev("localStorage.clear()")
@@ -49,72 +42,60 @@ with sync_playwright() as p:
     R['fresh'] = ev("""({
       v: PH.Meta.save.v,
       adFree: PH.Meta.isAdFree(),
-      session: PH.Meta.save.adFreeSession,
       btn: (document.getElementById('btn-adfree-t')||{}).innerText || '',
       btnHidden: !!(document.getElementById('btn-adfree-t')||{}).classList.contains('hidden'),
-      noteHidden: !!(document.querySelector('#ov-title .adfree-note')||{}).classList.contains('hidden'),
       ownedHidden: !!(document.querySelector('#ov-title .adfree-owned')||{}).classList.contains('hidden'),
-      link: (window.ADFREE_CONFIG||{}).paymentLink || '',
+      mode: (window.ADFREE_CONFIG||{}).mode || '',
       price: (window.ADFREE_CONFIG||{}).priceLabel || '',
+      hasLink: !!(window.ADFREE_CONFIG||{}).paymentLink,
+      sheetHidden: !!(document.getElementById('ov-adfree')||{}).classList.contains('hidden'),
     })""")
 
-    ev("window.__opened=[]; window.PH_openUrl=function(u){window.__opened.push(u);return true;}")
     ev("Sfx && Sfx.init()")
-    tap('#btn-adfree-t')
-    R['opened'] = ev("window.__opened.slice()")
-
     ev("document.getElementById('btn-adfree-t').scrollIntoView({block:'center'})")
-    pg.screenshot(path=OUT + f'150-adfree-button-{TAG}.png')
-
-    # Invalid query must not grant, and must strip the param.
-    base = URL if URL.endswith('/') or URL.endswith('.html') else URL + '/'
-    # Prefer the game page path so query lands on index.
-    origin = ev("location.origin + location.pathname")
-    pg.goto(origin + '?adfree=not-a-session', wait_until='networkidle')
-    pg.wait_for_timeout(600)
-    hide_daily()
-    R['invalid'] = ev("""({
+    pg.screenshot(path=OUT + f'152-adfree-button-{TAG}.png')
+    tap('#btn-adfree-t')
+    R['confirm'] = ev("""({
+      sheet: !document.getElementById('ov-adfree').classList.contains('hidden'),
+      copy: (document.getElementById('adfree-confirm-copy')||{}).innerText || '',
       adFree: PH.Meta.isAdFree(),
-      search: location.search,
-      href: location.href,
+      buy: (document.getElementById('btn-adfree-buy')||{}).innerText || '',
+      cancel: (document.getElementById('btn-adfree-cancel')||{}).innerText || '',
+    })""")
+    pg.screenshot(path=OUT + f'153-adfree-confirm-{TAG}.png')
+
+    tap('#btn-adfree-cancel')
+    R['cancel'] = ev("""({
+      sheet: !document.getElementById('ov-adfree').classList.contains('hidden'),
+      adFree: PH.Meta.isAdFree(),
+      btnHidden: !!(document.getElementById('btn-adfree-t')||{}).classList.contains('hidden'),
     })""")
 
-    pg.goto(origin + '?adfree=cs_short', wait_until='networkidle')
-    pg.wait_for_timeout(600)
-    hide_daily()
-    R['short'] = ev("({ adFree: PH.Meta.isAdFree(), search: location.search })")
-
-    # Valid return: mark ad-free, toast, strip query, hide buy button.
-    sid = 'cs_live_testdevicesession99'
-    pg.goto(origin + '?adfree=' + sid, wait_until='networkidle')
-    pg.wait_for_timeout(800)
-    hide_daily()
-    R['granted'] = ev("""({
+    tap('#btn-adfree-t')
+    pg.wait_for_timeout(200)
+    tap('#btn-adfree-buy')
+    R['bought'] = ev("""({
       adFree: PH.Meta.isAdFree(),
-      session: PH.Meta.save.adFreeSession,
+      source: PH.Meta.save.adFreeSession,
       v: PH.Meta.save.v,
-      search: location.search,
+      sheet: !document.getElementById('ov-adfree').classList.contains('hidden'),
       toast: (document.getElementById('toast')||{}).innerText || '',
       toastHidden: !!(document.getElementById('toast')||{}).classList.contains('hidden'),
       btnHidden: !!(document.getElementById('btn-adfree-t')||{}).classList.contains('hidden'),
-      noteHidden: !!(document.querySelector('#ov-title .adfree-note')||{}).classList.contains('hidden'),
       ownedHidden: !!(document.querySelector('#ov-title .adfree-owned')||{}).classList.contains('hidden'),
       owned: (document.querySelector('#ov-title .adfree-owned')||{}).innerText || '',
     })""")
     ev("document.getElementById('ov-title').scrollIntoView({block:'start'})")
-    pg.screenshot(path=OUT + f'151-adfree-thanks-{TAG}.png')
+    pg.screenshot(path=OUT + f'154-adfree-thanks-{TAG}.png')
 
-    # Persist across reload (no query).
     pg.reload(wait_until='networkidle'); pg.wait_for_timeout(800)
     hide_daily()
     R['persist'] = ev("""({
       adFree: PH.Meta.isAdFree(),
-      session: PH.Meta.save.adFreeSession,
       btnHidden: !!(document.getElementById('btn-adfree-t')||{}).classList.contains('hidden'),
       ownedHidden: !!(document.querySelector('#ov-title .adfree-owned')||{}).classList.contains('hidden'),
     })""")
 
-    # Rewarded Auto Reload is granted instantly (no ad overlay).
     ev("AD_CONFIG.rewardedSeconds=8")
     tap('#btn-auto-boost-t')
     pg.wait_for_timeout(500)
@@ -125,7 +106,6 @@ with sync_playwright() as p:
       label: (document.getElementById('btn-auto-boost-t')||{}).innerText || '',
     })""")
 
-    # Death: continue without an ad; interstitial skipped after decline / second death.
     ev("PH.newGame()")
     pg.wait_for_function("PH.state==='intro'||PH.state==='play'", timeout=5000)
     pg.wait_for_timeout(200)
@@ -150,7 +130,7 @@ with sync_playwright() as p:
     ev("PH.forceDie()")
     wait_death_ui()
     if visible('ov-name'):
-        ev("document.getElementById('btn-name-skip')&&document.getElementById('btn-name-skip').click()||document.getElementById('ov-name').classList.add('hidden')")
+        ev("document.getElementById('btn-name-ok')&&document.getElementById('btn-name-ok').click()")
         pg.wait_for_timeout(400)
         if not visible('ov-over'):
             wait_death_ui()
@@ -162,11 +142,11 @@ with sync_playwright() as p:
       doubleLabel: (document.getElementById('btn-double')||{}).innerText || '',
     })""")
 
-    # Dedicated 2X run on a fresh ad-free page so leftover overlays cannot leak.
+    # Dedicated 2X run on a fresh ad-free page.
     pg3 = c.new_page()
     pg3.on('pageerror', lambda e: errs.append(str(e)))
     pg3.add_init_script("localStorage.setItem('pixelhunt.save.v1', %s);" % json.dumps(json.dumps({
-        'v': 9, 'adFree': True, 'adFreeSession': 'cs_live_testdevicesession99', 'bank': 0, 'autoBoostUntil': 0,
+        'v': 9, 'adFree': True, 'adFreeSession': 'simulated', 'bank': 0, 'autoBoostUntil': 0,
     })))
     pg3.goto(URL, wait_until='networkidle'); pg3.wait_for_timeout(800)
     ev3 = pg3.evaluate
@@ -190,7 +170,7 @@ with sync_playwright() as p:
             timeout=8000,
         )
     if ev3("!document.getElementById('ov-name').classList.contains('hidden')"):
-        ev3("document.getElementById('btn-name-skip')&&document.getElementById('btn-name-skip').click()")
+        ev3("document.getElementById('btn-name-ok')&&document.getElementById('btn-name-ok').click()")
         pg3.wait_for_timeout(400)
         pg3.wait_for_function("!document.getElementById('ov-over').classList.contains('hidden')", timeout=8000)
     R['over_before_2x'] = ev3("""({
@@ -200,7 +180,6 @@ with sync_playwright() as p:
       label: (document.getElementById('btn-double')||{}).innerText || '',
       earned: (document.getElementById('go-earned')||{}).innerText || '',
       adFree: PH.Meta.isAdFree(),
-      cash: PH.Meta && 0,
     })""")
     ev3("window.__adWas = false; const mo=new MutationObserver(()=>{if(!document.getElementById('ov-ad').classList.contains('hidden')) window.__adWas=true;}); mo.observe(document.getElementById('ov-ad'),{attributes:true,attributeFilter:['class']})")
     if ev3("!document.getElementById('ov-over').classList.contains('hidden')") and ev3("!document.getElementById('btn-double').classList.contains('hidden')") and ev3("!document.getElementById('btn-double').disabled"):
@@ -211,11 +190,9 @@ with sync_playwright() as p:
       adWas: !!window.__adWas,
       earned: (document.getElementById('go-earned')||{}).innerText || '',
       hiddenAfter: !!(document.getElementById('btn-double')||{}).classList.contains('hidden'),
-      label: (document.getElementById('btn-double')||{}).innerText || '',
     })""")
     pg3.close()
 
-    # Pause menu buy button is hidden when ad-free.
     ev("PH.toTitle()")
     hide_daily()
     ev("PH.newGame()")
@@ -228,12 +205,7 @@ with sync_playwright() as p:
       ownedHidden: !!(document.querySelector('#ov-pause .adfree-owned')||{}).classList.contains('hidden'),
     })""")
 
-    # v8 save migrates to v9 with adFree false (fresh page so persist cannot race).
-    seed = {
-      'v': 8, 'bank': 12, 'lv': {},
-      'equip': {'map': 'meadow', 'primary': 'shotgun', 'secondary': None},
-      'autoBoostUntil': 0,
-    }
+    seed = {'v': 8, 'bank': 12, 'lv': {}, 'equip': {'map': 'meadow', 'primary': 'shotgun', 'secondary': None}, 'autoBoostUntil': 0}
     pg2 = c.new_page()
     pg2.on('pageerror', lambda e: errs.append(str(e)))
     pg2.add_init_script("localStorage.setItem('pixelhunt.save.v1', %s);" % json.dumps(json.dumps(seed)))
@@ -258,27 +230,33 @@ with sync_playwright() as p:
     if f.get('adFree'): fails.append('fresh already ad-free, %r' % f)
     if 'REMOVE ADS $2.99' not in (f.get('btn') or ''): fails.append('title button copy, %r' % f.get('btn'))
     if f.get('btnHidden'): fails.append('title buy button hidden on fresh')
-    if f.get('noteHidden'): fails.append('restore note hidden on fresh')
     if not f.get('ownedHidden'): fails.append('owned label shown on fresh')
-    if 'buy.stripe.com' not in (f.get('link') or ''): fails.append('missing payment link, %r' % f.get('link'))
+    if f.get('mode') != 'simulated': fails.append('expected simulated mode, %r' % f.get('mode'))
     if f.get('price') != '$2.99': fails.append('price label %r' % f.get('price'))
+    if f.get('hasLink'): fails.append('payment link should not be present')
+    if not f.get('sheetHidden'): fails.append('confirm sheet visible on load')
 
-    opened = R.get('opened') or []
-    if not any(isinstance(u, str) and 'buy.stripe.com' in u for u in opened):
-        fails.append('button did not open payment link, %r' % opened)
+    co = R['confirm']
+    if not co.get('sheet'): fails.append('confirm sheet not shown, %r' % co)
+    copy = (co.get('copy') or '')
+    if 'Remove Ads' not in copy or '$2.99' not in copy or 'test purchase, no charge' not in copy:
+        fails.append('confirm copy, %r' % copy)
+    if co.get('adFree'): fails.append('granted before Buy, %r' % co)
+    if (co.get('buy') or '').strip().upper() != 'BUY': fails.append('Buy label %r' % co.get('buy'))
+    if (co.get('cancel') or '').strip().upper() != 'CANCEL': fails.append('Cancel label %r' % co.get('cancel'))
 
-    if R['invalid'].get('adFree'): fails.append('invalid sid granted, %r' % R['invalid'])
-    if 'adfree=' in (R['invalid'].get('search') or ''): fails.append('invalid query not stripped, %r' % R['invalid'])
-    if R['short'].get('adFree'): fails.append('short sid granted, %r' % R['short'])
+    ca = R['cancel']
+    if ca.get('sheet'): fails.append('sheet still open after Cancel, %r' % ca)
+    if ca.get('adFree'): fails.append('Cancel granted ad-free, %r' % ca)
+    if ca.get('btnHidden'): fails.append('buy button hidden after Cancel')
 
-    g = R['granted']
-    if not g.get('adFree'): fails.append('valid return did not grant, %r' % g)
-    if g.get('session') != sid: fails.append('session not saved, %r' % g)
-    if 'adfree=' in (g.get('search') or ''): fails.append('success query not stripped, %r' % g)
+    g = R['bought']
+    if not g.get('adFree'): fails.append('Buy did not grant, %r' % g)
+    if g.get('source') != 'simulated': fails.append('source not simulated, %r' % g)
+    if g.get('sheet'): fails.append('sheet still open after Buy, %r' % g)
     if 'THANKS' not in (g.get('toast') or '').upper() and g.get('toastHidden'):
         fails.append('missing thanks toast, %r' % g)
     if not g.get('btnHidden'): fails.append('buy button still visible after grant')
-    if not g.get('noteHidden'): fails.append('restore note still visible after grant')
     if g.get('ownedHidden'): fails.append('owned label hidden after grant')
     if 'ADS REMOVED' not in (g.get('owned') or '').upper(): fails.append('owned label copy, %r' % g.get('owned'))
 
@@ -291,12 +269,12 @@ with sync_playwright() as p:
     if not bo.get('active') or bo.get('left', 0) <= 0:
         fails.append('auto-reload not granted instantly, %r' % bo)
 
-    co = R['continue']
-    if co.get('adVisible'): fails.append('continue offer showed an ad, %r' % co)
-    if not co.get('contVisible'): fails.append('continue offer missing, %r' % co)
-    lab = (co.get('reviveLabel') or '').upper()
-    if 'WATCH AD' in lab: fails.append('continue still says WATCH AD, %r' % co.get('reviveLabel'))
-    if 'CONTINUE' not in lab: fails.append('continue label, %r' % co.get('reviveLabel'))
+    ct = R['continue']
+    if ct.get('adVisible'): fails.append('continue offer showed an ad, %r' % ct)
+    if not ct.get('contVisible'): fails.append('continue offer missing, %r' % ct)
+    lab = (ct.get('reviveLabel') or '').upper()
+    if 'WATCH AD' in lab: fails.append('continue still says WATCH AD, %r' % ct.get('reviveLabel'))
+    if 'CONTINUE' not in lab: fails.append('continue label, %r' % ct.get('reviveLabel'))
 
     rv = R['revived']
     if rv.get('adVisible'): fails.append('revive showed an ad, %r' % rv)

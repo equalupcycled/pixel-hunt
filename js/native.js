@@ -1,9 +1,7 @@
 // Pixel Hunt native shell helpers (Capacitor Android test APK). Safe no-op in the browser.
 'use strict';
 
-// Open a URL in the system browser when running in the Capacitor shell (so Stripe checkout
-// is not trapped in the WebView). The after-pay redirect may land on the web game; that is
-// an accepted caveat for the current test APK. Falls back to a new tab in the browser.
+// Open a URL in the system browser when running in the Capacitor shell. Falls back to a new tab in the browser.
 window.PH_openUrl = function PH_openUrl(url) {
   if (!url) return false;
   try {
@@ -42,6 +40,7 @@ window.PH_handleBack = function PH_handleBack() {
   if (vis('shop-detail')) return tap('btn-shop-detail-close');
   if (vis('ov-how')) return tap('btn-how-close');
   if (vis('ov-about')) return tap('btn-about-close');
+  if (vis('ov-adfree')) return tap('btn-adfree-cancel');
   if (vis('ov-daily')) return tap('btn-daily-close');
   if (vis('ov-missions')) return tap('btn-missions-close');
   if (vis('ov-board')) return tap('btn-board-close');

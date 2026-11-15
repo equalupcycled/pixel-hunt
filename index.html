@@ -60,7 +60,6 @@
     </div>
     <button type="button" id="btn-auto-boost-t" class="pbtn green boost-btn">&#9654; AD: Auto Reload 15 min</button>
     <button type="button" id="btn-adfree-t" class="pbtn adfree-buy">REMOVE ADS $2.99</button>
-    <div class="tiny adfree-note">Already bought? Reopen your success link on this device to restore.</div>
     <div class="tiny adfree-owned hidden">ADS REMOVED on this device</div>
     <div class="row"><button id="btn-board" class="pbtn small">LEADERBOARD</button></div>
     <div class="row" id="title-audio">
@@ -151,6 +150,17 @@
   </div>
 
   <!-- pause -->
+
+  <!-- Remove Ads (simulated purchase, no charge) -->
+  <div id="ov-adfree" class="overlay hidden">
+    <div class="panel">
+      <h2>REMOVE ADS</h2>
+      <p id="adfree-confirm-copy">Remove Ads — $2.99 (test purchase, no charge)</p>
+      <button type="button" id="btn-adfree-buy" class="pbtn big adfree-buy-confirm">BUY</button>
+      <button type="button" id="btn-adfree-cancel" class="pbtn">CANCEL</button>
+    </div>
+  </div>
+
   <div id="ov-pause" class="overlay hidden">
     <div class="panel">
       <h2>PAUSED</h2>
@@ -167,7 +177,6 @@
       </div>
       <button type="button" id="btn-auto-boost-p" class="pbtn green boost-btn">&#9654; AD: Auto Reload 15 min</button>
       <button type="button" id="btn-adfree-p" class="pbtn adfree-buy">REMOVE ADS $2.99</button>
-      <div class="tiny adfree-note">Already bought? Reopen your success link on this device to restore.</div>
       <div class="tiny adfree-owned hidden">ADS REMOVED on this device</div>
       <button id="btn-quit" class="pbtn">QUIT TO TITLE</button>
     </div>
@@ -198,7 +207,6 @@
       <button id="btn-double" class="pbtn green">&#9654; WATCH AD: 2X EARNINGS</button>
       <button type="button" id="btn-auto-boost-o" class="pbtn green boost-btn">&#9654; AD: Auto Reload 15 min</button>
       <button type="button" id="btn-adfree-o" class="pbtn adfree-buy">REMOVE ADS $2.99</button>
-      <div class="tiny adfree-note">Already bought? Reopen your success link on this device to restore.</div>
       <div class="tiny adfree-owned hidden">ADS REMOVED on this device</div>
       <div id="go-next" class="nextbox"></div>
       <div class="stats">

@@ -132,14 +132,27 @@
   const HP = {
     bird: 2, blue: 2, gold: 2, decoy: 1,
     goose: 4, owl: 3, bat: 2, vulture: 4,
-    deer: 4, swimgoose: 4, rabbit: 3, wolf: 5, roadrunner: 3, coyote: 5, eyes: 3, egg: 2, fawn: 2,
+    deer: 4, swimgoose: 4, rabbit: 3, wolf: 5, roadrunner: 3, coyote: 5, eyes: 3, egg: 2, fawn: 2, pup: 2, bag: 1,
   };
   const kindHp = k => HP[k] || 2;
   const hitsNeeded = (hp, dmg) => Math.max(1, Math.ceil((hp || 1) / Math.max(1, dmg || 1)));
   const flakDmg = l => 3 + Math.max(1, l | 0);
-  const bossHp = r => (6 + Math.floor(r / 10) * 4) * BASE_SHOT_DMG;
-  const bossTime = r => Math.max(9, 16 - Math.floor(r / 10)); // seconds before it escapes (counts as a miss)
-  const bossCash = r => 120 + r * 12;                      // before map/bounty multipliers
+  const bossHpBase = r => (6 + Math.floor(r / 10) * 4) * BASE_SHOT_DMG;
+  function isFinaleRound(r) { return r >= CLEAR_ROUND && (Math.floor(r / BOSS_EVERY) % 3 === 0); }
+  const bossHp = (r, mapId) => {
+    const n = bossHpBase(r);
+    let hp = isFinaleRound(r) ? Math.round(n * 1.22) : n;
+    const i = Math.max(0, mapIndex((mapId && mapId.id) || mapId || 'meadow'));
+    // Later campaign maps need a tougher boss so a previous-map loadout is not an auto-clear.
+    if (i > 0) hp = Math.round(hp * (1 + 0.22 * i + (isFinaleRound(r) ? 0.18 * i : 0)));
+    if (i >= 4 && isFinaleRound(r)) hp = Math.round(hp * 1.22);
+    return hp;
+  };
+  const bossTime = r => {
+    const tm = Math.max(9, 16 - Math.floor(r / 10));
+    return isFinaleRound(r) ? Math.max(8, tm - 1) : tm;
+  };
+  const bossCash = r => 120 + r * 12 + (isFinaleRound(r) ? 80 : 0);
 
   // ---------- cosmetics (fixed prices, no gameplay effect) ----------
   const SKINS = [
@@ -262,44 +275,44 @@
   // Rounds 1–10 are unchanged on every map (same values as the previous curve).
   // Meadow R11–30 climbs gradually so mid-game players are not walled after the R10 boss.
   // Later maps stay harder than Meadow; their post-R10 ramps are only eased mildly.
-  function difficulty(r, map) {
-    const id = (map && (map.id || map)) || 'meadow';
-    const meadow = id === 'meadow';
+  function meadowCurve(r) {
     const gold = Math.min(0.05 + r * 0.01, 0.16);
     if (r <= 10) {
-      const late = 0, late2 = 0;
       return {
         count: Math.min(3 + r, 26),
-        speed: Math.min(26 + (r - 1) * 5.5, 103) + late * 5 + late2 * late2 * 1.2,
+        speed: Math.min(26 + (r - 1) * 5.5, 103),
         conc: r < 3 ? 1 : r < 6 ? 2 : r < 10 ? 3 : 4,
-        life: Math.max(0.55, Math.max(2.4, 6.5 - (r - 1) * 0.3) - late * 0.09 - late2 * 0.05),
+        life: Math.max(0.55, Math.max(2.4, 6.5 - (r - 1) * 0.3)),
         erratic: Math.min(0.9, Math.max(0, (r - 2) * 0.09)),
-        scale: Math.max(0.55, Math.max(0.85, 1.5 - (r - 1) * 0.05) - late * 0.012 - late2 * 0.01),
+        scale: Math.max(0.55, Math.max(0.85, 1.5 - (r - 1) * 0.05)),
         gold,
         decoy: r >= 3 ? Math.min(0.05 + (r - 3) * 0.02, 0.22) : 0,
         deer: r >= 4 ? Math.min(0.14 + (r - 4) * 0.025, 0.32) : 0,
-        deerSpeed: Math.min(48 + (r - 4) * 8, 150) + late * 5,
+        deerSpeed: Math.min(48 + (r - 4) * 8, 150),
         interval: Math.max(0.45, 1.5 - r * 0.07),
       };
     }
-    if (meadow) {
-      // After the R10 boss, regular waves ease off (the old wall) then climb gradually toward a fair R30.
-      const k = r - 10;
-      const late = Math.max(0, r - 24);
-      return {
-        count: r < 21 ? 10 : r < 25 ? 11 : r < 28 ? 12 : 14,
-        speed: 64 + k * 1.0 + late * 2.2,
-        conc: r < 25 ? 3 : r < 29 ? 4 : 5,
-        life: Math.max(2.8, 4.20 - k * 0.05),
-        erratic: Math.min(0.68, 0.52 + k * 0.006),
-        scale: Math.max(0.92, 1.14 - k * 0.007),
-        gold,
-        decoy: Math.min(0.18, 0.14 + k * 0.002),
-        deer: Math.min(0.24, 0.16 + k * 0.002),
-        deerSpeed: 84 + k * 1.6 + late * 1.5,
-        interval: Math.max(0.76, 0.93 - k * 0.006),
-      };
-    }
+    // After the R10 boss, regular waves ease off (the old wall) then climb gradually toward a fair R30.
+    const k = r - 10;
+    const late = Math.max(0, r - 24);
+    return {
+      count: r < 21 ? 10 : r < 25 ? 11 : r < 28 ? 12 : 14,
+      speed: 64 + k * 1.0 + late * 2.2,
+      conc: r < 25 ? 3 : r < 29 ? 4 : 5,
+      life: Math.max(2.8, 4.20 - k * 0.05),
+      erratic: Math.min(0.68, 0.52 + k * 0.006),
+      scale: Math.max(0.92, 1.14 - k * 0.007),
+      gold,
+      decoy: Math.min(0.18, 0.14 + k * 0.002),
+      deer: Math.min(0.24, 0.16 + k * 0.002),
+      deerSpeed: 84 + k * 1.6 + late * 1.5,
+      interval: Math.max(0.76, 0.93 - k * 0.006),
+    };
+  }
+  // Infinity (and any non-campaign call) keeps the original later-map curve so Infinity R1 is not a cliff.
+  function infinityMapCurve(r) {
+    const gold = Math.min(0.05 + r * 0.01, 0.16);
+    if (r <= 10) return meadowCurve(r);
     const late = Math.max(0, r - 15);
     const late2 = Math.max(0, r - 28);
     return {
@@ -316,6 +329,49 @@
       interval: Math.max(0.50, 0.80 - (r - 10) * 0.022),
     };
   }
+  function rampFrom(prev, t, tier) {
+    const k = Math.max(1, tier || 1);
+    // Night (tier 4) keeps R1 equal to Desert R29 (t=0), then climbs harder so a
+    // Desert-clearing loadout is challenged on Night R30 instead of almost auto-clearing it.
+    const late = Math.max(0, k - 3);
+    return {
+      count: Math.min(14 + k + 2 + late * 2, prev.count + Math.floor(t / (8 - late * 2))),
+      speed: Math.min(112 + k * 7 + late * 26, prev.speed + t * (0.7 + late * 0.8)),
+      conc: Math.min(6 + (late ? 1 : 0), prev.conc + (t >= 18 ? 1 : 0) + (late && t >= 24 ? 1 : 0)),
+      life: Math.max(2.35 - k * 0.04 - late * 0.1, prev.life - t * (0.012 + late * 0.01)),
+      erratic: Math.min(0.72 + k * 0.03 + late * 0.08, prev.erratic + t * (0.003 + late * 0.002)),
+      scale: Math.max(0.88 - k * 0.015 - late * 0.02, prev.scale - t * 0.0025),
+      gold: Math.min(0.16, 0.05 + (29 + t) * 0.01),
+      decoy: Math.min(0.22, prev.decoy + t * 0.001),
+      deer: Math.min(0.32, prev.deer + t * 0.002),
+      deerSpeed: Math.min(138 + k * 6 + late * 10, prev.deerSpeed + t * (0.9 + late * 0.25)),
+      interval: Math.max(0.64 - k * 0.02 - late * 0.08, prev.interval - t * (0.003 + late * 0.002)),
+    };
+  }
+  // Classic campaign intended values (before startRound's map speed/life/size multipliers).
+  // Lake R1 matches Meadow R29, Snow R1 matches Lake R29, and so on, then ramps gently.
+  function intendedCampaign(r, map) {
+    const i = mapIndex(map.id);
+    if (i <= 0) return meadowCurve(r);
+    return rampFrom(intendedCampaign(29, MAPS[i - 1]), Math.max(0, r - 1), i);
+  }
+  function campaignCurve(r, map) {
+    const raw = intendedCampaign(r, map);
+    if (mapIndex(map.id) <= 0) return raw;
+    return Object.assign({}, raw, {
+      speed: raw.speed / (map.speed || 1),
+      deerSpeed: raw.deerSpeed / (map.speed || 1),
+      life: raw.life / (map.life || 1),
+      scale: raw.scale / (map.size || 1),
+    });
+  }
+  function difficulty(r, map, opts) {
+    const id = (map && (map.id || map)) || 'meadow';
+    const m = typeof map === 'object' && map.id ? map : (MAPS.find(x => x.id === id) || MAPS[0]);
+    if (opts && opts.infinity) return id === 'meadow' ? meadowCurve(r) : infinityMapCurve(r);
+    return campaignCurve(r, m);
+  }
+
   const KILL = { bird: { pts: 500, cash: 5 }, blue: { pts: 750, cash: 7 }, gold: { pts: 2500, cash: 25 }, deer: { pts: 1500, cash: 15 },
     goose: { pts: 1200, cash: 12 }, owl: { pts: 900, cash: 9 }, rabbit: { pts: 1000, cash: 10 }, wolf: { pts: 2000, cash: 20 },
     vulture: { pts: 900, cash: 9 }, roadrunner: { pts: 1600, cash: 16 }, coyote: { pts: 1800, cash: 18 }, bat: { pts: 800, cash: 8 }, eyes: { pts: 1400, cash: 14 } };
@@ -330,18 +386,41 @@
   function eggInterval(r, map) {
     const tier = Math.max(1, Math.floor(r / BOSS_EVERY));
     const mapMul = (map && map.speed) || 1;
-    return Math.max(1.15, (4.05 - (tier - 1) * 0.55) / mapMul);
+    let iv = Math.max(1.15, (4.05 - (tier - 1) * 0.55) / mapMul);
+    if (isFinaleRound(r)) iv = Math.max(0.95, iv * 0.82);
+    return iv;
   }
+
   // Fawns dropped by ground bosses (Big Buck, and any later brun bosses). Payout sits near eggs so Meadow R20 clear rate stays in the same band. Egg Sniper does not apply.
   const fawnPts = r => Math.round((260 + 13 * r) / 10) * 10;
   const fawnCash = r => 4 + Math.floor(r / 5);
-  const BOSS_MOVE = { eagle: 'bfly', buck: 'brun', goose: 'bfly', yeti: 'bfly', vulture: 'bfly', batking: 'bfly' };
+  const BOSS_MOVE = {
+    eagle: 'bfly', buck: 'brun', stag: 'brun',
+    goose: 'bfly', swan: 'bfly', heron: 'bfly',
+    yeti: 'bfly', frostwolf: 'brun', elk: 'brun',
+    vulture: 'bfly', jackal: 'brun', sunroc: 'bfly',
+    batking: 'bfly', shadowowl: 'bfly', bloodmoon: 'bfly'
+  };
+  const BOSS_ORDER = {
+    meadow: ['eagle', 'buck', 'stag'],
+    lake: ['goose', 'swan', 'heron'],
+    snow: ['yeti', 'frostwolf', 'elk'],
+    desert: ['vulture', 'jackal', 'sunroc'],
+    night: ['batking', 'shadowowl', 'bloodmoon']
+  };
   const isGroundBossId = id => BOSS_MOVE[id] === 'brun';
+  function bossesFor(mapId) { return BOSS_ORDER[mapId] || BOSS_ORDER.meadow; }
   function bossIdFor(mapId, r) {
-    if (mapId === 'meadow') return (r / BOSS_EVERY) % 2 === 1 ? 'eagle' : 'buck';
-    const m = MAPS.find(x => x.id === mapId);
-    return (m && m.boss) || 'eagle';
+    const arr = bossesFor(mapId);
+    const i = Math.max(0, Math.floor(r / BOSS_EVERY) - 1) % arr.length;
+    return arr[i];
   }
+  const bagCash = (size, map) => {
+    const base = size === 'big' ? 1200 : size === 'mid' ? 400 : 150;
+    const i = Math.max(0, mapIndex((map && map.id) || map || 'meadow'));
+    return Math.round(base * ((map && map.cash) || 1) * (1 + 0.35 * i));
+  };
+  const BONUS_TIME = 24;
 
 
   const MISSION_PCT = 0.10;
@@ -350,6 +429,6 @@
 
   const ECON = { WEAPONS, TURRETS, GLOBAL, PERKS, MAPS, mapIndex, prevMap, nextMap, unlockHint, BOSS_EVERY, CLEAR_ROUND, BASE_SHOT_DMG, HP, kindHp, hitsNeeded, flakDmg, dmgOf, bossHp, bossTime, bossCash, SKINS, CROSSHAIRS, TRACKS, TOTAL_LEVELS, TURRET_CASH, TURRET_PTS,
     cost, infCost, infVal, extendVal, cappedTrack, nice, curve, difficulty, KILL, killCash, killPts, roundBonus, decoyPenalty,
-    MISSION_PCT, DAILY_PCT, DOUBLE_ADS_PER_DAY, BASE, PER_LEVEL, eggPts, eggCash, eggInterval, fawnPts, fawnCash, BOSS_MOVE, isGroundBossId, bossIdFor };
+    MISSION_PCT, DAILY_PCT, DOUBLE_ADS_PER_DAY, BASE, PER_LEVEL, eggPts, eggCash, eggInterval, fawnPts, fawnCash, BOSS_MOVE, BOSS_ORDER, isGroundBossId, bossesFor, bossIdFor, isFinaleRound, bossHpBase, bagCash, BONUS_TIME, meadowCurve, campaignCurve };
   if (typeof module !== 'undefined' && module.exports) module.exports = ECON; else root.ECON = ECON;
 })(typeof window !== 'undefined' ? window : globalThis);

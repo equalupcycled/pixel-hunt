@@ -4,7 +4,7 @@
 // (e.g. Render web service + Postgres) exposing:
 //   POST {url}/scores        body {map, name, score, round, weapon, ts}   -> 200 {rank}
 //   GET  {url}/scores?map=meadow&limit=10                                    -> 200 [{name, score, round, weapon, ts}]
-// Infinity boards use map keys like 'meadow:inf'.
+// Classic uses one shared key 'classic' (old per-map classic lists are merged). Infinity boards use map keys like 'meadow:inf'.
 // See README "Leaderboard". Until then online calls are no-ops and the game uses local scores only.
 'use strict';
 window.LEADERBOARD_CONFIG = {
@@ -16,12 +16,24 @@ window.LEADERBOARD_CONFIG = {
 window.Leaderboard = (() => {
   const cfg = window.LEADERBOARD_CONFIG;
   const KEY = 'pixelhunt.board.v1';
-  // Campaign scores live under the map id (e.g. 'meadow'). Infinity scores use 'meadow:inf'.
-  const boardKey = (map, infinity) => infinity ? map + ':inf' : map;
+  const CLASSIC_KEY = 'classic';
+  // Classic uses one shared board. Infinity stays per-map under 'meadow:inf', etc.
+  const boardKey = (map, infinity) => infinity ? (map + ':inf') : CLASSIC_KEY;
+  const MAP_IDS = ['meadow', 'lake', 'snow', 'desert', 'night'];
 
   const LocalProvider = {
-    _all() { try { return JSON.parse(localStorage.getItem(KEY)) || {}; } catch (e) { return {}; } },
-    _save(all) { try { localStorage.setItem(KEY, JSON.stringify(all)); } catch (e) {} },
+    _migrate(all) {
+      if (!all || all._v >= 2) return all || {};
+      const merged = [];
+      MAP_IDS.forEach(m => { (all[m] || []).forEach(e => merged.push(Object.assign({}, e, { map: e.map || m }))); });
+      (all[CLASSIC_KEY] || []).forEach(e => merged.push(e));
+      merged.sort((a, b) => b.score - a.score || (a.ts || 0) - (b.ts || 0));
+      all[CLASSIC_KEY] = merged.slice(0, cfg.size);
+      all._v = 2;
+      return all;
+    },
+    _all() { try { return this._migrate(JSON.parse(localStorage.getItem(KEY)) || {}); } catch (e) { return { _v: 2 }; } },
+    _save(all) { try { all._v = 2; localStorage.setItem(KEY, JSON.stringify(all)); } catch (e) {} },
     async fetchTop(map, limit = cfg.size) { return (this._all()[map] || []).slice(0, limit); },
     async submitScore(map, entry) {
       const all = this._all(), list = all[map] || [];
@@ -64,7 +76,7 @@ window.Leaderboard = (() => {
   return {
     local: LocalProvider, online: OnlineProvider, cleanName, nameOf, NAME_MAX: cfg.nameMax,
     qualifies: (map, score, infinity) => LocalProvider.qualifies(boardKey(map, infinity), score),
-    boardKey,
+    boardKey, CLASSIC_KEY,
     /** Save locally (always) and online (if configured). Resolves {rank, online}. */
     async submitScore(map, entry) {
       const inf = !!entry.infinity;

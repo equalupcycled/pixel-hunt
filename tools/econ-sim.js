@@ -187,7 +187,7 @@ function pickFlyMap(mapId) {
 function simBossFight(wId, lv, d, st, ammo, r, M, mapId, tryFn, missRun) {
   const ctx = { boss: true, missRun: missRun || 0, maxMiss: st.maxMiss || 3 };
   const tm = E.bossTime(r) * (st.eye || 1);
-  const hp = E.bossHp(r);
+  const hp = E.bossHp(r, mapId);
   const pr = tryFn(wId, lv, d, 'deer', false, st, { v: 999, t: 0 }, Object.assign({}, ctx, { hitOnly: true })).p;
   const rate = (wId === 'mg' || wId === 'laser' ? 1.6 : 1.1);
   const dmg = gunDmg(wId, lv);
@@ -259,7 +259,7 @@ function run(lv, equip, mapId = 'meadow', start = 1) {
   let saveBoost = 0;
   while (alive && r < cap) {
     const roundCash0 = cash;
-    r++; const d0 = E.difficulty(r); const d = Object.assign({}, d0, { speed: d0.speed * M.speed, deerSpeed: d0.deerSpeed * M.speed, life: d0.life * M.life * (M.dark ? 0.9 + 0.1 * (lv.flashlight || 0) / 4 : 1), scale: d0.scale * M.size });
+    r++; const d0 = E.difficulty(r, M, { infinity: !!(typeof SIM_INFINITY !== "undefined" && SIM_INFINITY) }); const d = Object.assign({}, d0, { speed: d0.speed * M.speed, deerSpeed: d0.deerSpeed * M.speed, life: d0.life * M.life * (M.dark ? 0.9 + 0.1 * (lv.flashlight || 0) / 4 : 1), scale: d0.scale * M.size });
     if (r % E.BOSS_EVERY === 0) { // patrol + timer + eggs; leaving or a hatched escape is 1 X
       const b = simBossFight(W.id, lv, d, st, ammo, r, M, mapId, weaponTry, missRun);
       const takeX = (kind) => {
@@ -398,7 +398,7 @@ function playout(steps, { ads = false } = {}) {
 function smooth(a, win) { return a.map((_, i) => { let s = 0, c = 0; for (let j = Math.max(0, i - win); j <= Math.min(a.length - 1, i + win); j++) { s += a[j]; c++; } return s / c; }); }
 
 const args = process.argv.slice(2);
-if (!args.includes('--scores') && !args.includes('--boss-rates') && !args.includes('--perks') && !args.includes('--survival')) {
+if (!args.includes('--scores') && !args.includes('--boss-rates') && !args.includes('--perks') && !args.includes('--survival') && !args.includes('--campaign')) {
 const { steps } = plan();
 if (args.includes('--fit')) {
   const TARGET = 5.0; // cheapest w=1 purchase = 5 average runs of earnings (missions & daily bring it to ~3.5-4 games)
@@ -603,7 +603,7 @@ function runScored(lv, equip, mapId, start) {
   };
   while (alive && r < cap) {
     r++;
-    const d0 = E.difficulty(r);
+    const d0 = E.difficulty(r, M, { infinity: !!(typeof SIM_INFINITY !== "undefined" && SIM_INFINITY) });
     const d = Object.assign({}, d0, {
       speed: d0.speed * M.speed,
       deerSpeed: d0.deerSpeed * M.speed,
@@ -891,10 +891,14 @@ function reportSurvival() {
   console.log('Drop = share of players who started r but did not clear it (single-round wipe).');
   // difficulty dump
   console.log('');
-  console.log('Difficulty (raw, before map speed/life/size):');
+  const MM = E.MAPS.find(m => m.id === mapId);
+  console.log('Bosses: ' + (E.bossesFor(mapId) || []).join(', ') + '  R30=' + E.bossIdFor(mapId, 30) + ' finaleHp=' + E.bossHp(30, mapId));
+  console.log('Difficulty AFTER map speed/life/size (campaign curve):');
   console.log('r  count speed  conc  life  errat  scale  intvl  deer  deerSp  decoy');
   for (let r = 1; r <= 30; r++) {
-    const d = E.difficulty(r, mapId);
+    const d0 = E.difficulty(r, MM, { infinity: false });
+    const d = Object.assign({}, d0, { speed: d0.speed * MM.speed, deerSpeed: d0.deerSpeed * MM.speed, life: d0.life * MM.life, scale: d0.scale * MM.size });
+
     const row = [r, d.count, d.speed, d.conc, d.life, d.erratic, d.scale, d.interval, d.deer, d.deerSpeed, d.decoy]
       .map((v, i) => i === 0 ? String(v).padStart(2) : (typeof v === 'number' ? v.toFixed(2).padStart(7) : String(v)));
     console.log(row.join(' '));
@@ -940,6 +944,117 @@ function reportSurvival() {
   if (args.includes('--json')) console.log(JSON.stringify({ mapId, N, tables }));
 }
 if (args.includes('--survival')) reportSurvival();
+
+function afterMul(r, mapId, inf) {
+  const M = E.MAPS.find(m => m.id === mapId);
+  const d0 = E.difficulty(r, M, { infinity: !!inf });
+  return Object.assign({}, d0, { speed: +(d0.speed * M.speed).toFixed(2), deerSpeed: +(d0.deerSpeed * M.speed).toFixed(2), life: +(d0.life * M.life).toFixed(3), scale: +(d0.scale * M.size).toFixed(3), count: d0.count, conc: d0.conc, interval: +d0.interval.toFixed(3) });
+}
+function preferredGun(lv) {
+  const order = ['laser', 'mg', 'rifle', 'bow', 'handgun', 'shotgun'];
+  const owned = new Set(ownedWeapons(lv));
+  return order.find(w => owned.has(w)) || 'shotgun';
+}
+function freshClear(lv, w, mapId, n, startRound) {
+  let r30 = 0, r1die = 0, r1clear = 0;
+  for (let i = 0; i < n; i++) {
+    const o = runScored(lv, w, mapId, startRound || 1);
+    if (o.endScore && o.endScore[30] != null) r30++;
+    if (o.endScore && o.endScore[1] != null) r1clear++;
+    else r1die++;
+  }
+  return { r30: r30 / n, r1wipe: r1die / n, r1clear: r1clear / n };
+}
+function arrivedClear(lv, w, mapId, n, at) {
+  let ok = 0;
+  for (let i = 0; i < n; i++) {
+    const o = runScored(lv, w, mapId, at);
+    if (o.endScore && o.endScore[at] != null) ok++;
+  }
+  return ok / n;
+}
+function reportCampaign() {
+  const keys = ['count','speed','conc','life','deerSpeed','interval'];
+  const show = d => keys.map(k => k + '=' + d[k]).join('  ');
+  console.log('Campaign carry-over (AFTER map multipliers). Infinity uses the old later-map curve, not this.');
+  console.log('Meadow R29  ' + show(afterMul(29, 'meadow', false)));
+  console.log('Lake    R1  ' + show(afterMul(1, 'lake', false)));
+  console.log('Lake   R29  ' + show(afterMul(29, 'lake', false)));
+  console.log('Snow    R1  ' + show(afterMul(1, 'snow', false)));
+  console.log('Snow   R29  ' + show(afterMul(29, 'snow', false)));
+  console.log('Desert  R1  ' + show(afterMul(1, 'desert', false)));
+  console.log('Desert R29  ' + show(afterMul(29, 'desert', false)));
+  console.log('Night   R1  ' + show(afterMul(1, 'night', false)));
+  console.log('Night  R30  ' + show(afterMul(30, 'night', false)));
+  console.log('Infinity Lake R1 (should NOT match Meadow R29): ' + show(afterMul(1, 'lake', true)));
+  E.MAPS.forEach(m => console.log(m.name + ' bosses: ' + E.bossesFor(m.id).join(' -> ') + '  R30 HP ' + E.bossHp(30, m.id) + ' (' + E.bossIdFor(m.id, 30) + ')'));
+
+  const N = +(args.find(a => a.startsWith('--n=')) || '--n=200').slice(4);
+  // A player who just cleared the previous map brings that map's "appropriate" loadout
+  // (cheapest plan that first hits ~40% fresh R30 clear). Then we see if this map's R1
+  // is survivable with that gear, and how many more upgrades this map's R30 needs.
+  const tiers = [40, 70, 90, 120, 150, 180, 210, 240, 280];
+  const cache = {};
+  const planAt = n => {
+    if (!cache[n]) {
+      const plan = cheapPlan(n, { perks: true });
+      cache[n] = { n, plan, w: preferredGun(plan.lv), lv: plan.lv };
+    }
+    return cache[n];
+  };
+
+  console.log('\nFresh-run R30 clear (from R1) and R1 wipe, with a realistic gun for that upgrade count.');
+  console.log('Target: arriving player (previous map\'s tier) does not wipe R1; this map\'s proper tier clears R30 about 40-60%. Low-upgrade players should struggle later.');
+  let prev = null;
+  const summary = [];
+  for (const map of E.MAPS) {
+    console.log('\n=== ' + map.name + ' ===');
+    if (prev) {
+      const arr = freshClear(prev.lv, prev.w, map.id, N, 1);
+      console.log('  Arriving from ' + prev.map + ' with ' + prev.n + ' upg / ' + prev.w + ': R1 wipe ' + (arr.r1wipe * 100).toFixed(1) + '%  R30 clear ' + (arr.r30 * 100).toFixed(1) + '%');
+    }
+    if (prev && prev.n !== 90) {
+      const low = planAt(90);
+      const lo = freshClear(low.lv, low.w, map.id, N, 1);
+      console.log('  Low-upgrade (90 upg / ' + low.w + '): R1 wipe ' + (lo.r1wipe * 100).toFixed(1) + '%  R30 clear ' + (lo.r30 * 100).toFixed(1) + '%');
+    }
+    let picked = null, last = null, below = prev ? prev.n : 40;
+    for (const n of tiers) {
+      if (prev && n < prev.n) continue;
+      const p = planAt(n);
+      const s = freshClear(p.lv, p.w, map.id, N, 1);
+      last = { n, w: p.w, r30: s.r30, r1wipe: s.r1wipe };
+      console.log('  ' + n + ' upg  ' + p.w + '  R30 clear ' + (s.r30 * 100).toFixed(1) + '%  R1 wipe ' + (s.r1wipe * 100).toFixed(1) + '%');
+      if (s.r30 < 0.40) { below = n; continue; }
+      // Fine-scan between the last miss and this hit to land nearer 40-60%.
+      const cands = [last];
+      for (let n2 = below + 10; n2 < n; n2 += 10) {
+        const p2 = planAt(n2);
+        const s2 = freshClear(p2.lv, p2.w, map.id, N, 1);
+        const cand = { n: n2, w: p2.w, r30: s2.r30, r1wipe: s2.r1wipe };
+        cands.push(cand);
+        console.log('  ' + n2 + ' upg  ' + p2.w + '  R30 clear ' + (s2.r30 * 100).toFixed(1) + '%  R1 wipe ' + (s2.r1wipe * 100).toFixed(1) + '%  (fine)');
+      }
+      const inBand = cands.filter(c => c.r30 >= 0.40 && c.r30 <= 0.60);
+      const pool = inBand.length ? inBand : cands.filter(c => c.r30 >= 0.40);
+      pool.sort((a, b) => Math.abs(a.r30 - 0.50) - Math.abs(b.r30 - 0.50) || a.n - b.n);
+      picked = pool[0] || last;
+      if (picked.r30 >= 0.40 && picked.r30 <= 0.60) console.log('  <- proper tier ~' + picked.n + ' upg (' + (picked.r30 * 100).toFixed(0) + '%)');
+      break;
+    }
+    if (!picked) picked = last;
+    const note = picked && picked.r30 >= 0.40 && picked.r30 <= 0.62 ? 'in band' : (picked && picked.r30 > 0.62 ? 'easier than 60% at first qualifying tier' : 'below 40% even at top tier');
+    console.log('  => ' + map.name + ' needs about ' + (picked ? picked.n : '?') + ' upgrades (' + (picked && picked.w) + ') for ' + (picked ? (picked.r30 * 100).toFixed(0) : '?') + '% fresh R30 clears (' + note + ').');
+    summary.push({ map: map.id, name: map.name, n: picked && picked.n, w: picked && picked.w, r30: picked && picked.r30, r1wipe: picked && picked.r1wipe, arriveWipe: prev ? freshClear(prev.lv, prev.w, map.id, N, 1).r1wipe : null });
+    prev = { map: map.name, n: picked.n, w: picked.w, lv: planAt(picked.n).lv };
+  }
+  console.log('\nSummary:');
+  summary.forEach(s => {
+    const arr = s.arriveWipe == null ? '  (first map)' : '  arrive R1 wipe ' + (s.arriveWipe * 100).toFixed(1) + '%';
+    console.log('  ' + s.name + ': ~' + s.n + ' upg / ' + s.w + '  R30 ' + (s.r30 * 100).toFixed(0) + '%  own R1 wipe ' + (s.r1wipe * 100).toFixed(1) + '%' + arr);
+  });
+}
+if (args.includes('--campaign')) reportCampaign();
 
 function reportPerks() {
   HUMAN_RELOAD = 0.85; // model tap lag so Auto Reload is measurable

@@ -142,7 +142,7 @@ with sync_playwright() as p:
 
     fails = []
     f = R['fresh']
-    if f.get('v') != 9: fails.append('fresh schema not v9, %r' % f)
+    if f.get('v') != 10: fails.append('fresh schema not v10, %r' % f)
     if f.get('total') != 329: fails.append('TOTAL_LEVELS not 329, %r' % f)
     if f.get('mapTracks'): fails.append('map tracks still exist, %r' % f)
     if f.get('mapsTab'): fails.append('MAPS tab still in the shop')
@@ -186,7 +186,7 @@ with sync_playwright() as p:
         fails.append('shop still shows map purchase copy, %r' % body[:400])
 
     mb = R['mig_bought']
-    if mb.get('v') != 9: fails.append('bought migration not v9, %r' % mb)
+    if mb.get('v') != 10: fails.append('bought migration not v9, %r' % mb)
     if mb.get('bank') != 99999: fails.append('bought migration refunded money, %r' % mb)
     if not mb.get('maps', {}).get('desert'): fails.append('bought Desert was taken away, %r' % mb)
     if mb.get('maps', {}).get('night'): fails.append('Night granted without Desert clear, %r' % mb)

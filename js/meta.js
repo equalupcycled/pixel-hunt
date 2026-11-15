@@ -6,14 +6,15 @@ window.Meta = (() => {
   const fmt = n => Math.round(n).toLocaleString('en-US');
   const dayStr = (d = new Date()) => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
   const def = () => ({
-    v: 9, bank: 0, lv: Object.fromEntries(E.TRACKS.map(t => [t.id, 0])),
+    v: 10, bank: 0, lv: Object.fromEntries(E.TRACKS.map(t => [t.id, 0])),
     stats: { runs: 0, kills: 0, gold: 0, deer: 0, perfect: 0, multi: 0, bestRound: 0, bestStreak: 0, shots: 0, hits: 0, earned: 0, bosses: 0, turretKills: 0 },
     missions: [], mDone: 0, ach: {}, daily: { last: null, day: -1 }, ads: { date: null, doubles: 0 },
     equip: { primary: 'shotgun', secondary: null, turrets: [], skin: 'classic', cross: 'white', map: 'meadow' },
-    cosm: ['classic', 'white'], bestByMap: {}, roundByMap: {}, ckpt: {},
+    cosm: ['classic', 'white'], bestByMap: {}, bestClassic: 0, roundByMap: {}, ckpt: {},
     cleared: {}, bestInfinityByMap: {}, roundInfinityByMap: {}, ckptInf: {},
     infBank: 0, infLv: Object.fromEntries(E.TRACKS.map(t => [t.id, 0])),
     infEquip: { primary: 'shotgun', secondary: null, turrets: [] },
+    infByMap: {},
     autoBoostUntil: 0,
     adFree: false, adFreeSession: '',
   });
@@ -77,20 +78,79 @@ window.Meta = (() => {
       if (save.adFreeSession == null) save.adFreeSession = '';
       else save.adFreeSession = String(save.adFreeSession || '');
       save.v = Math.max(save.v || 2, 9);
+      // v9 -> v10: Infinity wallet/upgrades/equip are per map. Shared v4-v9 progress
+      // moves to Meadow, or to the only Infinity map the player actually ran if that's trackable.
+      save.infByMap = save.infByMap || {};
+      if ((save.v || 0) < 10) {
+        const lvUsed = save.infLv && Object.keys(save.infLv).some(k => (save.infLv[k] | 0) > 0);
+        const eq = save.infEquip || {};
+        const eqUsed = (eq.primary && eq.primary !== 'shotgun') || !!eq.secondary || (eq.turrets && eq.turrets.length);
+        const sharedUsed = (save.infBank | 0) > 0 || lvUsed || eqUsed;
+        if (sharedUsed) {
+          const played = E.MAPS.filter(m =>
+            (save.bestInfinityByMap && (save.bestInfinityByMap[m.id] | 0) > 0) ||
+            (save.roundInfinityByMap && (save.roundInfinityByMap[m.id] | 0) > 0) ||
+            (save.ckptInf && (save.ckptInf[m.id] | 0) > 0)
+          );
+          const dest = played.length === 1 ? played[0].id : 'meadow';
+          const lv = Object.assign({}, save.infLv || {});
+          E.TRACKS.forEach(tr => { if (lv[tr.id] == null) lv[tr.id] = 0; });
+          save.infByMap[dest] = {
+            bank: save.infBank | 0,
+            lv,
+            equip: {
+              primary: (eq.primary || 'shotgun'),
+              secondary: eq.secondary || null,
+              turrets: Array.isArray(eq.turrets) ? eq.turrets.slice() : []
+            }
+          };
+          save.infBank = 0;
+          save.infLv = Object.fromEntries(E.TRACKS.map(tr => [tr.id, 0]));
+          save.infEquip = { primary: 'shotgun', secondary: null, turrets: [] };
+        }
+      }
+      E.MAPS.forEach(m => {
+        const sl = save.infByMap[m.id];
+        if (!sl) return;
+        sl.bank = Math.max(0, sl.bank | 0);
+        sl.lv = sl.lv || {};
+        E.TRACKS.forEach(tr => {
+          const n = Math.max(0, sl.lv[tr.id] | 0);
+          sl.lv[tr.id] = E.cappedTrack(tr) ? Math.min(tr.val.length - 1, n) : n;
+        });
+        sl.equip = sl.equip || { primary: 'shotgun', secondary: null, turrets: [] };
+        if (!sl.equip.primary) sl.equip.primary = 'shotgun';
+        if (!Array.isArray(sl.equip.turrets)) sl.equip.turrets = [];
+      });
+      save.v = Math.max(save.v || 2, 10);
     }
   } catch (e) {}
   try { const ob = +localStorage.getItem('pixelhunt.best') || 0; if (ob && !save.bestByMap.meadow) save.bestByMap.meadow = ob; } catch (e) {}
   const persist = () => { try { localStorage.setItem(KEY, JSON.stringify(save)); } catch (e) {} };
 
   // ---------- upgrades ----------
-  // mode: 'campaign' uses bank/lv/equip; 'infinity' uses a separate shared wallet + tree (all Infinity maps).
+  // mode: 'campaign' uses bank/lv/equip; 'infinity' uses a per-map wallet + tree (infByMap[map]).
   let mode = 'campaign';
   const setMode = m => { mode = m === 'infinity' ? 'infinity' : 'campaign'; };
   const isInf = () => mode === 'infinity';
-  const levels = () => isInf() ? save.infLv : save.lv;
-  const activeEquip = () => isInf() ? save.infEquip : save.equip;
-  const bank = () => isInf() ? save.infBank : save.bank;
-  function setBank(n) { n = Math.max(0, Math.round(n)); if (isInf()) save.infBank = n; else save.bank = n; }
+  function blankInfLv() { return Object.fromEntries(E.TRACKS.map(tr => [tr.id, 0])); }
+  function blankInfEquip() { return { primary: 'shotgun', secondary: null, turrets: [] }; }
+  function infOf(id) {
+    const mid = id || (save.equip && save.equip.map) || 'meadow';
+    if (!save.infByMap) save.infByMap = {};
+    if (!save.infByMap[mid]) save.infByMap[mid] = { bank: 0, lv: blankInfLv(), equip: blankInfEquip() };
+    const sl = save.infByMap[mid];
+    sl.lv = sl.lv || blankInfLv();
+    sl.equip = sl.equip || blankInfEquip();
+    if (!sl.equip.primary) sl.equip.primary = 'shotgun';
+    if (!Array.isArray(sl.equip.turrets)) sl.equip.turrets = [];
+    sl.bank = Math.max(0, sl.bank | 0);
+    return sl;
+  }
+  const levels = () => isInf() ? infOf().lv : save.lv;
+  const activeEquip = () => isInf() ? infOf().equip : save.equip;
+  const bank = () => isInf() ? infOf().bank : save.bank;
+  function setBank(n) { n = Math.max(0, Math.round(n)); if (isInf()) infOf().bank = n; else save.bank = n; }
   function addBank(n) { setBank(bank() + n); }
   function withMode(m, fn) { const prev = mode; setMode(m); try { return fn(); } finally { mode = prev; } }
   const track = id => E.TRACKS.find(t => t.id === id);
@@ -295,17 +355,22 @@ window.Meta = (() => {
     check();
   }
   function endRun(o) {
-    const m = save.equip.map;
+    const m = o.map || save.equip.map;
     const ranked = o.ranked !== false;
+    if (o.cleared && !o.infinity && !o.skipCleared) markCleared(m);
+    if (o.deferScore) { check(); persist(); return; }
     if (o.infinity) {
       if (ranked) save.bestInfinityByMap[m] = Math.max(save.bestInfinityByMap[m] || 0, o.score || 0);
       save.roundInfinityByMap[m] = Math.max(save.roundInfinityByMap[m] || 0, o.round || 0);
     } else {
-      if (ranked) save.bestByMap[m] = Math.max(save.bestByMap[m] || 0, o.score || 0);
+      if (ranked) {
+        save.bestByMap[m] = Math.max(save.bestByMap[m] || 0, o.score || 0);
+        save.bestClassic = Math.max(save.bestClassic || 0, o.score || 0);
+      }
       save.roundByMap[m] = Math.max(save.roundByMap[m] || 0, o.round || 0);
-      if (o.cleared) markCleared(m);
     }
-    save.stats.runs++; save.stats.earned += Math.max(0, o.earned || 0); check(); persist(); }
+    if (!o.skipStats) { save.stats.runs++; save.stats.earned += Math.max(0, o.earned || 0); }
+    check(); persist(); }
   function takeNotices() { const n = notices; notices = []; if (n.length) persist(); return n; }
 
   // ---------- daily login calendar ----------
@@ -365,7 +430,7 @@ window.Meta = (() => {
   return {
     get save() { return save; }, persist, track, val, maxed, costOf, totalBought, cheapestNext, anyAffordable, buy,
     eligible, owns, hasTurret, hasMap, isCleared, markCleared, clearProgress, equipWeapon, mountTurret, buyCosmetic, selectMap,
-    setMode, get mode() { return mode; }, isInf, bank, setBank, addBank, levelOf, activeEquip, withMode,
+    setMode, get mode() { return mode; }, isInf, bank, setBank, addBank, levelOf, activeEquip, withMode, infOf,
     MT, ACH, missionText, missionReward, progressOf, startRun, event, endRun, takeNotices,
     dailyStatus, dailyAmount, claimDaily, doublesLeft, useDouble,
     now, setNow, AUTO_BOOST_MS, setAutoBoostMs, autoBoostUntil, autoBoostLeft, autoBoostActive, grantAutoBoost, clearAutoBoost, ownsAutoReload,

@@ -226,7 +226,7 @@ with sync_playwright() as p:
 
     fails = []
     f = R['fresh']
-    if f.get('v') != 9: fails.append('fresh schema not v9, %r' % f)
+    if f.get('v') != 10: fails.append('fresh schema not v10, %r' % f)
     if f.get('adFree'): fails.append('fresh already ad-free, %r' % f)
     if 'REMOVE ADS $2.99' not in (f.get('btn') or ''): fails.append('title button copy, %r' % f.get('btn'))
     if f.get('btnHidden'): fails.append('title buy button hidden on fresh')
@@ -304,7 +304,7 @@ with sync_playwright() as p:
     if not pa.get('buyHidden'): fails.append('pause buy button visible while ad-free')
 
     mig = R['migrate_clean']
-    if mig.get('v') != 9: fails.append('v8 migration not v9, %r' % mig)
+    if mig.get('v') != 10: fails.append('v8 migration not v9, %r' % mig)
     if mig.get('adFree'): fails.append('v8 migration granted ad-free, %r' % mig)
     if mig.get('bank') != 12: fails.append('v8 migration lost bank, %r' % mig)
     if mig.get('btnHidden'): fails.append('buy button hidden after clean v8 migration')

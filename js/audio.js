@@ -183,7 +183,7 @@ window.Sfx = (() => {
     squawk() { cryBird(880); },
     cry(kind) {
       const k = kind || 'bird';
-      if (k === 'deer' || k === 'fawn') {
+      if (k === 'deer' || k === 'fawn' || k === 'pup') {
         // "buah" bleat / grunt; fawns are a higher-pitched bleat
         const hi = k === 'fawn' ? 1.55 : 1;
         tone('sawtooth', 280 * hi, 160 * hi, 0.10, 0.11);
@@ -248,7 +248,21 @@ window.Sfx = (() => {
     lure() { notes([[880, .07, 0], [660, .10, .09], [880, .07, .26], [660, .12, .35]], 'triangle', 0.10); },
     swap() { noise(0.04, 0.25, 2800, 800); tone('square', 380, 280, 0.04, 0.08, 0.04); },
     boss() { notes([[196, .14, 0], [185, .14, .16], [175, .14, .32], [165, .36, .48]], 'sawtooth', 0.11); noise(0.5, 0.28, 350, 60, 0.45); },
-    bossHit() { tone('square', 280, 140, 0.07, 0.12); noise(0.07, 0.28, 1800, 350); },
+    bossHit(id) {
+      if (id === 'stag' || id === 'elk') { tone('sawtooth', 160, 90, 0.10, 0.14); tone('triangle', 90, 60, 0.14, 0.10, 0.08); noise(0.10, 0.22, 700, 80); return; }
+      if (id === 'frostwolf' || id === 'jackal') { tone('sawtooth', 480, 220, 0.12, 0.11); tone('square', 200, 120, 0.10, 0.08, 0.06); noise(0.08, 0.2, 1200, 200); return; }
+      if (id === 'swan') { tone('sine', 820, 520, 0.10, 0.10); tone('triangle', 400, 240, 0.12, 0.08, 0.06); return; }
+      if (id === 'heron') { tone('sawtooth', 340, 160, 0.14, 0.11); tone('square', 180, 110, 0.10, 0.08, 0.08); return; }
+      if (id === 'sunroc') { tone('square', 520, 180, 0.12, 0.12); noise(0.10, 0.24, 2400, 400); return; }
+      if (id === 'shadowowl') { tone('sine', 280, 160, 0.16, 0.10); tone('triangle', 140, 90, 0.18, 0.08, 0.08); return; }
+      if (id === 'bloodmoon') { tone('sawtooth', 120, 70, 0.16, 0.14); tone('sine', 80, 40, 0.20, 0.10, 0.06); noise(0.10, 0.3, 600, 80); return; }
+      tone('square', 280, 140, 0.07, 0.12); noise(0.07, 0.28, 1800, 350);
+    },
+    ching() {
+      tone('square', 1200, 1800, 0.05, 0.08);
+      tone('square', 1800, 2400, 0.05, 0.07, 0.05);
+      tone('triangle', 2400, 2800, 0.06, 0.05, 0.10);
+    },
     bossRoar() {
       tone('sawtooth', 180, 90, 0.35, 0.16);
       tone('square', 140, 70, 0.4, 0.10, 0.04);

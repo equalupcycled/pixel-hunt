@@ -625,3 +625,9 @@ h2.gold, #go-title.gold { color: #ffe066; }
   width: 100%;
 }
 #ov-adfree #btn-adfree-cancel { width: 100%; margin-top: 8px; }
+
+#ov-infinity { z-index: 20; }
+#ov-infinity .x-close { position: absolute; top: 8px; right: 8px; }
+#go-bonus { margin: 4px 0 8px; font-size: 14px; text-shadow: 2px 2px 0 #000; }
+#btn-next-map { width: 100%; max-width: none; margin: 8px 0; }
+.hud-perfect { color: #ffe066; text-shadow: 1px 1px 0 #000; }

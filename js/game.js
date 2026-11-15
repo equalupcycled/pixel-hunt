@@ -168,6 +168,15 @@ const APAL = {
   wolf: { K: '#1e1e24', D: '#7a7f8a', L: '#c8ccd4', E: '#ff0', N: '#000', T: '#7a7f8a' },
   coyote: { K: '#3a2410', D: '#b88a4a', L: '#ecd2a0', E: '#111', N: '#000', T: '#b88a4a' },
   buck: { K: '#1a0a02', D: '#6a3a14', L: '#d0a870', E: '#111', N: '#111', T: '#fff' },
+  stag: { K: '#140800', D: '#8a4a18', L: '#f0d09a', E: '#111', N: '#111', T: '#ffe066' },
+  swan: { K: '#1a1a22', B: '#f4f4f8', W: '#ffffff', G: '#ffd23f', E: '#111', Y: '#ff9ab0', O: '#d8d8e8', X: '#fff' },
+  heron: { K: '#0a1420', B: '#3a5a7a', W: '#c8dcec', G: '#7ad0ff', E: '#fff', Y: '#ffd23f', O: '#2a3a4a', X: '#fff' },
+  frostwolf: { K: '#0e1a28', D: '#c8d8e8', L: '#f4f8ff', E: '#7ad0ff', N: '#111', T: '#e8f0ff' },
+  elk: { K: '#1a1008', D: '#5a3a22', L: '#d8c8b0', E: '#111', N: '#111', T: '#e8dcc0' },
+  jackal: { K: '#2a1808', D: '#c49a3a', L: '#ffe08a', E: '#111', N: '#111', T: '#ffe066' },
+  sunroc: { K: '#2a1000', B: '#e06020', W: '#ffd23f', G: '#ff9a3d', E: '#fff', Y: '#fff4a0', O: '#ff5a2a', X: '#fff' },
+  shadowowl: { K: '#0a0614', O: '#2a1a4a', W: '#7a6aa0', Y: '#c9a7ff', L: '#1a1028' },
+  bloodmoon: { K: '#1a0008', O: '#8a1020', W: '#ff5a5a', Y: '#ffd23f', L: '#4a0810' },
 };
 for (const k of ['goose', 'vulture', 'eagle', 'thunder']) SPR[k] = [makeSprite(BIRD_UP, APAL[k]), makeSprite(BIRD_DN, APAL[k]), makeSprite(BIRD_HIT, APAL[k])];
 SPR.owl = [makeSprite(OWL_A, APAL.owl), makeSprite(OWL_B, APAL.owl)];
@@ -179,6 +188,103 @@ SPR.roadrunner = [makeSprite(RR_A, APAL.roadrunner), makeSprite(RR_B, APAL.roadr
 SPR.wolf = [makeSprite(WOLF_A, APAL.wolf), makeSprite(WOLF_B, APAL.wolf)];
 SPR.coyote = [makeSprite(WOLF_A, APAL.coyote), makeSprite(WOLF_B, APAL.coyote)];
 SPR.buck = [makeSprite(DEER_A, APAL.buck), makeSprite(DEER_B, APAL.buck)];
+const STAG_A = [
+  '....K.K.....K.K.',
+  '...KK.KK...KK.K.',
+  '...K.KKKK.KKKKK.',
+  '....K.K.....K...',
+  '.....KKKKKKDK...',
+  '.....KDDDDDDK...',
+  '.....KDWWEDDK...',
+  '.KK..KDLLLLDK...',
+  'KTKKKKDDDDDDKKK.',
+  '.KDDDDDWWDDDDK..',
+  '..KDDDDDDDDDDK..',
+  '..KDLLLLLLLDDK..',
+  '..KDDKKKKKKDDK..',
+  '.KDK........KDK.',
+  'KDK..........KDK',
+  'KK............KK'];
+const STAG_B = STAG_A.slice(0, 12).concat([
+  '...KDDKKKKKDDK..',
+  '...KDK.....KDK..',
+  '...KDK.....KDK..',
+  '...KK.......KK..']);
+const HERON_UP = [
+  '......KK........',
+  '.....KWWK.......',
+  '....KWWWK.......',
+  '....KWWEK.......',
+  '.....KWWK.......',
+  '......KWK.......',
+  '.....KBBK.......',
+  '....KBBBBKKKK...',
+  '...KBBBBBBGGEK..',
+  '..KBBBBBBBKGKY..',
+  '.KK..KBBBBK.....',
+  '......KBBK......',
+  '......O..O......',
+  '.....O....O.....'];
+const HERON_DN = [
+  '................',
+  '................',
+  '......KK........',
+  '.....KWWK.......',
+  '....KWWEK.......',
+  '.....KWWK.......',
+  'KKK..KBBK.......',
+  'KGGKKBBBBK......',
+  '.KGKBBBBBBK.....',
+  '..KKBBBBBBK.....',
+  '....KBBBBK......',
+  '.....KBBK.......',
+  '......O.O.......',
+  '................'];
+const HERON_HIT = [
+  '....K......K....',
+  '...KWK....KWK...',
+  '....KWWKKWWK....',
+  '.....KWWEK......',
+  '......KWK.......',
+  '.....KBBK.KKK...',
+  '....KBBBBBGGGK..',
+  '...KBBBBBBKGKY..',
+  '....KBBBBBK.....',
+  '.....KKBBK......',
+  '......O..O......',
+  '................'];
+const BAG_A = [
+  '....KKKK....',
+  '...KTTTTK...',
+  '..KKKKKKKK..',
+  '..KYYYYYYK..',
+  '..KYCCCCYK..',
+  '..KYCWWCYK..',
+  '..KYCCCCYK..',
+  '..KYYYYYYK..',
+  '...KKKKKK...',
+  '............'];
+const BAG_B = [
+  '.....KKKK...',
+  '....KTTTTK..',
+  '...KKKKKKKK.',
+  '...KYYYYYYK.',
+  '...KYCCCCYK.',
+  '...KYCWWCYK.',
+  '...KYCCCCYK.',
+  '...KYYYYYYK.',
+  '....KKKKKK..',
+  '............'];
+SPR.stag = [makeSprite(STAG_A, APAL.stag), makeSprite(STAG_B, APAL.stag)];
+SPR.elk = [makeSprite(STAG_A, APAL.elk), makeSprite(STAG_B, APAL.elk)];
+SPR.swan = [makeSprite(BIRD_UP, APAL.swan), makeSprite(BIRD_DN, APAL.swan), makeSprite(BIRD_HIT, APAL.swan)];
+SPR.heron = [makeSprite(HERON_UP, APAL.heron), makeSprite(HERON_DN, APAL.heron), makeSprite(HERON_HIT, APAL.heron)];
+SPR.frostwolf = [makeSprite(WOLF_A, APAL.frostwolf), makeSprite(WOLF_B, APAL.frostwolf)];
+SPR.jackal = [makeSprite(WOLF_A, APAL.jackal), makeSprite(WOLF_B, APAL.jackal)];
+SPR.sunroc = [makeSprite(BIRD_UP, APAL.sunroc), makeSprite(BIRD_DN, APAL.sunroc), makeSprite(BIRD_HIT, APAL.sunroc)];
+SPR.shadowowl = [makeSprite(OWL_A, APAL.shadowowl), makeSprite(OWL_B, APAL.shadowowl)];
+SPR.bloodmoon = [makeSprite(OWL_A, APAL.bloodmoon), makeSprite(OWL_B, APAL.bloodmoon)];
+SPR.bag = [makeSprite(BAG_A, { K: '#4a2a08', T: '#c8a060', Y: '#e0a020', C: '#ffe066', W: '#fff4b0' }), makeSprite(BAG_B, { K: '#4a2a08', T: '#c8a060', Y: '#e0a020', C: '#ffe066', W: '#fff4b0' })];
 const EGG_PAL = { K: '#3a2a14', W: '#f4e6b8', L: '#ffe9a0', Y: '#e0c070', C: '#d8a24a' };
 SPR.egg = [makeSprite([
   '..KKKK..',
@@ -424,17 +530,17 @@ if (window.visualViewport) visualViewport.addEventListener('resize', () => { // 
 // ---------------- content tables ----------------
 const MAP_SET = {
   meadow: { fly: [['bird', 0.7], ['blue', 0.3]], ground: ['deer'], hint: 'DEER IN THE WOODS!' },
-  lake: { fly: [['bird', 0.55], ['goose', 0.45]], ground: ['swimgoose'], hint: 'GEESE ON THE WATER!' },
-  snow: { fly: [['owl', 1]], ground: ['rabbit', 'wolf'], hint: 'RABBITS & WOLVES!' },
-  desert: { fly: [['vulture', 1]], ground: ['roadrunner', 'coyote'], hint: 'ROADRUNNERS & COYOTES!' },
-  night: { fly: [['bat', 0.65], ['owl', 0.35]], ground: ['eyes'], hint: 'EYES IN THE BUSHES!' },
+  lake: { fly: [['goose', 0.45], ['bird', 0.35], ['blue', 0.20]], ground: ['swimgoose', 'swimgoose', 'deer'], hint: 'GEESE ON THE WATER!' },
+  snow: { fly: [['owl', 0.55], ['bird', 0.25], ['goose', 0.20]], ground: ['rabbit', 'wolf', 'rabbit', 'deer'], hint: 'RABBITS & WOLVES!' },
+  desert: { fly: [['vulture', 0.50], ['bird', 0.22], ['goose', 0.16], ['owl', 0.12]], ground: ['roadrunner', 'coyote', 'roadrunner', 'rabbit'], hint: 'ROADRUNNERS & COYOTES!' },
+  night: { fly: [['bat', 0.42], ['owl', 0.24], ['vulture', 0.14], ['bird', 0.12], ['goose', 0.08]], ground: ['eyes', 'eyes', 'wolf', 'coyote'], hint: 'EYES IN THE BUSHES!' },
 };
 const KIND = {
   bird: { set: 'bird', m: 'fly', hp: 2 }, blue: { set: 'blue', m: 'fly', hp: 2 }, gold: { set: 'gold', m: 'fly', spd: 1.35, size: 0.85, life: 0.8, hp: 2 }, decoy: { set: 'decoy', m: 'fly', hp: 1 },
   goose: { set: 'goose', m: 'skim', hp: 4, size: 1.12, spd: 0.85 },
   owl: { set: 'owl', m: 'glide', spd: 0.95, hp: 3 }, bat: { set: 'bat', m: 'flutter', size: 0.85, spd: 1.1, hp: 2 },
   vulture: { set: 'vulture', m: 'circle', size: 1.1, spd: 0.9, hp: 4 },
-  deer: { set: 'deer', m: 'run', g: 1, size: 1.6, hp: 4 }, fawn: { set: 'deer', m: 'run', g: 1, size: 0.95, hp: 2, spd: 0.78 }, swimgoose: { set: 'goose', m: 'swim', g: 1, size: 1.2, hp: 4, spd: 0.45 },
+  deer: { set: 'deer', m: 'run', g: 1, size: 1.6, hp: 4 }, fawn: { set: 'deer', m: 'run', g: 1, size: 0.95, hp: 2, spd: 0.78 }, pup: { set: 'wolf', m: 'run', g: 1, size: 0.9, hp: 2, spd: 0.85 }, bag: { set: 'bag', m: 'fly', g: 0, size: 1, hp: 1, spd: 1 }, swimgoose: { set: 'goose', m: 'swim', g: 1, size: 1.2, hp: 4, spd: 0.45 },
   rabbit: { set: 'rabbit', m: 'hop', g: 1, size: 1.25, spd: 0.9, hp: 3 }, wolf: { set: 'wolf', m: 'run', g: 1, size: 1.5, spd: 1.2, hp: 5 },
   roadrunner: { set: 'roadrunner', m: 'run', g: 1, size: 1.25, spd: 1.55, hp: 3 }, coyote: { set: 'coyote', m: 'run', g: 1, size: 1.5, spd: 1.05, hp: 5 },
   eyes: { set: null, m: 'peek', g: 1, size: 1, hp: 3 },
@@ -442,11 +548,20 @@ const KIND = {
 Object.keys(KIND).forEach(k => { KIND[k].hp = ECON.kindHp(k); });
 const BOSSES = {
   eagle: { name: 'GIANT EAGLE', set: 'eagle', sc: 3, m: 'bfly' },
-  buck: { name: 'BIG BUCK', set: 'buck', sc: 2.4, m: 'brun' },
+  buck: { name: 'BIG BUCK', set: 'buck', sc: 2.4, m: 'brun', minion: { kind: 'fawn', set: 'deer' } },
+  stag: { name: 'GREAT STAG', set: 'stag', sc: 2.55, m: 'brun', minion: { kind: 'fawn', set: 'deer' } },
   goose: { name: 'GOOSE KING', set: 'goose', sc: 3, m: 'bfly', crown: 1 },
+  swan: { name: 'SWAN QUEEN', set: 'swan', sc: 3.05, m: 'bfly', crown: 1 },
+  heron: { name: 'STORM HERON', set: 'heron', sc: 3.15, m: 'bfly' },
   yeti: { name: 'YETI OWL', set: 'snowowl', sc: 3, m: 'bfly' },
+  frostwolf: { name: 'FROST WOLF', set: 'frostwolf', sc: 2.5, m: 'brun', minion: { kind: 'pup', set: 'frostwolf' } },
+  elk: { name: 'DIRE ELK', set: 'elk', sc: 2.6, m: 'brun', minion: { kind: 'fawn', set: 'elk' } },
   vulture: { name: 'THUNDERBIRD', set: 'thunder', sc: 3, m: 'bfly' },
+  jackal: { name: 'PHARAOH JACKAL', set: 'jackal', sc: 2.45, m: 'brun', minion: { kind: 'pup', set: 'jackal' } },
+  sunroc: { name: 'SUN ROC', set: 'sunroc', sc: 3.2, m: 'bfly' },
   batking: { name: 'BAT KING', set: 'batking', sc: 3, m: 'bfly', crown: 1 },
+  shadowowl: { name: 'SHADOW OWL', set: 'shadowowl', sc: 3.1, m: 'bfly' },
+  bloodmoon: { name: 'BLOOD MOON', set: 'bloodmoon', sc: 3.25, m: 'bfly' },
 };
 const payKind = k => k === 'swimgoose' ? 'goose' : k;
 const WDEF = id => ECON.WEAPONS.find(w => w.id === id);
@@ -474,6 +589,7 @@ let state = 'title', paused = false;
 let best = store.get('best', 0);
 let M = ECON.MAPS[0];
 let score = 0, runCash = 0, round = 0, shots = 0, hits = 0, streak = 0, bestStreak = 0, missRun = 0, maxMiss = 3, moneyMult = 1, eyeMult = 1;
+let runRanked = true, perfectRun = false, bonusCashEarned = 0, bonusT = 0, bonusIntroT = 0, wantBonus = false, deferredRun = false, afterFinalize = null;
 let secondLeft = 0, roundCash0 = 0, perkAuto = -1, perkLoader = 1, perkReserve = 0, perkCombo = 99, perkComboPay = 1, perkCrit = 0, perkEgg = 1, perkMagnet = 0, perkDeer = 1, perkDeerMercy = 0, perkDeerCash = 1, perkBullet = 1, saveSlowT = 0, deerMercyLeft = 0;
 let focusCharges = 0, focusMax = 0, focusDur = 3, focusT = 0, reviveUsed = false;
 // missRun = X's used this run (TOTAL, not in a row). fromCkpt = checkpoint round this run started at (0 = fresh, ranked run).
@@ -568,6 +684,7 @@ function resetRun() {
   M = curMap;
   score = 0; runCash = 0; round = 0; shots = 0; hits = 0; streak = 0; bestStreak = 0; missRun = 0; reviveUsed = false; fromCkpt = 0; ckptFlash = 0;
   bossKilled = false; mapJustCleared = false; failedClear = false;
+  wantBonus = false; bonusCashEarned = 0; bonusT = 0; bonusIntroT = 0;
   applyGear();
   const eq = Meta.activeEquip();
   weapons = [makeWeapon(Meta.owns(eq.primary) ? eq.primary : 'shotgun')];
@@ -588,12 +705,12 @@ function pickFly() {
   return set[0][0];
 }
 function pickGround() { const g = MAP_SET[M.id].ground; return g[Math.floor(Math.random() * g.length)]; }
-function bossIdFor(r) { if (M.id === 'meadow') return (r / ECON.BOSS_EVERY) % 2 === 1 ? 'eagle' : 'buck'; return M.boss; }
+function bossIdFor(r) { return ECON.bossIdFor(M.id, r); }
 function isGroundBoss(t) { return !!(t && t.m === 'brun'); }
 
 function startRound(opts) {
   if (!(opts && opts.restart)) round++;
-  diff = Object.assign({}, ECON.difficulty(round, M));
+  diff = Object.assign({}, ECON.difficulty(round, M, { infinity }));
   diff.speed *= M.speed; diff.deerSpeed *= M.speed; diff.life *= M.life; diff.scale *= M.size;
   bossRound = round % ECON.BOSS_EVERY === 0;
   queue = [];
@@ -646,11 +763,12 @@ function tImg(t) { return t.kind === 'egg' ? SPR.egg[0] : t.kind === 'eyes' ? { 
 function groundY(set, sc) { return GROUND + 12 - SPR[set][0].height * sc / 2; }
 function spawn(kind) {
   if (kind === 'boss') {
-    const id = bossIdFor(round), b = BOSSES[id], hp = ECON.bossHp(round), tm = ECON.bossTime(round) * eyeMult;
-    const t = { kind: 'boss', boss: id, name: b.name, set: b.set, sc: b.sc, m: b.m, crown: b.crown, hp, hp0: hp, timer: tm, timer0: tm, state: 'fly', anim: 0, ph: rand(0, 6), risen: false, hurt: 0, life: 99 };
+    const id = bossIdFor(round), b = BOSSES[id], hp = ECON.bossHp(round, M.id), tm = ECON.bossTime(round) * eyeMult;
+    const t = { kind: 'boss', boss: id, name: b.name, set: b.set, sc: b.sc, m: b.m, crown: b.crown, minion: b.minion, hp, hp0: hp, timer: tm, timer0: tm, state: 'fly', anim: 0, ph: rand(0, 6), risen: false, hurt: 0, life: 99 };
     // Patrol the upper sky, left <-> right, until the escape timer runs out (Hunter's Eye stretches the timer and slows the patrol).
     t.x0 = 18; t.x1 = W - 18; t.x = t.x0;
-    const cross = Math.max(3.4, 5.5 - Math.floor(round / ECON.BOSS_EVERY) * 0.35) * eyeMult;
+    let cross = Math.max(3.4, 5.5 - Math.floor(round / ECON.BOSS_EVERY) * 0.35) * eyeMult;
+    if (ECON.isFinaleRound(round)) cross = Math.max(3.0, cross * 0.9);
     t.vx = (t.x1 - t.x0) / cross; t.risen = true; t.leaving = false;
     if (isGroundBoss(t)) {
       // Patrol the ground band, just above the grass/hunter — not in the sky and not in the HUD.
@@ -675,7 +793,7 @@ function spawn(kind) {
     const sp = diff.deerSpeed * (K.spd || 1) * (perkDeer || 1) * rand(0.9, 1.15) / Math.sqrt(eyeMult);
     const y = K.m === 'swim' ? GROUND - 6 : groundY(set, sc);
     targets.push(Object.assign(base, { x: dir > 0 ? -20 : W + 20, y, y0: y, vx: dir * sp, vy: 0, sc, life: 99, hop: 0, hopT: 0 }));
-    if (kind === 'deer' || kind === 'fawn' || kind === 'wolf' || kind === 'coyote' || kind === 'rabbit' || kind === 'roadrunner') Sfx.rustle();
+    if (kind === 'deer' || kind === 'fawn' || kind === 'pup' || kind === 'wolf' || kind === 'coyote' || kind === 'rabbit' || kind === 'roadrunner') Sfx.rustle();
     return;
   }
   targets.push(makeFlyer(kind, K, set, base));
@@ -748,8 +866,9 @@ function maybeDropEgg(t, dt) {
   if (state !== 'play' || t.leaving) return;
   const tier = Math.max(1, Math.floor(round / ECON.BOSS_EVERY));
   const cap = 2 + tier;
+  const mk = (t.minion && t.minion.kind) || 'fawn';
   const liveAdds = isGroundBoss(t)
-    ? targets.filter(o => o !== t && live(o) && o.kind === 'fawn').length
+    ? targets.filter(o => o !== t && live(o) && (o.kind === mk || o.kind === 'fawn' || o.kind === 'pup')).length
     : targets.filter(o => o !== t && live(o) && (o.kind === 'egg' || o.hatched)).length;
   if (liveAdds >= cap) { t.dropT = Math.max(t.dropT, 0.35); return; }
   t.dropT -= dt;
@@ -760,21 +879,25 @@ function maybeDropEgg(t, dt) {
   else dropEgg(t);
 }
 
-function dropFawn(boss) {
-  const K = KIND.fawn;
+function dropMinion(boss, spec) {
+  const spec0 = spec || (boss && boss.minion) || { kind: 'fawn', set: 'deer' };
+  const kind = spec0.kind || 'fawn';
+  const K = KIND[kind] || KIND.fawn;
+  const set = spec0.set || K.set;
   const sc = K.size;
   const sp = diff.deerSpeed * (K.spd || 1) * (perkDeer || 1) * rand(0.9, 1.15) / Math.sqrt(eyeMult);
-  const y = groundY(K.set, sc);
-  // Spawn just ahead of the buck so the fawn is visible and not hidden inside the boss sprite.
+  const y = groundY(set, sc);
+  // Spawn just ahead of the boss so the minion is visible and not hidden inside the sprite.
   const x = clamp((boss && boss.x || 40) + 22 + rand(0, 6), 14, W - 70);
   targets.push({
-    kind: 'fawn', set: K.set, m: K.m, hp: ECON.kindHp('fawn'), hp0: ECON.kindHp('fawn'),
+    kind, set, m: K.m, hp: ECON.kindHp(kind), hp0: ECON.kindHp(kind),
     state: 'fly', anim: rand(0, 1), hurt: 0, g: 1,
     x, y, y0: y, vx: Math.abs(sp), vy: 0, sc, life: 99, hop: 0, hopT: 0, risen: true
   });
   roundTotal++;
   Sfx.rustle();
 }
+function dropFawn(boss) { dropMinion(boss || bossT, { kind: 'fawn', set: 'deer' }); }
 
 // ---------------- damage, kills, misses ----------------
 function damage(t, dmg, src, info = {}) {
@@ -785,7 +908,7 @@ function damage(t, dmg, src, info = {}) {
   const xo = (info.fx || 0);
   float((info.crit ? 'CRIT ' : '') + dmg, t.x + xo, t.y - 14, info.crit ? '#ff5a5a' : '#ffe066', info.crit ? 1.3 : 1.15, 0.7);
   if (t.hp > 0.001) {
-    if (t.kind === 'boss') { Sfx.bossHit(); if (Math.random() < 0.4) feathers(t.x + rand(-8, 8), t.y + rand(-6, 6), APAL[t.set] || PAL.bird, 4); }
+    if (t.kind === 'boss') { Sfx.bossHit(t.boss); if (Math.random() < 0.4) feathers(t.x + rand(-8, 8), t.y + rand(-6, 6), APAL[t.set] || PAL.bird, 4); }
     else if (t.kind === 'egg') Sfx.hitSoft();
     else { Sfx.hitSoft(); }
     if (src === 'player' || src === 'flak') hits += 0; // accuracy counts kills only
@@ -814,7 +937,12 @@ function kill(t, src, info = {}) {
     for (let k = 0; k < 40; k++) parts.push({ x: t.x, y: t.y, vx: rand(-90, 90), vy: rand(-110, 20), c: ['#ffd23f', '#fff', '#ff9a3d'][k % 3], t: 0, life: rand(0.6, 1.4), g: 120, s: 2 });
   } else {
     const pk = payKind(t.kind);
-    if (t.kind === 'fawn') {
+    if (t.kind === 'bag') {
+      const cashB = ECON.bagCash(t.bagSize || 'small', M);
+      pts = t.bagSize === 'big' ? 5000 : t.bagSize === 'mid' ? 2000 : 800;
+      cash = cashB;
+      bonusCashEarned += cashB;
+    } else if (t.kind === 'fawn' || t.kind === 'pup') {
       pts = Math.round(ECON.fawnPts(round) * M.pts * (byYou ? wd.pts : ECON.TURRET_PTS) / 10) * 10;
       cash = ECON.fawnCash(round) * moneyMult * M.cash * (byYou ? wd.cash : ECON.TURRET_CASH);
     } else {
@@ -838,10 +966,11 @@ function kill(t, src, info = {}) {
   float('+' + fmt(pts), t.x, t.y - 16 - yo, t.kind === 'gold' ? '#ffd23f' : '#ffe066', 1.3, 1.1);
   float('+$' + fmt(cash) + (byYou ? '' : ' AUTO'), t.x, t.y - 8 - yo, '#7dff7a', 1, 1.1);
   if (t.kind === 'gold') { float('GOLDEN!', t.x, t.y - 24 - yo, '#fff2a0', 1.5, 1.2); Sfx.gold(); }
+  if (t.kind === 'bag') { float('JACKPOT!', t.x, t.y - 24 - yo, '#fff2a0', 1.4, 1.1); Sfx.ching(); for (let k = 0; k < 16; k++) parts.push({ x: t.x, y: t.y, vx: rand(-70, 70), vy: rand(-90, 10), c: ['#ffe066', '#fff4b0', '#ffd23f', '#fff'][k % 4], t: 0, life: rand(0.4, 0.9), g: 160, s: rand(1, 2) }); }
   if (byYou && streak >= 2) { float('STREAK X' + mult, W / 2, SKY_TOP + 14, '#ff9a3d', 1.6, 1); Sfx.streak(mult); }
   if (t.kind === 'eyes') { for (let k = 0; k < 10; k++) parts.push({ x: t.x, y: t.y, vx: rand(-40, 40), vy: rand(-60, -10), c: '#ffe066', t: 0, life: rand(0.3, 0.7), g: 200, s: 1 }); Sfx.hit(); Sfx.cry('eyes'); }
   else if (t.g && t.kind !== 'swimgoose') { Sfx.hit(); Sfx.cry(t.kind); const pal = APAL[t.set] || DEER_PAL; for (let k = 0; k < 14; k++) parts.push({ x: t.x, y: t.y, vx: rand(-40, 40), vy: rand(-70, -10), c: Math.random() < 0.5 ? (pal.D || pal.W || '#b06a2c') : (pal.L || '#f0d2a0'), t: 0, life: rand(0.4, 0.8), g: 220, s: 1.5 }); }
-  else if (t.kind !== 'boss') { feathers(t.x, t.y, APAL[t.set] || PAL[t.set] || PAL.bird, 16); Sfx.hit(); Sfx.cry(t.kind); }
+  else if (t.kind !== 'boss' && t.kind !== 'bag') { feathers(t.x, t.y, APAL[t.set] || PAL[t.set] || PAL.bird, 16); Sfx.hit(); Sfx.cry(t.kind); }
 }
 function feathers(x, y, pal, n) {
   const cols = [pal.B || pal.O || pal.M || pal.W, pal.W || pal.L || pal.K, pal.G || pal.K, pal.B || pal.O || pal.M];
@@ -867,7 +996,8 @@ function endShot() {
 function escaped(t) {
   t.state = 'gone';
   if (t === bossT) bossT = null;
-  if (state !== 'play' && state !== 'intro') return;
+  if (state !== 'play' && state !== 'intro' && state !== 'bonus') return;
+  if (t.kind === 'bag' || t.noMiss) return;
   if (t.kind === 'decoy') { float('SAFE', clamp(t.x, 20, W - 20), SKY_TOP + 6, '#ff8fc8', 1, 0.9); return; }
   if (t.g && deerMercyLeft > 0) {
     deerMercyLeft--;
@@ -884,7 +1014,7 @@ function escaped(t) {
     try { Sfx.focus(); } catch (e) {}
     return;
   }
-  missRun++; roundEsc++; breakStreak(); skyFlash = 0.5;
+  missRun++; perfectRun = false; roundEsc++; breakStreak(); skyFlash = 0.5;
   float(t.kind === 'boss' ? 'BOSS ESCAPED!' : 'GOT AWAY', clamp(t.x, 30, W - 30), t.g ? GROUND - 20 : SKY_TOP + 8, '#ff5a5a', 1.5, 1.2);
   Sfx.escape();
   if (missRun >= maxMiss) die();
@@ -895,7 +1025,7 @@ function die() {
 }
 
 // ---------------- weapons ----------------
-const canAct = () => !paused && (state === 'play' || state === 'intro');
+const canAct = () => !paused && (state === 'play' || state === 'intro' || state === 'bonus');
 function emptyMsg(x, y) {
   Sfx.empty();
   if (wpn.reloading) float(wpn.id === 'laser' ? 'VENTING' : 'RELOADING', x, y - 8, '#ccc', 1, 0.5);
@@ -933,7 +1063,7 @@ function finishReload(w) {
   else Sfx.magIn();
 }
 function useFocus() {
-  if (paused || state !== 'play' || focusCharges <= 0 || focusT > 0) return;
+  if (paused || (state !== 'play' && state !== 'bonus') || focusCharges <= 0 || focusT > 0) return;
   focusCharges--; focusT = focusDur; Sfx.focus();
   float('FOCUS!', W / 2, H / 2 - 40, '#c9a7ff', 2, 1);
 }
@@ -1024,7 +1154,8 @@ function releaseArrow() {
 
 // ---------------- turrets ----------------
 function dangerOf(t) {
-  if (t.kind === 'decoy' || t.kind === 'egg' || !hittable(t)) return -1;
+  if (t.kind === 'decoy' || !hittable(t)) return -1;
+  if (t.kind === 'egg') return -1;
   if (t.kind === 'boss') return 2;
   if (t.state === 'flee') return 1.5;
   if (t.kind === 'eyes') return t.peeks <= 1 ? 1.2 : -1;
@@ -1035,7 +1166,7 @@ function updTurrets(dt) {
   for (const tu of turrets) {
     tu.flash = Math.max(0, tu.flash - dt);
     tu.cool -= dt;
-    if (tu.cool > 0 || tu.ammo <= 0 || state !== 'play') continue;
+    if (tu.cool > 0 || tu.ammo <= 0 || (state !== 'play' && state !== 'bonus')) continue;
     let best = null, bd = 0;
     for (const t of targets) {
       let d = dangerOf(t); if (d < 0) continue;
@@ -1159,11 +1290,13 @@ function fmtBoostClock(ms) {
 let boostWasOn = false, boostBtnStamp = '';
 function boostOwnedForUi() {
   const titleOn = $('ov-title') && !$('ov-title').classList.contains('hidden');
+  const infOn = $('ov-infinity') && !$('ov-infinity').classList.contains('hidden');
   const overOn = $('ov-over') && !$('ov-over').classList.contains('hidden');
   if (overOn) {
     const inf = !!(infinity || (lastRun && lastRun.infinity));
     return Meta.withMode(inf ? 'infinity' : 'campaign', () => Meta.ownsAutoReload());
   }
+  if (infOn) return Meta.withMode('infinity', () => Meta.ownsAutoReload());
   if (titleOn) return Meta.withMode('campaign', () => Meta.ownsAutoReload());
   return Meta.ownsAutoReload();
 }
@@ -1246,10 +1379,23 @@ function update(dt) {
     if (spawnT <= 0 && queue.length && alive() < conc) { spawn(queue.shift()); spawnT = diff.interval * rand(0.8, 1.2); }
     if (!queue.length && targets.length === 0 && !projs.some(p => p.type === 'flak')) roundClear();
     updTurrets(gdt);
+  } else if (state === 'bonus') {
+    if (bonusIntroT > 0) bonusIntroT -= dt;
+    else {
+      bonusT -= gdt;
+      spawnT -= gdt;
+      if (bonusT > 0 && spawnT <= 0 && alive() < 5) { spawnBag(); spawnT = rand(0.35, 0.7); }
+      if (bonusT <= 0 && targets.length === 0 && !projs.some(p => p.type === 'flak')) endBonus();
+      updTurrets(gdt);
+    }
   } else if (state === 'clear') {
     clearT -= dt;
     if (clearT <= 0) {
-      if (mapJustCleared) { mapJustCleared = false; victory(); }
+      if (mapJustCleared) {
+        mapJustCleared = false;
+        if (wantBonus) startBonusRound();
+        else victory();
+      }
       else if (failedClear) { failedClear = false; gameOver(); }
       else startRound(); // shop is only on the title / game-over screens, never mid-run
     }
@@ -1418,7 +1564,12 @@ function roundClear() {
   const campaignEnd = !infinity && round >= ECON.CLEAR_ROUND;
   mapJustCleared = campaignEnd && bossKilled;
   failedClear = campaignEnd && !bossKilled;
-  if (mapJustCleared) {
+  wantBonus = !!(mapJustCleared && perfectRun && !infinity && runRanked && !reviveUsed && !fromCkpt);
+  if (mapJustCleared && wantBonus) {
+    banner = 'PERFECT! BONUS ROUND';
+    banner2 = 'BAG THE CASH!';
+    clearT = 2.4;
+  } else if (mapJustCleared) {
     const first = !Meta.isCleared(M.id);
     const nxt = ECON.nextMap(M.id);
     const newly = first && nxt && !Meta.hasMap(nxt.id);
@@ -1436,9 +1587,38 @@ function roundClear() {
   showGameButtons(false);
   Meta.event('roundClear', { perfect, score }); Meta.persist(); notify();
 }
+function spawnBag() {
+  const roll = Math.random();
+  const size = roll < 0.08 ? 'big' : roll < 0.40 ? 'mid' : 'small';
+  const sc = size === 'big' ? 1.55 : size === 'mid' ? 1.2 : 0.9;
+  const sp = (size === 'big' ? 42 : size === 'mid' ? 58 : 76) * rand(0.9, 1.15);
+  const y = rand(SKY_TOP + 28, SKY_BOT - 30);
+  targets.push({ kind: 'bag', bagSize: size, set: 'bag', m: 'fly', state: 'fly', x: -16, y, y0: y, vx: sp, vx0: sp, vy: Math.sin(rand(0, 6)) * 8, sc, hp: 1, hp0: 1, anim: 0, hurt: 0, g: 0, life: 99, risen: true, noMiss: true, sp, yTop: SKY_TOP + 24, yBot: SKY_BOT - 16 });
+}
+function startBonusRound() {
+  wantBonus = false;
+  bonusT = ECON.BONUS_TIME;
+  bonusIntroT = 1.2;
+  bonusCashEarned = 0;
+  round = ECON.CLEAR_ROUND + 1;
+  bossRound = false; bossT = null;
+  queue = []; targets = []; projs = [];
+  spawnT = 0.25;
+  state = 'bonus';
+  banner = 'PERFECT! BONUS ROUND';
+  banner2 = 'BAG THE CASH!  ' + ECON.BONUS_TIME + 'S';
+  showGameButtons(true);
+  Sfx.gold();
+}
+function endBonus() {
+  banner = 'MAP CLEARED!';
+  banner2 = 'BONUS +$' + fmt(bonusCashEarned);
+  showGameButtons(false);
+  victory();
+}
 // ---------------- overlays / UI ----------------
 function show(id, on) { $(id).classList.toggle('hidden', !on); }
-const titleScene = () => state === 'title' || !!( $('ov-title') && !$('ov-title').classList.contains('hidden') );
+const titleScene = () => state === 'title' || !!( $('ov-title') && !$('ov-title').classList.contains('hidden') ) || !!( $('ov-infinity') && !$('ov-infinity').classList.contains('hidden') );
 function showGameButtons(on) {
   show('btn-pause', on); show('btn-reload', on); show('btn-focus', on && focusMax > 0);
   show('btn-swap', on && weapons.length > 1);
@@ -1636,26 +1816,23 @@ function flashBought() {
 }
 function openShop(from = 'title', keep) {
   if (shopTab === 'maps') shopTab = 'weapons';
-  shopFrom = from === 'round' ? 'title' : from; // upgrades are only between runs (title / game over)
+  if (from === 'infinity') { shopInf = true; shopFrom = 'infinity'; }
+  else if (from === 'title') { shopInf = false; shopFrom = 'title'; }
+  else if (from === 'over') { shopInf = !!(lastRun && lastRun.infinity); shopFrom = 'over'; }
+  else shopFrom = from === 'round' ? 'title' : from; // upgrades are only between runs (title / game over)
   Meta.setMode(shopInf ? 'infinity' : 'campaign');
+  if ($('shop-title')) $('shop-title').textContent = shopInf ? 'INFINITY UPGRADES' : 'UPGRADES';
   closeShopDetail();
   ensureShopTabIcons();
   if (!keep) $('shop-list').scrollTop = 0;
   const scroll = $('shop-list').scrollTop;
   $('shop-money').textContent = fmt(Meta.bank());
+  const infMapName = (mapDef(Meta.save.equip.map) || { name: 'Meadow' }).name.toUpperCase();
   $('shop-sub').textContent = shopInf
-    ? ('INFINITY WALLET · NO LEVEL CAP · SEPARATE FROM CLASSIC · ' + Meta.totalBought() + ' BOUGHT')
+    ? (infMapName + ' INFINITY WALLET · NO LEVEL CAP · THIS MAP ONLY · ' + Meta.totalBought() + ' BOUGHT')
     : ('CLASSIC · UPGRADES ARE PERMANENT · ' + Meta.totalBought() + '/' + ECON.TOTAL_LEVELS + ' OWNED');
-  const anyClear = ECON.MAPS.some(m => Meta.isCleared(m.id));
   const modes = $('shop-modes');
-  if (modes) {
-    modes.classList.toggle('hidden', !anyClear);
-    modes.innerHTML = '';
-    if (anyClear) {
-      modes.appendChild(btn('CLASSIC', 'small' + (!shopInf ? ' on' : ''), () => { shopInf = false; Meta.setMode('campaign'); openShop(shopFrom, true); }));
-      modes.appendChild(btn('INFINITY', 'small' + (shopInf ? ' on' : ''), () => { shopInf = true; Meta.setMode('infinity'); if (shopTab === 'style') shopTab = 'weapons'; openShop(shopFrom, true); }));
-    }
-  }
+  if (modes) { modes.classList.add('hidden'); modes.innerHTML = ''; }
   document.querySelectorAll('#shop-tabs button').forEach(b => {
     const hide = shopInf && b.dataset.tab === 'style';
     b.classList.toggle('hidden', hide);
@@ -1666,7 +1843,7 @@ function openShop(from = 'title', keep) {
 
   const midRun = false; // shop is never mid-run; kept so equip/mount buttons stay enabled between runs
   const eq = Meta.activeEquip();
-  if (shopInf) { const nte = document.createElement('div'); nte.className = 'note'; nte.textContent = 'Infinity starts you over with the free shotgun. Money and upgrades here are shared across every Infinity map, and never touch Classic.'; list.appendChild(nte); }
+  if (shopInf) { const nte = document.createElement('div'); nte.className = 'note'; nte.textContent = 'Infinity starts you over with the free shotgun. Money and upgrades here are only for this map, and never touch Classic or other Infinity maps.'; list.appendChild(nte); }
   if (shopTab === 'weapons') {
     const sel = shopSel.weapon || eq.primary;
     ECON.WEAPONS.forEach(w => {
@@ -1751,7 +1928,7 @@ $('shop-tabs').addEventListener('click', e => {
   if (!b) return;
   Sfx.click(); shopTab = b.dataset.tab; openShop(shopFrom);
 });
-$('btn-next').addEventListener('click', () => { Sfx.click(); closeShopDetail(); show('ov-shop', false); if (shopFrom === 'over') show('ov-over', true); else toTitle(); });
+$('btn-next').addEventListener('click', () => { Sfx.click(); closeShopDetail(); show('ov-shop', false); if (shopFrom === 'over') show('ov-over', true); else if (shopFrom === 'infinity') { Meta.setMode('infinity'); shopInf = true; updateInfinity(); show('ov-infinity', true); } else toTitle(); });
 const shopDetail = $('shop-detail');
 if (shopDetail) {
   $('btn-shop-detail-close').addEventListener('click', e => { e.stopPropagation(); Sfx.click(); closeShopDetail(); });
@@ -1787,6 +1964,7 @@ function revive() {
   bossT = null; decoyObj = null; armed = false; holding = false; drawing = null; mapJustCleared = false; failedClear = false;
   score = keep.score; runCash = keep.runCash; hits = keep.hits; shots = keep.shots; bestStreak = keep.bestStreak;
   fromCkpt = keep.fromCkpt; infinity = keep.infinity;
+  perfectRun = false;
   startRound({ restart: true, revive: true });
   banner = 'SECOND CHANCE!';
   banner2 = 'ROUND ' + keep.round + '  \u00b7  SCORE KEPT  ' + fmt(keep.score);
@@ -1794,51 +1972,92 @@ function revive() {
 let earnedShown = 0, lastRun = null;
 function finishRun(opts) {
   state = 'over';
-  const ranked = !fromCkpt; // only fresh runs from round 1 (including ad-revived ones) are ranked
+  const ranked = !!runRanked; // checkpoint or carried-from-checkpoint stays unranked
   const cleared = !!(opts && opts.cleared);
-  const mapBest = infinity ? (Meta.save.bestInfinityByMap[M.id] || 0) : (Meta.save.bestByMap[M.id] || 0);
-  const isBest = ranked && score > mapBest;
+  const isBest = ranked && (infinity ? score > (Meta.save.bestInfinityByMap[M.id] || 0) : score > best);
   const isAll = ranked && !infinity && score > best;
-  if (isAll) { best = score; store.set('best', best); }
   const nxt = !infinity && cleared ? ECON.nextMap(M.id) : null;
+  const allCleared = !!(cleared && !infinity && !nxt);
   const unlockedMap = (nxt && !Meta.isCleared(M.id) && !Meta.hasMap(nxt.id)) ? nxt : null;
-  Meta.endRun({ score: ranked ? score : 0, round, earned: runCash, ranked, infinity, cleared });
-  lastRun = { score, round, map: M.id, mapName: M.name, weapon: wpn.id, isBest: isBest && score > 0, isAll: isAll && score > 0, fromCkpt, infinity, cleared, unlockedMap: unlockedMap && unlockedMap.name };
+  const defer = !!(cleared && !infinity && !allCleared && !(opts && opts.finalize));
+  if (isAll && !defer) { best = score; store.set('best', best); }
+  if (defer) {
+    Meta.endRun({ score: 0, round, earned: 0, ranked: false, infinity, cleared, deferScore: true, map: M.id });
+    deferredRun = true;
+    lastRun = { score, round, map: M.id, mapName: M.name, weapon: wpn.id, isBest: false, isAll: false, fromCkpt, infinity, cleared, unlockedMap: unlockedMap && unlockedMap.name, nextMap: nxt && nxt.name, nextMapId: nxt && nxt.id, allCleared: false, bonusCash: bonusCashEarned, defer: true, runRanked: ranked };
+    showOver(null);
+    return;
+  }
+  if (opts && opts.finalize && deferredRun) deferredRun = false;
+  Meta.endRun({ score: ranked ? score : 0, round, earned: runCash, ranked, infinity, cleared, skipCleared: !!(opts && opts.finalize), skipStats: !!(opts && opts.skipStats), map: M.id });
+  deferredRun = false;
+  lastRun = { score, round, map: M.id, mapName: M.name, weapon: wpn.id, isBest: isBest && score > 0, isAll: isAll && score > 0, fromCkpt, infinity, cleared, unlockedMap: unlockedMap && unlockedMap.name, nextMap: allCleared ? null : (nxt && nxt.name), nextMapId: allCleared ? null : (nxt && nxt.id), allCleared, bonusCash: bonusCashEarned, defer: false, runRanked: ranked };
   if (ranked && window.Leaderboard && Leaderboard.qualifies(M.id, score, infinity)) openNameEntry();
   else showOver(null);
 }
-function gameOver() { finishRun({ cleared: false }); }
+function gameOver() { const wasDeferred = deferredRun; deferredRun = false; finishRun({ cleared: false, finalize: wasDeferred }); }
 function victory() { finishRun({ cleared: true }); }
+function finalizeDeferredRun(then) {
+  if (!deferredRun) { if (then) then(); return; }
+  deferredRun = false;
+  const ranked = !!(lastRun && lastRun.runRanked);
+  if (ranked && !infinity && score > best) { best = score; store.set('best', best); }
+  Meta.endRun({ score: ranked ? score : 0, round, earned: runCash, ranked, infinity: false, cleared: true, skipCleared: true, map: lastRun ? lastRun.map : M.id });
+  if (lastRun) {
+    lastRun.score = score;
+    lastRun.round = round;
+    lastRun.defer = false;
+    lastRun.nextMap = null;
+    lastRun.nextMapId = null;
+    lastRun.isBest = ranked && score > 0;
+    lastRun.isAll = ranked && score > 0;
+  }
+  if (ranked && window.Leaderboard && Leaderboard.qualifies((lastRun && lastRun.map) || M.id, score, false)) {
+    afterFinalize = then || null;
+    openNameEntry();
+    return;
+  }
+  if (then) then();
+}
 
 function showTitleBehindOver() {
   ['ov-pause', 'ov-shop', 'ov-continue', 'ov-board', 'ov-how', 'ov-about', 'ov-missions', 'ov-daily', 'ov-adfree'].forEach(id => show(id, false));
   paused = false;
   showGameButtons(false);
   titleBrowseMap = null;
-  Meta.setMode('campaign'); shopInf = false;
+  const infOver = !!(lastRun && lastRun.infinity);
+  Meta.setMode(infOver ? 'infinity' : 'campaign'); shopInf = infOver;
   if (!curMap || curMap.id !== Meta.save.equip.map) buildBg();
   targets = []; projs = []; parts = []; floats = []; holding = false; drawing = null;
   Sfx.setMusic('menu');
-  updateTitle(); refreshAdFreeUI();
-  show('ov-title', true);
+  if (infOver) {
+    show('ov-title', false);
+    updateInfinity();
+    show('ov-infinity', true);
+  } else {
+    show('ov-infinity', false);
+    updateTitle();
+    show('ov-title', true);
+  }
+  refreshAdFreeUI();
 }
 
 function showOver(rank) {
   const r = lastRun;
-  $('go-title').textContent = r.cleared ? 'MAP CLEARED!' : 'GAME OVER';
+  $('go-title').textContent = r.cleared ? (r.allCleared ? 'ALL MAPS CLEARED!' : 'MAP CLEARED!') : 'GAME OVER';
   $('go-title').classList.toggle('red', !r.cleared);
   $('go-title').classList.toggle('gold', !!r.cleared);
-  const bestNow = r.infinity ? (Meta.save.bestInfinityByMap[r.map] || 0) : (Meta.save.bestByMap[r.map] || 0);
+  const bestNow = r.infinity ? (Meta.save.bestInfinityByMap[r.map] || 0) : best;
   $('go-score').textContent = fmt(r.score); $('go-best').textContent = fmt(bestNow);
-  $('go-bestl').textContent = (r.infinity ? 'INF BEST (' : 'BEST (') + r.mapName.toUpperCase() + ')';
+  $('go-bestl').textContent = r.infinity ? ('INF BEST (' + r.mapName.toUpperCase() + ')') : 'BEST';
   $('go-round').textContent = r.round; $('go-hits').textContent = hits;
   $('go-acc').textContent = shots ? Math.min(100, Math.round(hits / shots * 100)) + '%' : '0%';
-  const boardName = r.mapName.toUpperCase() + (r.infinity ? ' INFINITY' : '');
+  const boardName = r.infinity ? (r.mapName.toUpperCase() + ' INFINITY') : 'CLASSIC';
   $('go-rank').textContent = rank ? `#${rank} ON THE ${boardName} LEADERBOARD!` : '';
   show('go-rank', !!rank);
   earnedShown = Math.max(0, runCash);
   $('go-earned').textContent = '+$' + fmt(earnedShown);
-  $('newbest').textContent = r.isAll ? 'NEW HIGH SCORE!' : r.infinity ? 'NEW ' + r.mapName.toUpperCase() + ' INFINITY BEST!' : 'NEW ' + r.mapName.toUpperCase() + ' BEST!';
+  $('newbest').textContent = r.infinity ? 'NEW ' + r.mapName.toUpperCase() + ' INFINITY BEST!' : 'NEW HIGH SCORE!';
   show('newbest', r.isBest);
   const dbl = $('btn-double'), left = Meta.doublesLeft();
   dbl.classList.toggle('hidden', earnedShown <= 0);
@@ -1850,18 +2069,31 @@ function showOver(rank) {
   renderNext('go-next'); renderMissions('go-missions');
   let note = '';
   if (r.cleared) {
-    note = r.unlockedMap
-      ? ('NEW MAP UNLOCKED: ' + r.unlockedMap.toUpperCase() + '! \u00b7 INFINITY UNLOCKED')
-      : 'MAP CLEARED \u00b7 INFINITY UNLOCKED';
-    if (r.fromCkpt) note += ' \u00b7 CHECKPOINT RUN, NOT RANKED';
+    note = r.allCleared
+      ? 'ALL FIVE MAPS CLEARED!'
+      : r.unlockedMap
+        ? ('NEW MAP UNLOCKED: ' + r.unlockedMap.toUpperCase() + '! \u00b7 INFINITY UNLOCKED')
+        : 'MAP CLEARED \u00b7 INFINITY UNLOCKED';
+    if (!r.runRanked) note += ' \u00b7 CHECKPOINT RUN, NOT RANKED';
+    if (r.defer) note += ' \u00b7 SCORE CARRIES TO THE NEXT MAP';
   }
-  else if (r.fromCkpt) note = (r.infinity ? 'INFINITY ' : '') + `CHECKPOINT RUN (FROM ROUND ${r.fromCkpt}) \u00b7 NOT RANKED`;
-  else if (r.infinity) note = 'INFINITY RUN \u00b7 RANKED ON THE INFINITY BOARD';
+  else if (!r.runRanked) note = (r.infinity ? 'INFINITY ' : '') + `CHECKPOINT RUN (FROM ROUND ${r.fromCkpt || 0}) \u00b7 NOT RANKED`;
+  else if (r.infinity) note = 'INFINITY RUN \u00b7 RANKED ON THIS MAP\'S INFINITY BOARD';
   $('go-unranked').textContent = note;
   show('go-unranked', !!note);
+  if ($('go-bonus')) {
+    const bc = r.bonusCash || 0;
+    $('go-bonus').textContent = bc > 0 ? ('PERFECT BONUS +$' + fmt(bc)) : '';
+    show('go-bonus', bc > 0);
+  }
+  if ($('btn-next-map')) {
+    const showNext = !!(r.cleared && r.nextMap && !r.infinity);
+    if (showNext) $('btn-next-map').innerHTML = 'GO TO NEXT MAP<br><small>' + r.nextMap.toUpperCase() + ' \u00b7 SCORE ' + fmt(r.score) + ' CARRIES</small>';
+    show('btn-next-map', showNext);
+  }
   const ck = checkpointFor(r.map, r.infinity);
   $('btn-ckpt').innerHTML = `CONTINUE FROM ROUND ${ck}<br><small>CHECKPOINT \u00b7 SCORE 0 \u00b7 X'S CLEARED \u00b7 NOT RANKED</small>`;
-  show('btn-ckpt', ck > 0);
+  show('btn-ckpt', ck > 0 && !r.cleared);
   const againMode = r.infinity ? 'INFINITY' : 'RANKED RUN';
   $('btn-again').innerHTML = ck > 0 ? `START FROM ROUND 1<br><small>${againMode}</small>` : (r.infinity ? 'PLAY INFINITY AGAIN' : 'PLAY AGAIN');
   $('btn-again').classList.toggle('green', false);
@@ -1891,7 +2123,7 @@ $('btn-double').addEventListener('click', () => {
     $('btn-double').classList.add('hidden'); renderNext('go-next');
   });
 });
-$('btn-go-shop').addEventListener('click', () => { Sfx.click(); shopInf = !!(infinity || (lastRun && lastRun.infinity)); show('ov-over', false); openShop('over'); });
+$('btn-go-shop').addEventListener('click', () => { Sfx.click(); finalizeDeferredRun(() => { shopInf = !!(infinity || (lastRun && lastRun.infinity)); show('ov-over', false); openShop('over'); }); });
 
 // ---------------- leaderboard name entry (free text, max 12 chars) ----------------
 let lastEntryTs = 0;
@@ -1899,7 +2131,7 @@ function openNameEntry() {
   const inp = $('name-input');
   inp.value = store.get('playerName', '');
   $('name-score').textContent = fmt(lastRun.score);
-  $('name-map').textContent = lastRun.mapName.toUpperCase() + (lastRun.infinity ? ' INFINITY' : '') + ' \u00b7 ROUND ' + lastRun.round;
+  $('name-map').textContent = (lastRun.infinity ? lastRun.mapName.toUpperCase() + ' INFINITY' : 'CLASSIC') + ' \u00b7 ROUND ' + lastRun.round;
   syncNameCount(); show('ov-name', true); Sfx.gold();
   setTimeout(() => { try { inp.focus(); inp.select(); } catch (e) {} }, 50);
 }
@@ -1911,26 +2143,35 @@ function submitName() {
   const name = Leaderboard.cleanName($('name-input').value);
   store.set('playerName', name); show('ov-name', false); $('name-input').blur(); Sfx.buy();
   const ts = Date.now(); lastEntryTs = ts;
-  Leaderboard.submitScore(lastRun.map, { name, score: lastRun.score, round: lastRun.round, weapon: lastRun.weapon, ts, infinity: !!lastRun.infinity }).then(r => showOver(r.rank));
+  Leaderboard.submitScore(lastRun.map, { name, score: lastRun.score, round: lastRun.round, weapon: lastRun.weapon, ts, infinity: !!lastRun.infinity }).then(r => {
+    const next = afterFinalize; afterFinalize = null;
+    showOver(r.rank);
+    if (next) next();
+  });
 }
 $('btn-name-ok').addEventListener('click', () => { Sfx.click(); submitName(); });
 
 // ---------------- leaderboard ----------------
 let boardMap = 'meadow', boardFrom = 'title', boardInf = false;
 function openBoard(map, from, inf) {
-  boardMap = map || boardMap; boardFrom = from || boardFrom;
+  boardFrom = from || boardFrom;
   if (inf != null) boardInf = !!inf;
+  else if (from === 'infinity') boardInf = true;
   else if (from === 'over' && lastRun) boardInf = !!lastRun.infinity;
+  else boardInf = false;
+  boardMap = boardInf ? (map || boardMap || Meta.save.equip.map) : 'classic';
   $('board-tabs').innerHTML = '';
-  ECON.MAPS.forEach(m => $('board-tabs').appendChild(btn(m.name.toUpperCase(), 'small' + (m.id === boardMap ? ' on' : ''), () => openBoard(m.id))));
   $('board-modes').innerHTML = '';
-  $('board-modes').appendChild(btn('CLASSIC', 'small' + (!boardInf ? ' on' : ''), () => openBoard(boardMap, boardFrom, false)));
-  $('board-modes').appendChild(btn('INFINITY', 'small' + (boardInf ? ' on' : ''), () => openBoard(boardMap, boardFrom, true)));
+  if (boardInf) {
+    const maps = ECON.MAPS.filter(m => Meta.isCleared(m.id));
+    maps.forEach(m => $('board-tabs').appendChild(btn(m.name.toUpperCase(), 'small' + (m.id === boardMap ? ' on' : ''), () => openBoard(m.id, boardFrom, true))));
+  }
   $('board-list').innerHTML = '<div class="note">LOADING...</div>';
   show('ov-board', true);
-  Leaderboard.fetchTop(boardMap, undefined, boardInf).then(({ list, source }) => {
+  Leaderboard.fetchTop(boardInf ? boardMap : 'meadow', undefined, boardInf).then(({ list, source }) => {
     const src = source === 'online' ? 'ONLINE TOP 10' : 'TOP 10 ON THIS DEVICE';
-    $('board-src').textContent = (boardInf ? 'INFINITY · ' : 'CLASSIC · ') + src;
+    const mapNm = boardInf ? ((mapDef(boardMap) || { name: boardMap }).name.toUpperCase() + ' INFINITY · ') : 'CLASSIC · ';
+    $('board-src').textContent = mapNm + src;
     const rows = [];
     for (let i = 0; i < 10; i++) {
       const e = list[i];
@@ -1941,8 +2182,8 @@ function openBoard(map, from, inf) {
     $('btn-board-share').disabled = !list.length;
   });
 }
-$('btn-board').addEventListener('click', () => { Sfx.init(); Sfx.click(); openBoard(Meta.save.equip.map, 'title'); });
-$('btn-go-board').addEventListener('click', () => { Sfx.click(); openBoard(lastRun ? lastRun.map : Meta.save.equip.map, 'over'); });
+$('btn-board').addEventListener('click', () => { Sfx.init(); Sfx.click(); openBoard(null, 'title', false); });
+$('btn-go-board').addEventListener('click', () => { Sfx.click(); finalizeDeferredRun(() => openBoard(lastRun ? lastRun.map : Meta.save.equip.map, 'over', !!(lastRun && lastRun.infinity))); });
 $('btn-board-close').addEventListener('click', () => { Sfx.click(); show('ov-board', false); });
 
 // ---------------- share (Web Share API -> Facebook sharer fallback) ----------------
@@ -2070,7 +2311,7 @@ function updateTitle() {
   const unlocked = Meta.hasMap(m.id);
   $('title-best').textContent = fmt(best);
   const anyClear = ECON.MAPS.some(m => Meta.isCleared(m.id));
-  $('title-bank').textContent = '$' + fmt(Meta.save.bank) + (anyClear ? '  ·  INF $' + fmt(Meta.save.infBank || 0) : '');
+  $('title-bank').textContent = '$' + fmt(Meta.save.bank);
   $('title-map').textContent = m.name.toUpperCase() + (unlocked && Meta.isCleared(m.id) ? '  \u2605' : unlocked ? '' : '  LOCKED');
   $('title-map').classList.toggle('is-locked', !unlocked);
   const bestLine = unlocked
@@ -2099,8 +2340,52 @@ function updateTitle() {
   renderNext('title-next');
   boostBtnStamp = ''; refreshBoostButtons();
 }
+function clearedMaps() { return ECON.MAPS.filter(m => Meta.isCleared(m.id)); }
+function updateInfinity() {
+  const maps = clearedMaps();
+  let id = Meta.save.equip.map;
+  if (!Meta.isCleared(id) && maps[0]) { Meta.selectMap(maps[0].id); id = maps[0].id; }
+  const m = mapDef(id);
+  const slot = Meta.infOf(id);
+  $('inf-best').textContent = fmt(Meta.save.bestInfinityByMap[id] || 0);
+  $('inf-bank').textContent = '$' + fmt(slot.bank);
+  $('inf-map').textContent = m.name.toUpperCase() + '  \u2605';
+  $('inf-mapbest').textContent = 'INF BEST ' + fmt(Meta.save.bestInfinityByMap[id] || 0) + ' \u00b7 THIS MAP ONLY';
+  const eq = slot.equip || { primary: 'shotgun', secondary: null, turrets: [] };
+  const pn = (WDEF(eq.primary) || WDEF('shotgun')).name.toUpperCase();
+  const sn = eq.secondary && WDEF(eq.secondary) ? ' + ' + WDEF(eq.secondary).name.toUpperCase() : '';
+  const tn = (eq.turrets && eq.turrets.length) ? ' \u00b7 ' + eq.turrets.length + ' TURRET' + (eq.turrets.length > 1 ? 'S' : '') : '';
+  $('inf-loadout').textContent = pn + sn + tn;
+  Meta.setMode('infinity');
+  renderNext('inf-next');
+  const shopBtn = $('btn-inf-shop');
+  if (shopBtn) shopBtn.classList.toggle('gold-btn', Meta.anyAffordable());
+  if (!curMap || curMap.id !== id) buildBg(id);
+}
+function cycleInfMap(d) {
+  const maps = clearedMaps();
+  if (!maps.length) return;
+  const i = Math.max(0, maps.findIndex(m => m.id === Meta.save.equip.map));
+  const nxt = maps[(i + d + maps.length) % maps.length];
+  Meta.selectMap(nxt.id);
+  targets = [];
+  updateInfinity();
+}
+function openInfinityLobby() {
+  ['ov-over', 'ov-pause', 'ov-shop', 'ov-continue', 'ov-board', 'ov-name', 'ov-how', 'ov-about', 'ov-missions', 'ov-daily', 'ov-adfree', 'ov-title'].forEach(id => show(id, false));
+  paused = false; state = 'title'; targets = []; projs = []; holding = false; drawing = null; showGameButtons(false);
+  titleBrowseMap = null;
+  Meta.setMode('infinity'); shopInf = true;
+  if (!curMap || curMap.id !== Meta.save.equip.map) buildBg();
+  Sfx.setMusic('menu');
+  updateInfinity(); refreshAdFreeUI();
+  show('ov-infinity', true);
+}
+
 function toTitle() {
-  ['ov-over', 'ov-pause', 'ov-shop', 'ov-continue', 'ov-board', 'ov-name', 'ov-how', 'ov-about', 'ov-missions', 'ov-daily', 'ov-adfree'].forEach(id => show(id, false));
+  finalizeDeferredRun();
+
+  ['ov-over', 'ov-pause', 'ov-shop', 'ov-continue', 'ov-board', 'ov-name', 'ov-how', 'ov-about', 'ov-missions', 'ov-daily', 'ov-adfree', 'ov-infinity'].forEach(id => show(id, false));
   paused = false; state = 'title'; targets = []; projs = []; holding = false; drawing = null; showGameButtons(false); Meta.persist();
   titleBrowseMap = null;
   Meta.setMode('campaign'); shopInf = false;
@@ -2108,21 +2393,50 @@ function toTitle() {
   Sfx.setMusic('menu');
   updateTitle(); refreshAdFreeUI(); show('ov-title', true); maybeDaily();
 }
+function leaveOverToTitle() {
+  if (lastRun && lastRun.infinity) { finalizeDeferredRun(); openInfinityLobby(); return; }
+  toTitle();
+}
 function newGame(fromRound, opts) {
   titleBrowseMap = null;
   if (!Meta.hasMap(Meta.save.equip.map)) { const owned = ECON.MAPS.filter(m => Meta.hasMap(m.id)); Meta.selectMap((owned[owned.length - 1] || ECON.MAPS[0]).id); }
 
+  const carry = !!(opts && opts.carry);
+  const keepScore = carry ? score : 0;
+  const keepRanked = carry ? runRanked : true;
+  const keepDeferred = carry && deferredRun;
+  if (!carry) finalizeDeferredRun();
+
   Sfx.init(); Sfx.click(); Ads.init();
-  ['ov-title', 'ov-over', 'ov-pause', 'ov-shop', 'ov-daily', 'ov-board', 'ov-how', 'ov-about', 'ov-missions'].forEach(id => show(id, false));
+  ['ov-title', 'ov-over', 'ov-pause', 'ov-shop', 'ov-daily', 'ov-board', 'ov-how', 'ov-about', 'ov-missions', 'ov-infinity'].forEach(id => show(id, false));
   infinity = !!(opts && opts.infinity);
   Meta.setMode(infinity ? 'infinity' : 'campaign');
   shopInf = !!infinity;
   Sfx.setMusic('game');
   targets = []; resetRun();
   const ck = fromRound > 1 ? fromRound : 0;
+  if (carry) {
+    score = keepScore;
+    runRanked = keepRanked;
+    deferredRun = keepDeferred;
+  } else {
+    runRanked = !ck;
+    deferredRun = false;
+  }
   Meta.startRun({ base: ck ? ck - 1 : 0 });
-  if (ck) { fromCkpt = ck; round = ck - 1; } // normal difficulty for that round, score from 0, X's cleared
+  if (ck) { fromCkpt = ck; round = ck - 1; runRanked = false; } // checkpoint: score 0, X's cleared, not ranked
+  perfectRun = runRanked && !infinity;
   startRound();
+}
+function goToNextMap() {
+  const id = lastRun && lastRun.nextMapId;
+  if (!id || !Meta.hasMap(id) && !ECON.nextMap(M.id)) {
+    const nxt = ECON.nextMap(M.id);
+    if (!nxt) return;
+    Meta.selectMap(nxt.id);
+  } else Meta.selectMap(id);
+  show('ov-over', false);
+  newGame(0, { carry: true });
 }
 function continueCheckpoint() {
   const inf = !!(lastRun && lastRun.infinity);
@@ -2136,23 +2450,37 @@ $('btn-play').addEventListener('click', () => {
   newGame();
 });
 $('btn-infinity').addEventListener('click', () => {
-  if (!Meta.isCleared(Meta.save.equip.map)) { toast('INFINITY LOCKED', 'Beat the round ' + ECON.CLEAR_ROUND + ' boss to unlock', 0); return; }
-  newGame(0, { infinity: true });
+  const m = shownMap();
+  if (!Meta.isCleared(m.id) && !ECON.MAPS.some(x => Meta.isCleared(x.id))) { toast('INFINITY LOCKED', 'Beat the round ' + ECON.CLEAR_ROUND + ' boss to unlock', 0); return; }
+  if (titleBrowseMap && Meta.isCleared(titleBrowseMap)) { Meta.selectMap(titleBrowseMap); titleBrowseMap = null; }
+  else if (!Meta.isCleared(Meta.save.equip.map)) {
+    const first = ECON.MAPS.find(x => Meta.isCleared(x.id));
+    if (first) Meta.selectMap(first.id);
+  }
+  openInfinityLobby();
 });
-$('btn-go-infinity').addEventListener('click', () => newGame(0, { infinity: true }));
-$('btn-again').addEventListener('click', () => newGame(0, { infinity: !!(lastRun && lastRun.infinity) }));
+$('btn-go-infinity').addEventListener('click', () => { Sfx.click(); show('ov-over', false); openInfinityLobby(); });
+$('btn-again').addEventListener('click', () => { finalizeDeferredRun(() => newGame(0, { infinity: !!(lastRun && lastRun.infinity) })); });
 $('btn-ckpt').addEventListener('click', continueCheckpoint);
-$('btn-menu').addEventListener('click', () => { Sfx.click(); toTitle(); });
-$('btn-over-close').addEventListener('click', () => { Sfx.click(); toTitle(); });
+$('btn-menu').addEventListener('click', () => { Sfx.click(); leaveOverToTitle(); });
+$('btn-over-close').addEventListener('click', () => { Sfx.click(); leaveOverToTitle(); });
+if ($('btn-next-map')) $('btn-next-map').addEventListener('click', () => { Sfx.click(); goToNextMap(); });
+
+if ($('btn-inf-close')) $('btn-inf-close').addEventListener('click', () => { Sfx.click(); toTitle(); });
+if ($('btn-inf-play')) $('btn-inf-play').addEventListener('click', () => newGame(0, { infinity: true }));
+if ($('btn-inf-shop')) $('btn-inf-shop').addEventListener('click', () => { Sfx.init(); Sfx.click(); shopInf = true; Meta.setMode('infinity'); show('ov-infinity', false); openShop('infinity'); });
+if ($('btn-inf-board')) $('btn-inf-board').addEventListener('click', () => { Sfx.init(); Sfx.click(); openBoard(Meta.save.equip.map, 'infinity', true); });
+if ($('btn-inf-map-prev')) $('btn-inf-map-prev').addEventListener('click', () => { Sfx.init(); Sfx.click(); cycleInfMap(-1); });
+if ($('btn-inf-map-next')) $('btn-inf-map-next').addEventListener('click', () => { Sfx.init(); Sfx.click(); cycleInfMap(1); });
 $('btn-how').addEventListener('click', () => { Sfx.init(); Sfx.click(); show('ov-how', true); });
 $('btn-how-close').addEventListener('click', () => { Sfx.click(); show('ov-how', false); });
 function togglePause() {
-  if (!(state === 'play' || state === 'intro')) return;
+  if (!(state === 'play' || state === 'intro' || state === 'bonus')) return;
   paused = !paused; holding = false; drawing = null; show('ov-pause', paused); if (!paused) Sfx.click(); boostBtnStamp = ''; refreshBoostButtons();
 }
 $('btn-pause').addEventListener('click', togglePause);
 $('btn-resume').addEventListener('click', togglePause);
-$('btn-quit').addEventListener('click', () => { Sfx.click(); toTitle(); });
+$('btn-quit').addEventListener('click', () => { Sfx.click(); leaveOverToTitle(); });
 ['btn-auto-boost-t', 'btn-auto-boost-o', 'btn-auto-boost-p'].forEach(id => { const el = $(id); if (el) el.addEventListener('click', startAutoBoostAd); });
 function syncAudio() {
   document.querySelectorAll('.sfx-btn').forEach(b => {
@@ -2178,6 +2506,13 @@ press('btn-flak', () => useGadget('flak')); press('btn-call', () => useGadget('c
 const crossColor = () => (ECON.CROSSHAIRS.find(c => c.id === Meta.save.equip.cross) || ECON.CROSSHAIRS[0]).c;
 function drawTarget(t) {
   if (t.kind === 'eyes') return;
+  if (t.kind === 'bag') {
+    const fr = SPR.bag[Math.floor(t.anim * 8) % 2];
+    const flick = t.hurt > 0 && Math.floor(t.hurt * 40) % 2 === 0;
+    spr(fr, t.x, t.y + Math.sin(t.anim * 6) * 2, t.sc, false, false, flick ? 0.35 : 1);
+    if (Math.floor(t.anim * 10) % 2) { ctx.fillStyle = '#fff6a0'; ctx.fillRect(t.x + rand(-6, 6), t.y + rand(-8, 4), 1, 1); }
+    return;
+  }
   if (t.kind === 'egg') {
     const wob = Math.sin(t.anim * 8) * 1.2;
     const flick = t.hurt > 0 && Math.floor(t.hurt * 40) % 2 === 0;
@@ -2293,7 +2628,7 @@ function drawDark() {
   for (const t of targets) {
     if (!live(t)) continue;
     if (t.kind === 'boss') hole(t.x, t.y, 34, 0.95);
-    else if (t.kind === 'egg') hole(t.x, t.y, 16, 0.9);
+    else if (t.kind === 'egg' || t.kind === 'bag') hole(t.x, t.y, 16, 0.9);
   }
   for (const f of flashes) hole(f.x, f.y, f.boom ? 44 : 24, 1 - f.t / 0.25);
   if (wpn && wpn.beam && holding) { const b = wpn.beam; for (let k = 0; k < 1; k += 0.08) hole(b.x0 + (b.x1 - b.x0) * k * 0.4, b.y0 + (b.y1 - b.y0) * k * 0.4, 10, 0.7); }
@@ -2346,10 +2681,10 @@ function render() {
     text(f.text, clamp(f.x, 6 + f.text.length * 2 * f.sz, W - 6 - f.text.length * 2 * f.sz), f.y, f.sz * a, f.color, 'center');
   }
   ctx.globalAlpha = 1;
-  if (state === 'play' || state === 'intro') drawCrosshair();
+  if (state === 'play' || state === 'intro' || state === 'bonus') drawCrosshair();
   if (titleScene()) return drawTitle();
   drawHud();
-  if ((state === 'intro' || state === 'clear' || state === 'dying') && banner) {
+  if ((state === 'intro' || state === 'clear' || state === 'dying' || (state === 'bonus' && bonusIntroT > 0)) && banner) {
     const y = H * 0.4;
     ctx.fillStyle = 'rgba(0,0,0,0.55)'; ctx.fillRect(0, y - 6, W, banner2 ? 30 : 22);
     text(banner, W / 2, y, 2, state === 'dying' || (bossRound && state === 'intro') ? '#ff5a5a' : '#ffe066', 'center');
@@ -2386,6 +2721,12 @@ function heart(x, y) {
 function drawTitle() {
   const y = H * 0.12;
   const bob = Math.sin(performance.now() / 400) * 1.5;
+  const infLobby = $('ov-infinity') && !$('ov-infinity').classList.contains('hidden');
+  if (infLobby) {
+    text('INFINITY', W / 2, y + 18 + bob, 5, '#ffd23f', 'center', '#7a2a00');
+    spr(SPR.gold[Math.floor(performance.now() / 120) % 2], W / 2 + 70, y + 8 + bob, 1.2);
+    return;
+  }
   text('PIXEL', W / 2, y + bob, 6, '#ffe066', 'center', '#7a2a00');
   text('HUNT', W / 2, y + 36 + bob, 6, '#ff5a2a', 'center', '#3a0a00');
   spr(SPR.bird[Math.floor(performance.now() / 120) % 2], W / 2 + 54, y + 4 + bob, 1);
@@ -2410,14 +2751,16 @@ function drawHud() {
   ctx.fillStyle = '#000'; ctx.fillRect(0, 28, W, 1);
   text('SCORE', 4, 3, 1, '#9fc4ff', 'left', null);
   text(fmt(score), 4, 10, 1.5, '#fff');
-  const savedBest = infinity ? (Meta.save.bestInfinityByMap[M.id] || 0) : (Meta.save.bestByMap[M.id] || 0);
+  const savedBest = infinity ? (Meta.save.bestInfinityByMap[M.id] || 0) : best;
   const mb = Math.max(savedBest, score);
   text((infinity ? 'INF ' : '') + M.name.toUpperCase() + ' BEST', W / 2 + 6, 3, 1, '#9fc4ff', 'center', null);
   text(fmt(mb), W / 2 + 6, 10, 1.5, '#ffe066', 'center');
-  text(infinity ? 'INF ROUND' : 'ROUND', W - 4, 3, 1, infinity ? '#ffd23f' : '#9fc4ff', 'right', null);
-  const rlabel = infinity ? String(round) : (round + '/' + ECON.CLEAR_ROUND);
+  const bonusHud = state === 'bonus';
+  text(infinity ? 'INF ROUND' : (bonusHud ? 'BONUS' : 'ROUND'), W - 4, 3, 1, infinity || bonusHud ? '#ffd23f' : '#9fc4ff', 'right', null);
+  const rlabel = infinity ? String(round) : bonusHud ? String(Math.max(0, Math.ceil(bonusT))) + 'S' : (round + '/' + ECON.CLEAR_ROUND);
   text(rlabel, W - 4, 10, 1.5, bossRound ? '#ff5a5a' : '#fff', 'right');
   text('$' + fmt(Meta.bank()), 4, 20, 1, '#7dff7a');
+  if (perfectRun && !infinity && !bonusHud) text('PERFECT', 48, 20, 1, '#ffd23f', 'left', null);
   const mx = W - 4 - maxMiss * 8;
   text('MISS', mx - 3, 20, 1, '#ff9a9a', 'right', null);
   for (let i = 0; i < maxMiss; i++) {
@@ -2428,11 +2771,11 @@ function drawHud() {
   }
   if (streak >= 2) text('STREAK X' + Math.min(streak, 5), W / 2 + 6, 20, 1, '#ff9a3d', 'center', null);
   const perkTags = [];
-  if (Meta.autoBoostActive() && Meta.levelOf('perk.auto') <= 0 && (state === 'play' || state === 'intro' || state === 'clear')) {
+  if (Meta.autoBoostActive() && Meta.levelOf('perk.auto') <= 0 && (state === 'play' || state === 'intro' || state === 'clear' || state === 'bonus')) {
     perkTags.push('AUTO ' + fmtBoostClock(Meta.autoBoostLeft()));
   } else if (wpn && wpn.reloading && perkAuto >= 0) perkTags.push('AUTO');
-  if (worldSlow() < 1 && (state === 'play' || state === 'intro')) perkTags.push('BULLET TIME');
-  if ((Meta.val('perk.second') || 0) > 0 && (state === 'play' || state === 'intro' || state === 'clear')) perkTags.push('SAVES ' + secondLeft);
+  if (worldSlow() < 1 && (state === 'play' || state === 'intro' || state === 'bonus')) perkTags.push('BULLET TIME');
+  if ((Meta.val('perk.second') || 0) > 0 && (state === 'play' || state === 'intro' || state === 'clear' || state === 'bonus')) perkTags.push('SAVES ' + secondLeft);
   if (perkTags.length) {
     const py = (bossT && live(bossT)) ? 50 : 31;
     const label = perkTags.join('  ·  ');
@@ -2572,8 +2915,16 @@ window.PH = {
   dropFawn(boss) { dropFawn(boss || bossT); },
   isGroundBoss: (t) => isGroundBoss(t),
   reviveNow() { reviveUsed = true; revive(); },
-  forceMapClear() { infinity = false; bossKilled = true; round = ECON.CLEAR_ROUND; bossRound = true; queue = []; targets = []; projs = []; mapJustCleared = false; failedClear = false; if (state !== 'play') state = 'play'; },
+  forceMapClear() { infinity = false; bossKilled = true; round = ECON.CLEAR_ROUND; bossRound = true; queue = []; targets = []; projs = []; mapJustCleared = false; failedClear = false; perfectRun = false; wantBonus = false; if (state !== 'play') state = 'play'; },
+  forcePerfectClear() { infinity = false; bossKilled = true; round = ECON.CLEAR_ROUND; bossRound = true; queue = []; targets = []; projs = []; mapJustCleared = false; failedClear = false; perfectRun = true; runRanked = true; reviveUsed = false; fromCkpt = 0; wantBonus = false; if (state !== 'play') state = 'play'; },
   startInfinity() { newGame(0, { infinity: true }); },
+  openInfinity() { openInfinityLobby(); },
+  goToNextMap() { goToNextMap(); },
+  startBonus() { startBonusRound(); },
+  get perfectRun() { return perfectRun; }, setPerfect(on) { perfectRun = !!on; },
+  get runRanked() { return runRanked; }, get bonusCash() { return bonusCashEarned; }, get deferredRun() { return deferredRun; },
+  get lastRun() { return lastRun; },
+
   newGame(from, opts) { newGame(from || 0, opts); },
   togglePause() { togglePause(); },
   get paused() { return paused; },
@@ -2590,7 +2941,7 @@ window.PH = {
   flakDmg: l => ECON.flakDmg(l), dmgLine, fireTap,
   grantAll() { Meta.withMode('campaign', () => { ECON.TRACKS.forEach(t => { Meta.save.lv[t.id] = t.val.length - 1; }); }); Meta.persist(); },
   makeCard: o => makeCard(o || {}).toDataURL('image/png'),
-  rebuild() { buildBg(); }, toTitle() { toTitle(); }, showOver(rank) { showOver(rank); }, openShop(tab) { shopTab = tab || shopTab; openShop('title'); }, openBoard(m) { openBoard(m, 'title'); },
+  rebuild() { buildBg(); }, toTitle() { toTitle(); }, showOver(rank) { showOver(rank); }, openShop(tab) { shopTab = tab || shopTab; openShop('title'); }, openInfShop() { shopInf = true; Meta.setMode('infinity'); openShop('infinity'); }, openBoard(m, from, inf) { openBoard(m, from || 'title', inf); },
   get banner() { return banner; }, get banner2() { return banner2; },
   get browseMap() { return titleBrowseMap || Meta.save.equip.map; },
   hasMap: id => Meta.hasMap(id),

@@ -108,6 +108,8 @@ The Android test APK (`com.cachebrands.pixelhunt`) already ships the existing si
    iOS `ios/App/App/Info.plist` -> `GADApplicationIdentifier` = `ca-app-pub-XXXX~YYYY` (+ SKAdNetworkItems per AdMob docs).
 4. Test on a device; for iOS also add the App Tracking Transparency prompt if you use personalized ads.
 
+**Remove Ads** is a $2.99 one-time Stripe Payment Link (`ADFREE_CONFIG` in `js/ads.js`). After checkout, Stripe redirects to `/index.html?adfree={CHECKOUT_SESSION_ID}`; the game marks that device ad-free in local storage (schema v9) and strips the query. There is no server-side verification (a determined user could fake the query). The purchase is per-device; restore by reopening the success link. Ad-free skips forced death ads and grants rewarded features instantly (continue once per run, 2X daily limits, and the 15-minute Auto Reload still apply). In the Capacitor test APK the link should open the system browser; the redirect may land on the live web game.
+
 ## Legal
 `privacy.html` and `terms.html` are linked from the title screen footer (also in Credits). Owner: **Cache Brands LLC**, P.O. Box 425, Ullin, IL 62992, dowdyboy1992-qhj8xm@mail.grokbot.com. Last updated Nov 14, 2026. A **© 2026 Cache Brands LLC** line appears on the title screen.
 
@@ -115,7 +117,7 @@ The Android test APK (`com.cachebrands.pixelhunt`) already ships the existing si
 `window.PH` (state, targets, weapon, turrets, boss, `jumpRound(n)`, `forceClear()`, `forceDie()`, `setMoney(n)`, `grantAll()`, `makeCard(o)`) for headless tests.
 
 ## Android test APK
-The game also ships as a debug-signed Android package that bundles the web files and runs offline (no Render URL). Package id `com.cachebrands.pixelhunt`, version `1.0.0` (versionCode 1), portrait, immersive fullscreen, Pixel Hunt launcher icon. The hardware back button closes menus, pauses a run, quits to title from the pause menu, and exits the app from the title screen. The service worker is not registered in the native shell so it cannot fight the bundled assets. Audio unlocks on the first tap, same as the PWA.
+The game also ships as a debug-signed Android package that bundles the web files and runs offline (no Render URL). Package id `com.cachebrands.pixelhunt`, version `1.0.0` (versionCode 1), portrait, immersive fullscreen, Pixel Hunt launcher icon. The hardware back button closes menus, pauses a run, quits to title from the pause menu, and exits the app from the title screen. Opening Remove Ads uses the system browser when a Capacitor Browser/App plugin is present; the Stripe success redirect may open the web game rather than returning inside the APK (accepted for the current test build). The service worker is not registered in the native shell so it cannot fight the bundled assets. Audio unlocks on the first tap, same as the PWA.
 
 Prerelease builds are attached to GitHub releases (for example `v1.0.0-test`). To rebuild a sideloadable debug APK:
 

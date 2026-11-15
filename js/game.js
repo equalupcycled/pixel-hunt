@@ -1149,7 +1149,7 @@ function refreshBoostButtons() {
     b.disabled = !!(owned || active);
     if (owned) b.innerHTML = 'You own Auto Reload';
     else if (active) b.innerHTML = 'AUTO RELOAD ' + fmtBoostClock(left);
-    else b.innerHTML = '&#9654; AD: Auto Reload 15 min';
+    else b.innerHTML = (Meta.isAdFree && Meta.isAdFree()) ? 'AUTO RELOAD 15 MIN' : '&#9654; AD: Auto Reload 15 min';
   });
 }
 function watchAutoBoost() {
@@ -1730,6 +1730,10 @@ function onDeath() {
   if (!reviveUsed && Ads.rewardedAvailable()) {
     $('cont-detail').textContent = 'Resume Round ' + round + ' and keep your score (' + fmt(score) + ').';
     $('cont-note').textContent = 'One continue per run \u00b7 X\'s cleared \u00b7 ' + (fromCkpt ? 'checkpoint run, not ranked' : 'still ranked');
+    const cr = $('btn-revive');
+    if (cr) cr.innerHTML = Meta.isAdFree()
+      ? 'CONTINUE THIS RUN<br><small>KEEP SCORE \u00b7 NO AD</small>'
+      : '\u25b6 WATCH AD<br><small>CONTINUE THIS RUN \u00b7 KEEP SCORE</small>';
     show('ov-continue', true);
     let n = 8; $('cont-count').textContent = n;
     clearInterval(contTimer);
@@ -1792,7 +1796,10 @@ function showOver(rank) {
   const dbl = $('btn-double'), left = Meta.doublesLeft();
   dbl.classList.toggle('hidden', earnedShown <= 0);
   dbl.disabled = left <= 0;
-  dbl.innerHTML = left > 0 ? `&#9654; WATCH AD: 2X EARNINGS<br><small>+$${fmt(earnedShown)} MORE \u00b7 ${left} LEFT TODAY</small>` : '2X USED UP TODAY<br><small>COMES BACK TOMORROW</small>';
+  const adFree = Meta.isAdFree();
+  dbl.innerHTML = left > 0
+    ? ((adFree ? '2X EARNINGS' : '&#9654; WATCH AD: 2X EARNINGS') + `<br><small>+$${fmt(earnedShown)} MORE \u00b7 ${left} LEFT TODAY</small>`)
+    : '2X USED UP TODAY<br><small>COMES BACK TOMORROW</small>';
   renderNext('go-next'); renderMissions('go-missions');
   let note = '';
   if (r.cleared) {
@@ -1962,13 +1969,15 @@ function maybeDaily() {
     cal.appendChild(c);
   });
   $('daily-amt').textContent = '$' + fmt(Meta.dailyAmount(st.day));
+  const d2 = $('btn-daily-2x');
+  if (d2) d2.innerHTML = Meta.isAdFree() ? 'CLAIM 2X' : '&#9654; WATCH AD: CLAIM 2X';
   show('ov-daily', true);
   return true;
 }
 function claimDaily(mult) {
   const amt = Meta.claimDaily(mult);
   show('ov-daily', false); $('btn-daily').classList.add('hidden');
-  if (amt) { Sfx.buy(); toast('DAILY REWARD', mult > 1 ? 'DOUBLED WITH AD!' : 'COME BACK TOMORROW', amt); }
+  if (amt) { Sfx.buy(); toast('DAILY REWARD', mult > 1 ? (Meta.isAdFree() ? 'DOUBLED!' : 'DOUBLED WITH AD!') : 'COME BACK TOMORROW', amt); }
   updateTitle();
 }
 $('btn-daily-claim').addEventListener('click', () => { Sfx.init(); claimDaily(1); });
@@ -2050,7 +2059,7 @@ function toTitle() {
   Meta.setMode('campaign'); shopInf = false;
   if (!curMap || curMap.id !== Meta.save.equip.map) buildBg();
   Sfx.setMusic('menu');
-  updateTitle(); show('ov-title', true); maybeDaily();
+  updateTitle(); refreshAdFreeUI(); show('ov-title', true); maybeDaily();
 }
 function newGame(fromRound, opts) {
   titleBrowseMap = null;
@@ -2438,8 +2447,59 @@ function frame(now) {
   try { update(dt); render(); frameErrs = 0; }
   catch (e) { if (++frameErrs === 1 || frameErrs % 300 === 0) { console.error(e); window.PH_ERR && PH_ERR(e); } }
 }
+
+// ---------------- Remove Ads (one-time Stripe purchase, per-device) ----------------
+function adFreePriceLabel() {
+  const cfg = window.ADFREE_CONFIG || {};
+  return cfg.priceLabel || '$2.99';
+}
+function refreshAdFreeUI() {
+  const on = !!(Meta.isAdFree && Meta.isAdFree());
+  document.querySelectorAll('.adfree-buy').forEach(b => {
+    b.classList.toggle('hidden', on);
+    b.textContent = 'REMOVE ADS ' + adFreePriceLabel();
+  });
+  document.querySelectorAll('.adfree-note').forEach(n => n.classList.toggle('hidden', on));
+  document.querySelectorAll('.adfree-owned').forEach(n => n.classList.toggle('hidden', !on));
+  refreshBoostButtons();
+}
+function consumeAdFreeReturn() {
+  let sid = '';
+  try {
+    const u = new URL(location.href);
+    sid = (u.searchParams.get('adfree') || '').trim();
+    if (sid) {
+      u.searchParams.delete('adfree');
+      const rest = u.searchParams.toString();
+      history.replaceState({}, '', u.pathname + (rest ? '?' + rest : '') + u.hash);
+    }
+  } catch (e) { return false; }
+  if (!sid) return false;
+  if (!Meta.grantAdFree(sid)) return false;
+  refreshAdFreeUI();
+  toast('THANKS! ADS REMOVED', 'This purchase stays on this device. Keep using this device, or reopen your success link to restore it.', 0);
+  return true;
+}
+function openRemoveAds() {
+  Sfx.init(); Sfx.click();
+  if (Meta.isAdFree()) { refreshAdFreeUI(); return; }
+  const url = (window.ADFREE_CONFIG || {}).paymentLink;
+  if (!url) return;
+  if (window.PH_openUrl) window.PH_openUrl(url);
+  else window.open(url, '_blank', 'noopener,noreferrer');
+}
+
+refreshAdFreeUI();
 resize(); resetRun(); syncAudio(); toTitle();
+consumeAdFreeReturn();
+
 requestAnimationFrame(frame);
+
+
+['btn-adfree-t', 'btn-adfree-p', 'btn-adfree-o'].forEach(id => {
+  const el = $(id);
+  if (el) el.addEventListener('click', openRemoveAds);
+});
 
 // debug/test hooks (used by tools/test_playwright.py)
 window.PH = {
@@ -2474,5 +2534,9 @@ window.PH = {
   get banner() { return banner; }, get banner2() { return banner2; },
   get browseMap() { return titleBrowseMap || Meta.save.equip.map; },
   hasMap: id => Meta.hasMap(id),
+  isAdFree: () => Meta.isAdFree(),
+  grantAdFree(sid) { const ok = Meta.grantAdFree(sid); refreshAdFreeUI(); return ok; },
+  clearAdFree() { Meta.clearAdFree(); refreshAdFreeUI(); },
+  openRemoveAds, consumeAdFreeReturn, refreshAdFreeUI,
 };
 })();

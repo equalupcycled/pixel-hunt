@@ -43,7 +43,7 @@ with sync_playwright() as p:
       hitsGooseRf: PH.hitsNeeded(4, 4),
     })""")
     print('TABLES', json.dumps(tables, indent=2))
-    if tables.get('v') != 8: fails.append('fresh schema not v8, %r' % tables.get('v'))
+    if tables.get('v') != 9: fails.append('fresh schema not v9, %r' % tables.get('v'))
     expect_hp = dict(duck=2, blue=2, gold=2, decoy=1, goose=4, owl=3, bat=2, vulture=4,
                      deer=4, swimgoose=4, rabbit=3, wolf=5, roadrunner=3, coyote=5, eyes=3, egg=2, boss10=20)
     for k, want in expect_hp.items():
@@ -168,7 +168,7 @@ with sync_playwright() as p:
       autoBoostUntil: PH.Meta.save.autoBoostUntil,
     })""")
     print('MIGRATE', mig)
-    if mig.get('v') != 8: fails.append('migration schema not v8, %r' % mig)
+    if mig.get('v') != 9: fails.append('migration schema not v9, %r' % mig)
     if mig.get('dmg') not in (0, None) or mig.get('infDmg') not in (0, None):
         fails.append('migration should start dmg tracks at 0, %r' % mig)
     if mig.get('cap') != 1 or mig.get('bank') != 100:

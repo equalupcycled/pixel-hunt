@@ -6,7 +6,7 @@ window.Meta = (() => {
   const fmt = n => Math.round(n).toLocaleString('en-US');
   const dayStr = (d = new Date()) => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
   const def = () => ({
-    v: 8, bank: 0, lv: Object.fromEntries(E.TRACKS.map(t => [t.id, 0])),
+    v: 9, bank: 0, lv: Object.fromEntries(E.TRACKS.map(t => [t.id, 0])),
     stats: { runs: 0, kills: 0, gold: 0, deer: 0, perfect: 0, multi: 0, bestRound: 0, bestStreak: 0, shots: 0, hits: 0, earned: 0, bosses: 0, turretKills: 0 },
     missions: [], mDone: 0, ach: {}, daily: { last: null, day: -1 }, ads: { date: null, doubles: 0 },
     equip: { primary: 'shotgun', secondary: null, turrets: [], skin: 'classic', cross: 'white', map: 'meadow' },
@@ -15,6 +15,7 @@ window.Meta = (() => {
     infBank: 0, infLv: Object.fromEntries(E.TRACKS.map(t => [t.id, 0])),
     infEquip: { primary: 'shotgun', secondary: null, turrets: [] },
     autoBoostUntil: 0,
+    adFree: false, adFreeSession: '',
   });
   function merge(d, s) { for (const k in s) { if (s[k] && typeof s[k] === 'object' && !Array.isArray(s[k]) && d[k] && typeof d[k] === 'object') merge(d[k], s[k]); else d[k] = s[k]; } return d; }
   let save = def();
@@ -70,6 +71,12 @@ window.Meta = (() => {
       // v7 -> v8: maps unlock by clearing the previous map, not by purchase or "own N upgrades".
       // Keep access to any map already bought (lv['map.*']) or already played. Do not refund.
       save.v = Math.max(save.v || 2, 8);
+      // v8 -> v9: per-device Remove Ads flag (Stripe one-time purchase).
+      if (save.adFree == null) save.adFree = false;
+      else save.adFree = !!save.adFree;
+      if (save.adFreeSession == null) save.adFreeSession = '';
+      else save.adFreeSession = String(save.adFreeSession || '');
+      save.v = Math.max(save.v || 2, 9);
     }
   } catch (e) {}
   try { const ob = +localStorage.getItem('pixelhunt.best') || 0; if (ob && !save.bestByMap.meadow) save.bestByMap.meadow = ob; } catch (e) {}
@@ -345,6 +352,19 @@ window.Meta = (() => {
     save.equip.map = (owned[owned.length - 1] || E.MAPS[0]).id;
   }
 
+
+  const CHECKOUT_SID = /^cs_[a-zA-Z0-9_]{12,}$/;
+  const isAdFree = () => !!save.adFree;
+  function grantAdFree(sessionId) {
+    const sid = String(sessionId || '').trim();
+    if (!CHECKOUT_SID.test(sid)) return false;
+    save.adFree = true;
+    save.adFreeSession = sid;
+    persist();
+    return true;
+  }
+  function clearAdFree() { save.adFree = false; save.adFreeSession = ''; persist(); }
+
   return {
     get save() { return save; }, persist, track, val, maxed, costOf, totalBought, cheapestNext, anyAffordable, buy,
     eligible, owns, hasTurret, hasMap, isCleared, markCleared, clearProgress, equipWeapon, mountTurret, buyCosmetic, selectMap,
@@ -352,6 +372,7 @@ window.Meta = (() => {
     MT, ACH, missionText, missionReward, progressOf, startRun, event, endRun, takeNotices,
     dailyStatus, dailyAmount, claimDaily, doublesLeft, useDouble,
     now, setNow, AUTO_BOOST_MS, setAutoBoostMs, autoBoostUntil, autoBoostLeft, autoBoostActive, grantAutoBoost, clearAutoBoost, ownsAutoReload,
+    isAdFree, grantAdFree, clearAdFree,
     reset() { save = def(); mode = 'campaign'; while (save.missions.length < 3) save.missions.push(newMission()); persist(); },
   };
 })();

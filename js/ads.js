@@ -3,6 +3,14 @@
 // Native (Capacitor + @capacitor-community/admob): uses real AdMob ads automatically.
 // >>> Put your real AdMob IDs in AD_CONFIG below (see README "Ads / AdMob"). <<<
 'use strict';
+// One-time "Remove Ads" purchase (Stripe Payment Link). Price can be changed later in Stripe + this label.
+window.ADFREE_CONFIG = {
+  priceLabel: '$2.99',
+  paymentLink: 'https://buy.stripe.com/3cIbJ22s95fo54L9W82kw00',
+  productId: 'prod_VdCdJiVd7UGQRa',
+  priceId: 'price_1UbwEfK4ysz4eginjAoUxv6u',
+};
+
 window.AD_CONFIG = {
   // true = Google's official TEST ad units. Set false only with your real IDs, for release builds.
   testing: true,
@@ -103,10 +111,12 @@ window.Ads = (() => {
     rewardedAvailable: () => true,
     /** Interstitial between death and game over. Resolves when closed. */
     showInterstitial() {
+      if (window.Meta && Meta.isAdFree && Meta.isAdFree()) return Promise.resolve(true);
       return AdMob ? nativeInterstitial() : webAd({ seconds: cfg.interstitialSeconds, rewarded: false });
     },
     /** Rewarded ad. Resolves true if the user earned the reward. */
     showRewarded() {
+      if (window.Meta && Meta.isAdFree && Meta.isAdFree()) return Promise.resolve(true);
       return AdMob ? nativeRewarded() : webAd({ seconds: cfg.rewardedSeconds, rewarded: true });
     },
   };

@@ -592,3 +592,24 @@ h2.gold, #go-title.gold { color: #ffe066; }
 #title-map.is-locked { color: #ffd36a; }
 .clearprog.is-locked .nx-t { color: #ffd36a; }
 #btn-play:disabled { opacity: 0.5; }
+
+/* Remove Ads one-time purchase */
+.adfree-buy {
+  background: #e0a800 !important;
+  color: #1a1200 !important;
+  width: min(92%, 340px);
+  letter-spacing: 0.5px;
+  box-shadow: 0 0 0 2px #7a5a00, 0 3px 0 #5a4000;
+}
+#ov-over .adfree-buy, #ov-pause .adfree-buy { width: 100%; max-width: none; }
+.adfree-note, .adfree-owned {
+  width: min(92%, 340px);
+  margin: 4px auto 6px;
+  text-align: center;
+  opacity: .9;
+  line-height: 1.35;
+  text-shadow: 1px 1px 0 #000;
+}
+#ov-over .adfree-note, #ov-pause .adfree-note,
+#ov-over .adfree-owned, #ov-pause .adfree-owned { width: 100%; }
+.adfree-owned { color: #9dff9a; }

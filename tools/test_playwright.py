@@ -203,6 +203,7 @@ async def part_b(b):
         await start(w, m, rnd=(20 if 'buck' in name else 10))
         await pg.wait_for_function('PH.boss && PH.boss.risen', timeout=30000)
         for k in range(4):
+            if not await pg.evaluate('!!PH.boss'): break
             bx, by = await pg.evaluate('[PH.boss.x, PH.boss.y]')
             if w == 'mg':
                 await pg.mouse.move(*P(bx, by)); await pg.mouse.down(); await pg.wait_for_timeout(300); await pg.mouse.up()

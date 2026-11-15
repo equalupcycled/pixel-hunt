@@ -13,6 +13,7 @@
           val: [1, 2, 3, 4, 5, 6, 8], desc: v => `${v} shell${v > 1 ? 's' : ''} per load` },
         { k: 'reload', name: 'Quick Hands', icon: 'hand', val: [1.4, 1.3, 1.2, 1.1, 1.0, 0.9, 0.8, 0.7, 0.62, 0.55, 0.48, 0.42, 0.36], desc: v => `Reload ${v}s` },
         { k: 'choke', name: 'Wide Choke', icon: 'choke', val: [5, 6, 7, 8, 9, 10, 11, 12, 13, 14], desc: v => `Spread ${v}px` },
+        { k: 'dmg', name: 'Heavy Load', icon: 'scope', w: 1.15, val: [2, 3, 4, 5, 6, 7, 8], desc: v => `DMG ${v}` },
       ] },
     { id: 'handgun', name: 'Handgun', input: 'tap', req: 2, ownW: 1.25, cash: 1, pts: 1, delay: 0.12,
       role: 'Fast precise taps, big mag, quick reload. Small hit area. Crits pay double.', ammoName: 'ROUNDS', reloadName: 'RELOAD',
@@ -21,6 +22,7 @@
         { k: 'reload', name: 'Mag Swap', icon: 'hand', val: [1.0, 0.9, 0.8, 0.7, 0.6, 0.52, 0.45, 0.38], desc: v => `Reload ${v}s` },
         { k: 'sights', name: 'Red Dot', icon: 'choke', val: [3, 3.5, 4, 4.5, 5, 6, 7, 8], desc: v => `Hit area ${v}px` },
         { k: 'crit', name: 'Double Tap', icon: 'coin', val: [0, 0.06, 0.12, 0.18, 0.24, 0.3, 0.4], desc: v => `${Math.round(v * 100)}% crit (2x $)` },
+        { k: 'dmg', name: 'Hot Loads', icon: 'scope', w: 1.15, val: [1, 2, 3, 4, 5, 6], desc: v => `DMG ${v}` },
       ] },
     { id: 'rifle', name: 'Rifle', input: 'tap', req: 12, ownW: 1.35, cash: 1, pts: 1.2, delay: 0.45, deerBonus: 1.5,
       role: 'One piercing round flies from you through the tap point. Line up birds. Deer pay 1.5x.', ammoName: 'ROUNDS', reloadName: 'BOLT',
@@ -29,6 +31,7 @@
         { k: 'reload', name: 'Smooth Bolt', icon: 'hand', val: [2.0, 1.8, 1.6, 1.4, 1.25, 1.1, 0.95, 0.8], desc: v => `Bolt ${v}s` },
         { k: 'caliber', name: 'Caliber', icon: 'choke', val: [3.5, 4, 4.5, 5, 5.5, 6, 7], desc: v => `Bullet ${v}px` },
         { k: 'pierce', name: 'AP Rounds', icon: 'scope', val: [1, 2, 3, 4, 5], desc: v => `Pierces ${v} target${v > 1 ? 's' : ''}` },
+        { k: 'dmg', name: 'Soft Point', icon: 'scope', w: 1.2, val: [4, 5, 6, 7, 9, 11, 13], desc: v => `DMG ${v}` },
       ] },
     { id: 'bow', name: 'Bow', input: 'draw', req: 24, ownW: 1.35, cash: 1, pts: 1.1, delay: 0.15, goldBonus: 2,
       role: 'Silent: misses never break your streak. Hold to draw, release to loose. Arrows arc - lead your target. Golden birds pay 2x.', ammoName: 'ARROWS', reloadName: 'NOCK',
@@ -38,6 +41,7 @@
         { k: 'draw', name: 'Draw Weight', icon: 'scope', val: [0.8, 0.7, 0.6, 0.5, 0.42, 0.35, 0.28, 0.22], desc: v => `Full draw ${v}s` },
         { k: 'tip', name: 'Broad Tip', icon: 'choke', val: [3, 3.5, 4, 4.5, 5, 5.5, 6], desc: v => `Tip ${v}px` },
         { k: 'pierce', name: 'Bodkin', icon: 'feather', val: [1, 2, 3], desc: v => `Pierces ${v}` },
+        { k: 'dmg', name: 'War Tips', icon: 'scope', w: 1.2, val: [3, 4, 5, 6, 7, 9, 11], desc: v => `DMG ${v}` },
       ] },
     { id: 'mg', name: 'Machine Gun', input: 'hold', req: 40, ownW: 1.4, cash: 0.65, pts: 0.6,
       role: 'Hold to spray. Shreds crowds in late rounds, but long reload and each hit pays 65%.', ammoName: 'BELT', reloadName: 'RELOAD',
@@ -46,6 +50,7 @@
         { k: 'reload', name: 'Belt Feed', icon: 'hand', val: [3.0, 2.7, 2.4, 2.1, 1.8, 1.6, 1.4, 1.2], desc: v => `Reload ${v}s` },
         { k: 'spread', name: 'Bipod', icon: 'choke', val: [12, 10, 8.5, 7, 6, 5, 4], desc: v => `Spread ${v}px` },
         { k: 'rate', name: 'Fire Rate', icon: 'scope', val: [0.11, 0.1, 0.09, 0.08, 0.07, 0.06], desc: v => `${Math.round(1 / v)} rounds/s` },
+        { k: 'dmg', name: 'AP Belt', icon: 'scope', w: 1.15, val: [1, 2, 3, 4, 5], desc: v => `DMG ${v}` },
       ] },
     { id: 'laser', name: 'Laser Gun', input: 'beam', req: 90, ownW: 1.5, cash: 0.85, pts: 0.8,
       role: 'No ammo: a beam you sweep while holding. Builds heat - VENT by hand. Tracks erratic birds. Hits pay 85%.', ammoName: 'HEAT', reloadName: 'VENT',
@@ -54,6 +59,7 @@
         { k: 'reload', name: 'Coolant', icon: 'hand', val: [2.5, 2.2, 1.9, 1.6, 1.4, 1.2, 1.0, 0.8], desc: v => `Vent ${v}s` },
         { k: 'width', name: 'Lens', icon: 'choke', val: [2, 2.5, 3, 3.5, 4, 4.5, 5], desc: v => `Beam ${v}px` },
         { k: 'power', name: 'Power Cell', icon: 'scope', val: [0.25, 0.21, 0.18, 0.15, 0.12, 0.1, 0.08], desc: v => `Burns in ${v}s` },
+        { k: 'dmg', name: 'Overcharge', icon: 'scope', w: 1.2, val: [2, 3, 4, 5, 6, 7], desc: v => `DMG ${v}` },
       ] },
   ];
 
@@ -64,18 +70,21 @@
         { k: 'ammo', name: 'Hopper', val: [2, 3, 3, 4, 4, 5], desc: v => `${v} shots/round` },
         { k: 'rate', name: 'Servo', icon: 'hand', val: [2.5, 2.1, 1.8, 1.5, 1.2], desc: v => `Every ${v}s` },
         { k: 'aim', name: 'Optics', icon: 'scope', val: [10, 7, 5, 3], desc: v => `Aim error ${v}px` },
+        { k: 'dmg', name: 'Shot Weight', icon: 'scope', w: 1.15, val: [2, 3, 4, 5, 6], desc: v => `DMG ${v}` },
       ] },
     { id: 'tesla', name: 'Tesla Coil', req: 55, ownW: 1.5, role: 'Instant chain lightning. Few charges, never misses in range.',
       tracks: [
         { k: 'ammo', name: 'Capacitors', val: [1, 1, 2, 2, 3], desc: v => `${v} zap${v > 1 ? 's' : ''}/round` },
         { k: 'chain', name: 'Arc Chain', icon: 'choke', val: [1, 2, 3], desc: v => `Chains to ${v}` },
         { k: 'range', name: 'Coil Size', icon: 'scope', val: [70, 85, 100, 120], desc: v => `Range ${v}px` },
+        { k: 'dmg', name: 'Voltage', icon: 'scope', w: 1.2, val: [3, 4, 5, 6, 8], desc: v => `DMG ${v}` },
       ] },
     { id: 'missile', name: 'Missile Pod', req: 75, ownW: 1.6, role: 'Homing missiles with splash. Loves deer and golden birds.',
       tracks: [
         { k: 'ammo', name: 'Pods', val: [1, 1, 2, 2, 3], desc: v => `${v} missile${v > 1 ? 's' : ''}/round` },
         { k: 'blast', name: 'Warhead', icon: 'choke', val: [8, 10, 12, 15], desc: v => `Blast ${v}px` },
         { k: 'rate', name: 'Autoloader', icon: 'hand', val: [5, 4.2, 3.5, 2.8], desc: v => `Every ${v}s` },
+        { k: 'dmg', name: 'Payload', icon: 'scope', w: 1.2, val: [3, 4, 5, 6, 8], desc: v => `DMG ${v}` },
       ] },
   ];
   const TURRET_CASH = 0.4, TURRET_PTS = 0.5; // turret kills pay less and never reset the miss counter
@@ -100,7 +109,7 @@
     { id: 'meadow', name: 'Meadow', req: 0, w: 0, cash: 1.0, pts: 1.0, speed: 1.0, life: 1.0, size: 1.0, dark: 0,
       role: 'Classic fields. Ducks, bluebirds, deer.', boss: 'eagle' },
     { id: 'lake', name: 'Lake', req: 18, w: 1.4, cash: 1.3, pts: 1.2, speed: 1.08, life: 0.95, size: 0.97, dark: 0,
-      role: 'Ducks & geese skim low over the water. Geese take 2 hits. Pays 1.3x.', boss: 'goose' },
+      role: 'Ducks & geese skim low over the water. Geese are tougher. Pays 1.3x.', boss: 'goose' },
     { id: 'snow', name: 'Snowy Forest', req: 45, w: 1.6, cash: 1.7, pts: 1.5, speed: 1.15, life: 0.92, size: 0.95, dark: 0,
       role: 'Snow owls glide, rabbits zig-zag, wolves sprint. Pays 1.7x.', boss: 'yeti' },
     { id: 'desert', name: 'Desert', req: 80, w: 1.8, cash: 2.2, pts: 1.8, speed: 1.22, life: 0.88, size: 0.93, dark: 0,
@@ -111,7 +120,18 @@
   const BOSS_EVERY = 10;
   // A map is CLEARED by defeating that map's round 30 boss (the 3rd boss). That unlocks Infinity mode for the map.
   const CLEAR_ROUND = 30;
-  const bossHp = r => 6 + Math.floor(r / 10) * 4;        // hits needed (laser/turret damage scaled in game)
+  // HP tables. Shotgun starts at DMG 2, so a basic duck (2 HP) still dies in one starter shot.
+  // Boss HP is the old hit-count (6, 10, 14, 18...) times that shotgun base, so mid-game clear pacing stays put.
+  const BASE_SHOT_DMG = 2;
+  const HP = {
+    bird: 2, blue: 2, gold: 2, decoy: 1,
+    goose: 4, owl: 3, bat: 2, vulture: 4,
+    deer: 4, swimgoose: 4, rabbit: 3, wolf: 5, roadrunner: 3, coyote: 5, eyes: 3, egg: 2,
+  };
+  const kindHp = k => HP[k] || 2;
+  const hitsNeeded = (hp, dmg) => Math.max(1, Math.ceil((hp || 1) / Math.max(1, dmg || 1)));
+  const flakDmg = l => 3 + Math.max(1, l | 0);
+  const bossHp = r => (6 + Math.floor(r / 10) * 4) * BASE_SHOT_DMG;
   const bossTime = r => Math.max(9, 16 - Math.floor(r / 10)); // seconds before it escapes (counts as a miss)
   const bossCash = r => 120 + r * 12;                      // before map/bounty multipliers
 
@@ -227,6 +247,10 @@
     const over = Math.max(0, level - cap);
     return over ? nice(base * Math.pow(INF_OVER, over)) : base;
   }
+  function dmgOf(id, level) {
+    const tr = TRACKS.find(t => t.id === id + '.dmg');
+    return tr ? infVal(tr, level) : 1;
+  }
 
   // ---------- difficulty ----------
   function difficulty(r) {
@@ -268,7 +292,7 @@
   const DAILY_PCT = [0.08, 0.10, 0.12, 0.14, 0.16, 0.20, 0.35];
   const DOUBLE_ADS_PER_DAY = 3;
 
-  const ECON = { WEAPONS, TURRETS, GLOBAL, PERKS, MAPS, BOSS_EVERY, CLEAR_ROUND, bossHp, bossTime, bossCash, SKINS, CROSSHAIRS, TRACKS, TOTAL_LEVELS, TURRET_CASH, TURRET_PTS,
+  const ECON = { WEAPONS, TURRETS, GLOBAL, PERKS, MAPS, BOSS_EVERY, CLEAR_ROUND, BASE_SHOT_DMG, HP, kindHp, hitsNeeded, flakDmg, dmgOf, bossHp, bossTime, bossCash, SKINS, CROSSHAIRS, TRACKS, TOTAL_LEVELS, TURRET_CASH, TURRET_PTS,
     cost, infCost, infVal, extendVal, cappedTrack, nice, curve, difficulty, KILL, killCash, killPts, roundBonus, decoyPenalty,
     MISSION_PCT, DAILY_PCT, DOUBLE_ADS_PER_DAY, BASE, PER_LEVEL, eggPts, eggCash, eggInterval };
   if (typeof module !== 'undefined' && module.exports) module.exports = ECON; else root.ECON = ECON;

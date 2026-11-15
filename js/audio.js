@@ -179,6 +179,7 @@ window.Sfx = (() => {
 
     // --- hits / animals ---
     hit() { tone('square', 620, 1100, 0.06, 0.10); },
+    hitSoft() { tone('triangle', 480, 220, 0.04, 0.07); noise(0.05, 0.06, 900, 200, 0.04); },
     squawk() { cryBird(880); },
     cry(kind) {
       const k = kind || 'bird';

@@ -430,15 +430,16 @@ const MAP_SET = {
   night: { fly: [['bat', 0.65], ['owl', 0.35]], ground: ['eyes'], hint: 'EYES IN THE BUSHES!' },
 };
 const KIND = {
-  bird: { set: 'bird', m: 'fly' }, blue: { set: 'blue', m: 'fly' }, gold: { set: 'gold', m: 'fly', spd: 1.35, size: 0.85, life: 0.8 }, decoy: { set: 'decoy', m: 'fly' },
-  goose: { set: 'goose', m: 'skim', hp: 2, size: 1.12, spd: 0.85 },
-  owl: { set: 'owl', m: 'glide', spd: 0.95 }, bat: { set: 'bat', m: 'flutter', size: 0.85, spd: 1.1 },
-  vulture: { set: 'vulture', m: 'circle', size: 1.1, spd: 0.9 },
-  deer: { set: 'deer', m: 'run', g: 1, size: 1.6 }, swimgoose: { set: 'goose', m: 'swim', g: 1, size: 1.2, hp: 2, spd: 0.45 },
-  rabbit: { set: 'rabbit', m: 'hop', g: 1, size: 1.25, spd: 0.9 }, wolf: { set: 'wolf', m: 'run', g: 1, size: 1.5, spd: 1.2, hp: 2 },
-  roadrunner: { set: 'roadrunner', m: 'run', g: 1, size: 1.25, spd: 1.55 }, coyote: { set: 'coyote', m: 'run', g: 1, size: 1.5, spd: 1.05, hp: 2 },
-  eyes: { set: null, m: 'peek', g: 1, size: 1 },
+  bird: { set: 'bird', m: 'fly', hp: 2 }, blue: { set: 'blue', m: 'fly', hp: 2 }, gold: { set: 'gold', m: 'fly', spd: 1.35, size: 0.85, life: 0.8, hp: 2 }, decoy: { set: 'decoy', m: 'fly', hp: 1 },
+  goose: { set: 'goose', m: 'skim', hp: 4, size: 1.12, spd: 0.85 },
+  owl: { set: 'owl', m: 'glide', spd: 0.95, hp: 3 }, bat: { set: 'bat', m: 'flutter', size: 0.85, spd: 1.1, hp: 2 },
+  vulture: { set: 'vulture', m: 'circle', size: 1.1, spd: 0.9, hp: 4 },
+  deer: { set: 'deer', m: 'run', g: 1, size: 1.6, hp: 4 }, swimgoose: { set: 'goose', m: 'swim', g: 1, size: 1.2, hp: 4, spd: 0.45 },
+  rabbit: { set: 'rabbit', m: 'hop', g: 1, size: 1.25, spd: 0.9, hp: 3 }, wolf: { set: 'wolf', m: 'run', g: 1, size: 1.5, spd: 1.2, hp: 5 },
+  roadrunner: { set: 'roadrunner', m: 'run', g: 1, size: 1.25, spd: 1.55, hp: 3 }, coyote: { set: 'coyote', m: 'run', g: 1, size: 1.5, spd: 1.05, hp: 5 },
+  eyes: { set: null, m: 'peek', g: 1, size: 1, hp: 3 },
 };
+Object.keys(KIND).forEach(k => { KIND[k].hp = ECON.kindHp(k); });
 const BOSSES = {
   eagle: { name: 'GIANT EAGLE', set: 'eagle', sc: 3, m: 'bfly' },
   buck: { name: 'BIG BUCK', set: 'buck', sc: 2.4, m: 'brun' },
@@ -449,6 +450,23 @@ const BOSSES = {
 };
 const payKind = k => k === 'swimgoose' ? 'goose' : k;
 const WDEF = id => ECON.WEAPONS.find(w => w.id === id);
+const hpOf = k => k === 'boss' ? ECON.bossHp(round) : ECON.kindHp(k);
+function shotDmg(w, info = {}) {
+  if (!w) return 1;
+  let d = w.dmg || 1;
+  if (info.charge != null && w.id === 'bow') {
+    const c = info.charge;
+    d = c >= 0.95 ? d : Math.max(1, Math.round(d * (0.45 + 0.55 * c)));
+  }
+  if (info.crit) d *= 2;
+  return Math.max(1, Math.round(d));
+}
+function dmgLine(id) {
+  const tr = Meta.track(id + '.dmg'); if (!tr) return '';
+  const now = Meta.val(tr.id), nxt = Meta.maxed(tr) ? null : ECON.infVal(tr, Meta.levelOf(tr.id) + 1);
+  return nxt == null ? ('DMG ' + now) : ('DMG ' + now + ' \u2192 ' + nxt);
+}
+
 const TDEF = id => ECON.TURRETS.find(t => t.id === id);
 
 // ---------------- game state ----------------
@@ -486,6 +504,7 @@ function makeWeapon(id) {
   const extra = perkReserve || 0;
   const cap = g('cap') + (id === 'laser' ? extra * 0.35 : extra);
   const w = { id, def, cap, reload: g('reload') * (perkLoader || 1), ammo: 0, reloading: false, reloadT: 0, cool: 0, heat: 0, overheated: false, swapT: 0, radius: 5, autoT: 0 };
+  w.dmg = g('dmg') || 1;
   if (id === 'shotgun') w.radius = g('choke');
   if (id === 'handgun') { w.radius = g('sights'); w.crit = g('crit'); }
   if (id === 'rifle') { w.radius = g('caliber'); w.pierce = g('pierce'); }
@@ -498,6 +517,7 @@ function makeWeapon(id) {
 function makeTurret(id, i) {
   const g = k => Meta.val(id + '.' + k);
   const t = { id, x: TURRET_X[i] || 40 + i * 30, y: H - BAR - 9, ammo0: g('ammo'), ammo: 0, cool: rand(0.6, 1.4), ang: -Math.PI / 2, flash: 0 };
+  t.dmg = g('dmg') || 2;
   if (id === 'pellet') { t.rate = g('rate'); t.err = g('aim'); }
   if (id === 'tesla') { t.rate = 3; t.chain = g('chain'); t.range = g('range'); }
   if (id === 'missile') { t.rate = g('rate'); t.blast = g('blast'); }
@@ -684,7 +704,7 @@ function dropEgg(boss) {
   const mid = Math.random() < 0.45;
   const hatchY = mid ? boss.y + rand(36, 100) : GROUND - rand(22, 50);
   targets.push({ kind: 'egg', set: 'egg', state: 'fly', x: boss.x + rand(-3, 3), y: boss.y + 8,
-    vx: 0, vy: 16, sc: 1.2, hp: 1, hp0: 1, hatchY: clamp(hatchY, boss.y + 24, GROUND - 14),
+    vx: 0, vy: 16, sc: 1.2, hp: ECON.kindHp('egg'), hp0: ECON.kindHp('egg'), hatchY: clamp(hatchY, boss.y + 24, GROUND - 14),
     risen: true, anim: 0, hurt: 0, life: 99, g: 0 });
 }
 function smashEgg(t, src) {
@@ -733,15 +753,19 @@ function maybeDropEgg(t, dt) {
 // ---------------- damage, kills, misses ----------------
 function damage(t, dmg, src, info = {}) {
   if (!hittable(t)) return false;
-  if (t.kind === 'egg') { smashEgg(t, src); return true; }
+  dmg = Math.max(1, Math.round(dmg || 1));
   if (t.kind === 'decoy') { if (src !== 'turret') hitDecoy(t); return true; }
-  t.hp -= dmg; t.hurt = 0.12;
+  t.hp -= dmg; t.hurt = 0.16;
+  const xo = (info.fx || 0);
+  float((info.crit ? 'CRIT ' : '') + dmg, t.x + xo, t.y - 14, info.crit ? '#ff5a5a' : '#ffe066', info.crit ? 1.3 : 1.15, 0.7);
   if (t.hp > 0.001) {
     if (t.kind === 'boss') { Sfx.bossHit(); if (Math.random() < 0.4) feathers(t.x + rand(-8, 8), t.y + rand(-6, 6), APAL[t.set] || PAL.bird, 4); }
-    else { float(t.hp >= 1 ? 'TOUGH!' : 'HIT', t.x, t.y - 12, '#ffb070', 1, 0.6); Sfx.hit(); }
+    else if (t.kind === 'egg') Sfx.hitSoft();
+    else { Sfx.hitSoft(); }
     if (src === 'player' || src === 'flak') hits += 0; // accuracy counts kills only
     return true;
   }
+  if (t.kind === 'egg') { smashEgg(t, src); return true; }
   kill(t, src, info);
   return true;
 }
@@ -899,17 +923,17 @@ function fireTap(x, y) {
     Sfx.shot(); shake = Math.max(shake, 3); whiteFlash = 0.06; flashes.push({ x, y, t: 0, r: w.radius });
     const list = areaHits(x, y, w.radius);
     if (list.some(t => t.kind !== 'decoy')) hitStop = 0.05;
-    list.forEach(t => { any = true; damage(t, 1, 'player'); });
+    list.forEach(t => { any = true; damage(t, shotDmg(w), 'player'); });
   } else if (w.id === 'handgun') {
     Sfx.pistol(); shake = Math.max(shake, 1.5); flashes.push({ x, y, t: 0, r: w.radius * 0.7 });
     const list = areaHits(x, y, w.radius).sort((a, b) => boxDist(a, x, y) - boxDist(b, x, y));
-    if (list[0]) { any = true; const crit = Math.random() < w.crit; damage(list[0], crit ? 2 : 1, 'player', { crit }); hitStop = 0.03; }
+    if (list[0]) { any = true; const crit = Math.random() < w.crit; damage(list[0], shotDmg(w, { crit }), 'player', { crit }); hitStop = 0.03; }
   } else if (w.id === 'rifle') {
     Sfx.rifle(); shake = Math.max(shake, 4); whiteFlash = 0.05;
     const m = muzzle(), dx = x - m.x, dy = y - m.y, L = Math.hypot(dx, dy) || 1, ex = m.x + dx / L * 600, ey = m.y + dy / L * 600;
     tracers.push({ x0: m.x, y0: m.y, x1: ex, y1: ey, t: 0, life: 0.18, c: '#fff6a0', w: 1.4 });
     const list = targets.filter(hittable).map(t => ({ t, h: segDist(t, m.x, m.y, ex, ey) })).filter(o => o.h.d <= w.radius).sort((a, b) => a.h.s - b.h.s).slice(0, w.pierce);
-    list.forEach(o => { any = true; damage(o.t, o.t.kind === 'boss' ? 2 : 1, 'player'); });
+    list.forEach(o => { any = true; damage(o.t, shotDmg(w), 'player'); });
     if (list.length) hitStop = 0.05;
     if (list.length >= 2) float('PIERCE X' + list.length, x, y - 20, '#9fe0ff', 1.3, 1);
   }
@@ -928,7 +952,7 @@ function fireMG(dt) {
     flashes.push({ x: sx, y: sy, t: 0.06, r: 2 });
     const list = areaHits(sx, sy, w.radius).sort((a, b) => boxDist(a, sx, sy) - boxDist(b, sx, sy));
     beginShot();
-    if (list[0]) damage(list[0], list[0].kind === 'boss' ? 0.34 : 1, 'player');
+    if (list[0]) damage(list[0], shotDmg(w), 'player');
     endShot();
     shake = Math.max(shake, 1.2);
   }
@@ -948,7 +972,7 @@ function fireLaser(dt) {
     if (segDist(t, m.x, m.y, ex, ey).d <= w.radius) {
       t.burn = (t.burn || 0) + dt;
       const need = t.kind === 'boss' ? w.power * 2.2 : w.power;
-      if (t.burn >= need) { t.burn = 0; beginShot(); damage(t, 1, 'player'); endShot(); }
+      if (t.burn >= need) { t.burn = 0; beginShot(); damage(t, shotDmg(w), 'player'); endShot(); }
       if (Math.random() < 0.5) parts.push({ x: t.x + rand(-3, 3), y: t.y + rand(-3, 3), vx: rand(-20, 20), vy: rand(-30, 0), c: '#ff9a3d', t: 0, life: 0.3, g: 0, s: 1 });
     }
   }
@@ -962,7 +986,7 @@ function releaseArrow() {
   w.ammo--; shots++; Meta.event('shot');
   const m = muzzle(), g = 120, v = 140 + 230 * charge;
   const dx = aim.x - m.x, dy = aim.y - m.y, T = Math.max(0.12, Math.hypot(dx, dy) / v);
-  projs.push({ type: 'arrow', x: m.x, y: m.y, vx: dx / T, vy: dy / T - 0.5 * g * T, g, r: w.radius, pierce: w.pierce, hitSet: new Set(), dmg: charge >= 0.95 ? 2 : 1, full: charge >= 0.95, any: false, life: 4 });
+  projs.push({ type: 'arrow', x: m.x, y: m.y, vx: dx / T, vy: dy / T - 0.5 * g * T, g, r: w.radius, pierce: w.pierce, hitSet: new Set(), dmg: shotDmg(w, { charge }), full: charge >= 0.95, any: false, life: 4 });
   Sfx.bowShot();
   if (w.ammo <= 0) setTimeout(() => { if (wpn === w && w.ammo <= 0 && !w.reloading && state === 'play') float('NOCK!', W - 32, H - BAR - 12, '#ff9a3d', 1.2, 0.8); }, 250);
 }
@@ -995,7 +1019,7 @@ function updTurrets(dt) {
       const sp = 260, dist = Math.hypot(best.x - tu.x, best.y - tu.y), tt = dist / sp;
       const tx = best.x + (best.vx || 0) * tt + rand(-tu.err, tu.err), ty = best.y + (best.vy || 0) * tt + rand(-tu.err, tu.err);
       const L = Math.hypot(tx - tu.x, ty - tu.y + 6) || 1;
-      projs.push({ type: 'pellet', x: tu.x, y: tu.y - 6, vx: (tx - tu.x) / L * sp, vy: (ty - tu.y + 6) / L * sp, r: 2.5, life: 1.6 });
+      projs.push({ type: 'pellet', x: tu.x, y: tu.y - 6, vx: (tx - tu.x) / L * sp, vy: (ty - tu.y + 6) / L * sp, r: 2.5, life: 1.6, dmg: tu.dmg || 2 });
       Sfx.pellet();
     } else if (tu.id === 'tesla') {
       const chain = [best]; let cur = best;
@@ -1005,10 +1029,10 @@ function updTurrets(dt) {
       }
       const pts = [{ x: tu.x, y: tu.y - 10 }].concat(chain.map(t => ({ x: t.x, y: t.y })));
       zaps.push({ pts, t: 0 });
-      beginShot(); chain.forEach(t => damage(t, 1, 'turret')); shotKills = 0;
+      beginShot(); chain.forEach(t => damage(t, tu.dmg || 3, 'turret')); shotKills = 0;
       Sfx.zap();
     } else if (tu.id === 'missile') {
-      projs.push({ type: 'missile', x: tu.x, y: tu.y - 8, vx: 0, vy: -90, target: best, blast: tu.blast, life: 3.2 });
+      projs.push({ type: 'missile', x: tu.x, y: tu.y - 8, vx: 0, vy: -90, target: best, blast: tu.blast, life: 3.2, dmg: tu.dmg || 3 });
       Sfx.missile();
     }
   }
@@ -1181,7 +1205,7 @@ function update(dt) {
     if (targets.length < 3 && Math.random() < 0.02) {
       const sp = rand(25, 45), fl = MAP_SET[curMap.id].fly[0][0];
       const k = Math.random() < 0.2 ? 'gold' : fl, K = KIND[k];
-      targets.push({ kind: k, set: k === 'owl' && curMap.id === 'snow' ? 'snowowl' : K.set, m: 'fly', x: -10, y: rand(SKY_TOP + 60, SKY_BOT - 20), vx: sp, vx0: sp, vy: rand(-1, 1) * sp * 0.4, sp: sp * 0.6, sc: 1.2, yTop: SKY_TOP + 40, yBot: SKY_BOT - 10, state: 'fly', anim: 0, life: 1e9, risen: true, erratic: true, turnT: 1, attract: true, hp: 1, hurt: 0 });
+      targets.push({ kind: k, set: k === 'owl' && curMap.id === 'snow' ? 'snowowl' : K.set, m: 'fly', x: -10, y: rand(SKY_TOP + 60, SKY_BOT - 20), vx: sp, vx0: sp, vy: rand(-1, 1) * sp * 0.4, sp: sp * 0.6, sc: 1.2, yTop: SKY_TOP + 40, yBot: SKY_BOT - 10, state: 'fly', anim: 0, life: 1e9, risen: true, erratic: true, turnT: 1, attract: true, hp: (K.hp || ECON.kindHp(k) || 2), hp0: (K.hp || ECON.kindHp(k) || 2), hurt: 0 });
     }
   } else if (state === 'intro') {
     introT -= dt; if (introT <= 0) state = 'play';
@@ -1224,14 +1248,14 @@ function updProjs(dt) {
         if (p.pierce <= 0 || p.hitSet.has(t) || !hittable(t)) continue;
         if (boxDist(t, p.x, p.y) <= p.r) {
           p.hitSet.add(t); p.pierce--; p.any = true;
-          beginShot(); damage(t, t.kind === 'boss' ? p.dmg : 1, 'player'); endShot(); Sfx.arrowHit();
+          beginShot(); damage(t, p.dmg, 'player'); endShot(); Sfx.arrowHit();
         }
       }
       if (p.pierce <= 0) p.dead = true;
       if (p.y > GROUND + 14 || p.x < -10 || p.x > W + 10 || p.y < -60 || p.life <= 0) { p.dead = true; if (!p.any && canAct()) float('MISS', clamp(p.x, 12, W - 12), clamp(p.y, SKY_TOP + 10, GROUND), '#9aa', 1, 0.6); }
     } else if (p.type === 'pellet') {
       p.x += p.vx * dt; p.y += p.vy * dt;
-      for (const t of targets) if (hittable(t) && t.kind !== 'decoy' && boxDist(t, p.x, p.y) <= p.r) { damage(t, t.kind === 'boss' ? 0.5 : 1, 'turret'); p.dead = true; break; }
+      for (const t of targets) if (hittable(t) && t.kind !== 'decoy' && boxDist(t, p.x, p.y) <= p.r) { damage(t, p.dmg || 2, 'turret'); p.dead = true; break; }
       if (p.y < -10 || p.x < -10 || p.x > W + 10 || p.life <= 0) p.dead = true;
     } else if (p.type === 'missile') {
       const t = p.target;
@@ -1240,7 +1264,7 @@ function updProjs(dt) {
         while (da > Math.PI) da -= 2 * Math.PI; while (da < -Math.PI) da += 2 * Math.PI;
         const na = cur + clamp(da, -5 * dt, 5 * dt), sp = Math.min(170, Math.hypot(p.vx, p.vy) + 140 * dt);
         p.vx = Math.cos(na) * sp; p.vy = Math.sin(na) * sp;
-        if (Math.hypot(t.x - p.x, t.y - p.y) < 6) { explode(p.x, p.y, p.blast, 'turret', 2); p.dead = true; }
+        if (Math.hypot(t.x - p.x, t.y - p.y) < 6) { explode(p.x, p.y, p.blast, 'turret', p.dmg || 3); p.dead = true; }
       } else p.target = targets.filter(x => dangerOf(x) >= 0)[0] || null;
       p.x += p.vx * dt; p.y += p.vy * dt;
       if (Math.random() < 0.8) parts.push({ x: p.x, y: p.y, vx: rand(-5, 5), vy: rand(-5, 5), c: Math.random() < 0.5 ? '#ccc' : '#ff9a3d', t: 0, life: 0.35, g: 0, s: 1 });
@@ -1248,7 +1272,7 @@ function updProjs(dt) {
     } else if (p.type === 'flak') {
       p.t += dt; const k = Math.min(1, p.t / p.T);
       p.x = HUNTER_X + (p.tx - HUNTER_X) * k; p.y = (H - BAR - 20) + (p.ty - (H - BAR - 20)) * k - Math.sin(k * Math.PI) * 30;
-      if (k >= 1) { const any = explode(p.tx, p.ty, 22, 'flak', 2); if (!any) float('MISS', p.tx, p.ty - 6, '#fff', 1.2, 0.6); p.dead = true; }
+      if (k >= 1) { const any = explode(p.tx, p.ty, 22, 'flak', ECON.flakDmg(Meta.val('gadget.flak'))); if (!any) float('MISS', p.tx, p.ty - 6, '#fff', 1.2, 0.6); p.dead = true; }
     }
   }
   projs = projs.filter(p => !p.dead);
@@ -1472,7 +1496,12 @@ function trackItem(u) {
     const msg = document.createElement('div'); msg.className = 'ds dim'; msg.textContent = u.unlock ? 'Owned' : 'Maxed'; el.appendChild(msg);
   } else {
     const sl = document.createElement('div'); sl.className = 'statline';
-    sl.innerHTML = (u.unlock ? '' : `<div class="now">Now: ${esc(cur)}</div>`) + `<div class="nxt">Next: ${esc(nxt)}</div>`;
+    if ((u.k === 'dmg' || (u.id || '').endsWith('.dmg')) && !u.unlock) {
+      const a = ECON.infVal(u, l), b = ECON.infVal(u, l + 1);
+      sl.innerHTML = `<div class="nxt dmg-stat">DMG ${esc(a)} \u2192 ${esc(b)}</div>`;
+    } else {
+      sl.innerHTML = (u.unlock ? '' : `<div class="now">Now: ${esc(cur)}</div>`) + `<div class="nxt">Next: ${esc(nxt)}</div>`;
+    }
     el.appendChild(sl);
 
     if (Meta.bank() < c) {
@@ -1507,7 +1536,11 @@ function openTrackDetail(u) {
   if (!ok) { const m = document.createElement('p'); m.className = 'lock-msg'; m.textContent = 'Locked · ' + lockText(u); body.appendChild(m); }
   else if (!maxed) {
     const sl = document.createElement('div'); sl.className = 'statline';
-    sl.innerHTML = `<div class="now">Now: ${esc(cur)}</div><div class="nxt">Next: ${esc(nxt)}</div>`;
+    if ((u.k === 'dmg' || (u.id || '').endsWith('.dmg'))) {
+      sl.innerHTML = `<div class="nxt dmg-stat">DMG ${esc(ECON.infVal(u, l))} \u2192 ${esc(ECON.infVal(u, l + 1))}</div>`;
+    } else {
+      sl.innerHTML = `<div class="now">Now: ${esc(cur)}</div><div class="nxt">Next: ${esc(nxt)}</div>`;
+    }
     body.appendChild(sl);
     if (Meta.bank() < c) { const need = document.createElement('p'); need.className = 'need'; need.textContent = 'Need $' + fmt(c - Meta.bank()) + ' more'; body.appendChild(need); }
   } else { const m = document.createElement('p'); m.textContent = u.unlock ? 'Owned' : 'Maxed'; body.appendChild(m); }
@@ -1524,7 +1557,7 @@ function openWeaponDetail(w, owned, eq) {
   head.appendChild(iconEl(w.id));
   const htxt = document.createElement('div');
   const badge = eq.primary === w.id ? 'Equipped' : (eq.secondary === w.id && Meta.val('loadout') ? 'On the sling' : (owned ? 'Owned' : 'Locked'));
-  htxt.innerHTML = `<div class="nm">${esc(w.name.toUpperCase())}</div><div class="ds">${esc(w.role)} · ${esc(badge)}</div>`;
+  htxt.innerHTML = `<div class="nm">${esc(w.name.toUpperCase())}</div><div class="ds">${esc(w.role)} · ${esc(badge)}</div><div class="dmg-line">${esc(dmgLine(w.id))}</div>`;
   head.appendChild(htxt);
   body.appendChild(head);
   const p = document.createElement('p'); p.textContent = owned ? 'Upgrade this gun below, or equip it as your primary or sling weapon.' : 'Buy this gun to add it to your loadout.'; body.appendChild(p);
@@ -1605,6 +1638,7 @@ function openShop(from = 'title', keep) {
       const badgeCls = eq.primary === w.id ? 'equip' : (eq.secondary === w.id ? 'sling' : (owned ? '' : 'dim'));
       const c = card(w.id, w.name.toUpperCase(), w.role, badge, eq.primary === w.id, () => openWeaponDetail(w, owned, eq));
       if (badge && c.querySelector('.badge') && badgeCls) c.querySelector('.badge').classList.add(badgeCls);
+      const dg = document.createElement('div'); dg.className = 'dmg-line'; dg.textContent = dmgLine(w.id); c.insertBefore(dg, c.children[1] || null);
       if (owned) {
         const row = document.createElement('div'); row.className = 'row3';
         row.appendChild(btn(eq.primary === w.id ? 'EQUIPPED' : 'EQUIP', 'small' + (eq.primary === w.id ? ' on' : ''), () => { Meta.equipWeapon(w.id, 'primary'); openShop(shopFrom, true); }, midRun || eq.primary === w.id));
@@ -1627,6 +1661,7 @@ function openShop(from = 'title', keep) {
       const cv = document.createElement('canvas'); cv.width = 12; cv.height = 12; cv.getContext('2d').drawImage(TURRET_SPR[tu.id], 0, 0);
       const c = card(cv, tu.name.toUpperCase(), tu.role, badge, mounted, () => {});
       if (mounted && c.querySelector('.badge')) c.querySelector('.badge').classList.add('equip');
+      const dg = document.createElement('div'); dg.className = 'dmg-line'; dg.textContent = dmgLine(tu.id); c.insertBefore(dg, c.children[1] || null);
       if (owned) {
         const row = document.createElement('div'); row.className = 'row3';
         const lab = mounted ? 'UNMOUNT' : (slots ? 'MOUNT' : 'NEED PAD');
@@ -2070,7 +2105,15 @@ function drawTarget(t) {
   if (t.kind === 'eyes') return;
   if (t.kind === 'egg') {
     const wob = Math.sin(t.anim * 8) * 1.2;
-    spr(SPR.egg[0], t.x + wob * 0.3, t.y, t.sc, false, false, 1);
+    const flick = t.hurt > 0 && Math.floor(t.hurt * 40) % 2 === 0;
+    spr(SPR.egg[0], t.x + wob * 0.3, t.y, t.sc, false, false, flick ? 0.35 : 1);
+    if (live(t) && t.hp0 > 1 && (t.hp < t.hp0 || t.hp0 > 2)) {
+      const bw = 14, by = t.y - SPR.egg[0].height * t.sc / 2 - 5;
+      ctx.fillStyle = '#000'; ctx.fillRect(t.x - bw / 2 - 0.5, by - 0.5, bw + 1, 4);
+      ctx.fillStyle = '#3b1820'; ctx.fillRect(t.x - bw / 2, by, bw, 3);
+      ctx.fillStyle = t.hurt > 0 ? '#fff' : '#ff5a5a';
+      ctx.fillRect(t.x - bw / 2, by, bw * Math.max(0, t.hp / t.hp0), 3);
+    }
     return;
   }
   const set = SPR[t.set]; if (!set) return;
@@ -2094,7 +2137,15 @@ function drawTarget(t) {
     }
   }
   if (t.crown && live(t)) { const img = set[0]; ctx.drawImage(CROWN, t.x - 5, t.y - img.height * t.sc / 2 - 5, 10, 6); }
-  if (t.kind !== 'boss' && t.hp0 > 1 && live(t) && t.hp < t.hp0) { const w = 12; ctx.fillStyle = '#000'; ctx.fillRect(t.x - w / 2, t.y - set[0].height * t.sc / 2 - 4, w, 2); ctx.fillStyle = '#ff5a5a'; ctx.fillRect(t.x - w / 2, t.y - set[0].height * t.sc / 2 - 4, w * t.hp / t.hp0, 2); }
+  if (t.kind !== 'boss' && live(t) && t.hp0 > 1 && (t.hp < t.hp0 || t.hp0 > 2)) {
+    const img = (t.kind === 'egg' ? SPR.egg[0] : set[0]);
+    const bw = Math.max(14, Math.min(22, 10 + t.hp0));
+    const bh = 3, by = t.y - (img ? img.height * t.sc / 2 : 10) - 5;
+    ctx.fillStyle = '#000'; ctx.fillRect(t.x - bw / 2 - 0.5, by - 0.5, bw + 1, bh + 1);
+    ctx.fillStyle = '#3b1820'; ctx.fillRect(t.x - bw / 2, by, bw, bh);
+    ctx.fillStyle = t.hurt > 0 ? '#fff' : '#ff5a5a';
+    ctx.fillRect(t.x - bw / 2, by, bw * Math.max(0, t.hp / t.hp0), bh);
+  }
 }
 function drawHunter() {
   const hx = HUNTER_X, feet = H - BAR - 1;
@@ -2396,6 +2447,9 @@ window.PH = {
   autoReloadDelay: () => autoReloadDelay(), get perkAuto() { return perkAuto; },
 
   spawn(k) { spawn(k); }, setAim(x, y) { aim = { x, y }; lightPos = { x, y }; }, hold(on) { holding = on; },
+  kindHp: k => ECON.kindHp(k), bossHp: r => ECON.bossHp(r), dmgOf: (id, lv) => ECON.dmgOf(id, lv),
+  shotDmg, damage, makeWeapon, makeTurret, hitsNeeded: (hp, d) => ECON.hitsNeeded(hp, d),
+  flakDmg: l => ECON.flakDmg(l), dmgLine, fireTap,
   grantAll() { Meta.withMode('campaign', () => { ECON.TRACKS.forEach(t => { Meta.save.lv[t.id] = t.val.length - 1; }); }); Meta.persist(); },
   makeCard: o => makeCard(o || {}).toDataURL('image/png'),
   rebuild() { buildBg(); }, toTitle() { toTitle(); }, openShop(tab) { shopTab = tab || shopTab; openShop('title'); }, openBoard(m) { openBoard(m, 'title'); },

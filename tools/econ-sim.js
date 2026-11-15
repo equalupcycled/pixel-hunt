@@ -124,9 +124,18 @@ function shotAttempts(Tw, cap, reload, shotT, ammo, lv) {
   return attempts(Tw, cap, reload, shotT);
 }
 // probability that the equipped weapon kills a target, plus per-kill modifiers
+
+function gunDmg(w, lv) {
+  return (T(w + '.dmg') ? V(lv, w + '.dmg') : 1) || 1;
+}
+function needHitsFor(w, lv, kind, ctx) {
+  if (ctx && ctx.hitOnly) return 1;
+  return E.hitsNeeded(E.kindHp(kind), gunDmg(w, lv));
+}
 function weaponTry(w, lv, d, kind, slow, st, ammo, ctx) {
   const g = k => V(lv, w + '.' + k);
   const mods = gunMods(w, lv);
+  const kHits = needHitsFor(w, lv, kind, ctx);
   // Flyers cross left -> right: on-screen time = (linger + 0.7s) x Eye; apparent speed = crossing speed + vertical zig.
   const cross = (d.life * (kind === 'gold' ? 0.8 : 1) + 0.7) / (kind === 'gold' ? Math.sqrt(1.35) : 1);
   let speed = (kind === 'deer' || GROUND.has(kind) ? d.deerSpeed * 0.8 : Math.hypot(202 / (cross * st.eye), d.speed * 0.6 * (kind === 'gold' ? 1.35 : 1))) * (slow ? 0.38 : 1);
@@ -135,22 +144,22 @@ function weaponTry(w, lv, d, kind, slow, st, ammo, ctx) {
   let Tw = (kind === 'deer' || GROUND.has(kind) ? 180 / d.deerSpeed : cross) * st.eye / Math.min(d.conc, 3) * (slow ? 2.2 : 1);
   ({ speed, scale, Tw } = applyPerkWorld({ speed, scale, Tw, er }, kind, lv, ctx));
   let p = 0, extra = 0;
-  if (w === 'shotgun') p = 1 - Math.pow(1 - aim(g('choke'), scale, speed, er), shotAttempts(Tw, mods.cap, mods.reload, 0.45, ammo, lv));
-  else if (w === 'handgun') p = 1 - Math.pow(1 - aim(g('sights'), scale, speed, er) * 0.8, shotAttempts(Tw, mods.cap, mods.reload, 0.26, ammo, lv));
-  else if (w === 'rifle') { p = 1 - Math.pow(1 - aim(g('caliber'), scale, speed, er) * 1.3, shotAttempts(Tw, mods.cap, mods.reload, 0.5, ammo, lv)); extra = d.conc > 1 ? Math.min(0.4, 0.11 * (g('pierce') - 1)) : 0; }
-  else if (w === 'bow') { const lead = 1 - 0.15 * Math.min(1, speed / 110); p = 1 - Math.pow(1 - aim(g('tip'), scale, speed, er) * lead * 1.35, shotAttempts(Tw, mods.cap, mods.reload, 0.3 + g('draw'), ammo, lv)); extra = d.conc > 1 ? 0.08 * (g('pierce') - 1) : 0; }
+  if (w === 'shotgun') p = atLeastK(aim(g('choke'), scale, speed, er), shotAttempts(Tw, mods.cap, mods.reload, 0.45, ammo, lv), kHits);
+  else if (w === 'handgun') p = atLeastK(aim(g('sights'), scale, speed, er) * 0.8, shotAttempts(Tw, mods.cap, mods.reload, 0.26, ammo, lv), kHits);
+  else if (w === 'rifle') { p = atLeastK(aim(g('caliber'), scale, speed, er) * 1.3, shotAttempts(Tw, mods.cap, mods.reload, 0.5, ammo, lv), kHits); extra = d.conc > 1 ? Math.min(0.4, 0.11 * (g('pierce') - 1)) : 0; }
+  else if (w === 'bow') { const lead = 1 - 0.15 * Math.min(1, speed / 110); p = atLeastK(aim(g('tip'), scale, speed, er) * lead * 1.35, shotAttempts(Tw, mods.cap, mods.reload, 0.3 + g('draw'), ammo, lv), kHits); extra = d.conc > 1 ? 0.08 * (g('pierce') - 1) : 0; }
   else if (w === 'mg') {
     const rate = g('rate'), r = 3 + (12 - g('spread')) * 0.2;
     if (ammo.v < 4) { ammo.v = mods.cap; ammo.t += mods.reload; }
     const Tl = Math.max(0.2, Tw - ammo.t); ammo.t = 0;
     const n = Math.min(12, Math.floor(Tl / rate), ammo.v), a = aim(r, scale, speed, er) * 0.45;
-    p = 1 - Math.pow(1 - a, n); ammo.v -= Math.max(1, Math.round(p > 0.5 ? Math.min(n, 1 / Math.max(a, 0.05)) : n));
+    p = atLeastK(a, n, kHits); ammo.v -= Math.max(1, Math.round(p > 0.5 ? Math.min(n, 1 / Math.max(a, 0.05)) : n));
     extra = Math.min(0.35, 0.07 * (d.conc - 1));
   } else if (w === 'laser') {
     const dwell = g('power'), k = Math.pow(speed / 40, 0.7) * (1 + er) * Math.pow(1.5 / scale, 0.5) / Math.pow(g('width') / 2, 0.5);
     if (ammo.v < dwell * 2) { ammo.v = mods.cap; ammo.t += mods.reload; }
     const Tl = Math.max(0.2, Tw - ammo.t); ammo.t = 0;
-    const need = dwell * k * 1.6;
+    const need = dwell * k * 1.6 * kHits;
     p = 1 - Math.exp(-Math.min(Tl, ammo.v) / need); ammo.v -= Math.min(ammo.v, need * 1.2);
     extra = Math.min(0.3, 0.06 * (d.conc - 1));
   }
@@ -176,11 +185,13 @@ function simBossFight(wId, lv, d, st, ammo, r, M, mapId, tryFn, missRun) {
   const ctx = { boss: true, missRun: missRun || 0, maxMiss: st.maxMiss || 3 };
   const tm = E.bossTime(r) * (st.eye || 1);
   const hp = E.bossHp(r);
-  const pr = tryFn(wId, lv, d, 'deer', false, st, { v: 999, t: 0 }, ctx).p;
+  const pr = tryFn(wId, lv, d, 'deer', false, st, { v: 999, t: 0 }, Object.assign({}, ctx, { hitOnly: true })).p;
   const rate = (wId === 'mg' || wId === 'laser' ? 1.6 : 1.1);
+  const dmg = gunDmg(wId, lv);
   const shots = tm * rate * pr;
-  const killed = shots >= hp || rnd() < shots / hp * 0.5;
-  const dps = rate * Math.max(0.05, pr);
+  const dealt = shots * dmg;
+  const killed = dealt >= hp || rnd() < dealt / hp * 0.5;
+  const dps = rate * Math.max(0.05, pr) * dmg;
   const fightT = killed ? Math.min(tm, hp / dps) : tm;
   const interval = E.eggInterval(r, M);
   const delay = 1.6 * (st.eye || 1);
@@ -482,14 +493,14 @@ function tgtStats(d, kind, slow, st, lv, ctx) {
   if (K.g) {
     const spd = d.deerSpeed * (K.spd || 1);
     s = { speed: spd * 0.8 * (slow ? 0.38 : 1), scale: K.size || 1.6, er: 0,
-      Tw: (180 / Math.max(8, spd)) * st.eye / Math.min(d.conc, 3) * (slow ? 2.2 : 1), hp: K.hp || 1 };
+      Tw: (180 / Math.max(8, spd)) * st.eye / Math.min(d.conc, 3) * (slow ? 2.2 : 1), hp: E.kindHp(kind) };
   } else {
     const lifeMul = kind === 'gold' ? 0.8 : (K.life || 1);
     const spdK = kind === 'gold' ? 1.35 : (K.spd || 1);
     const cross = (d.life * lifeMul + 0.7) / (spdK > 1 ? Math.sqrt(spdK) : 1);
     const speed = Math.hypot(202 / (cross * st.eye), d.speed * 0.6 * spdK) * (slow ? 0.38 : 1);
     const scale = d.scale * (kind === 'gold' ? 0.85 : (K.size || 1));
-    s = { speed, scale, er: d.erratic, Tw: cross * st.eye / Math.min(d.conc, 3) * (slow ? 2.2 : 1), hp: K.hp || 1 };
+    s = { speed, scale, er: d.erratic, Tw: cross * st.eye / Math.min(d.conc, 3) * (slow ? 2.2 : 1), hp: E.kindHp(kind) };
   }
   return applyPerkWorld(s, kind, lv, ctx);
 }
@@ -498,23 +509,24 @@ function weaponTryScore(w, lv, d, kind, slow, st, ammo, ctx) {
   const g = k => V(lv, w + '.' + k);
   const mods = gunMods(w, lv);
   const hp = s.hp || 1;
+  const kHits = needHitsFor(w, lv, kind, ctx);
   let p = 0, extra = 0;
-  if (w === 'shotgun') { const a = aim(g('choke'), s.scale, s.speed, s.er), n = shotAttempts(s.Tw, mods.cap, mods.reload, 0.45, ammo, lv); p = atLeastK(a, n, hp); }
-  else if (w === 'handgun') { const a = aim(g('sights'), s.scale, s.speed, s.er) * 0.8, n = shotAttempts(s.Tw, mods.cap, mods.reload, 0.26, ammo, lv); p = atLeastK(a, n, hp); }
-  else if (w === 'rifle') { const a = aim(g('caliber'), s.scale, s.speed, s.er) * 1.3, n = shotAttempts(s.Tw, mods.cap, mods.reload, 0.5, ammo, lv); p = atLeastK(a, n, hp); extra = d.conc > 1 ? Math.min(0.4, 0.11 * (g('pierce') - 1)) : 0; }
-  else if (w === 'bow') { const lead = 1 - 0.15 * Math.min(1, s.speed / 110); const a = aim(g('tip'), s.scale, s.speed, s.er) * lead * 1.35, n = shotAttempts(s.Tw, mods.cap, mods.reload, 0.3 + g('draw'), ammo, lv); p = atLeastK(a, n, hp); extra = d.conc > 1 ? 0.08 * (g('pierce') - 1) : 0; }
+  if (w === 'shotgun') { const a = aim(g('choke'), s.scale, s.speed, s.er), n = shotAttempts(s.Tw, mods.cap, mods.reload, 0.45, ammo, lv); p = atLeastK(a, n, kHits); }
+  else if (w === 'handgun') { const a = aim(g('sights'), s.scale, s.speed, s.er) * 0.8, n = shotAttempts(s.Tw, mods.cap, mods.reload, 0.26, ammo, lv); p = atLeastK(a, n, kHits); }
+  else if (w === 'rifle') { const a = aim(g('caliber'), s.scale, s.speed, s.er) * 1.3, n = shotAttempts(s.Tw, mods.cap, mods.reload, 0.5, ammo, lv); p = atLeastK(a, n, kHits); extra = d.conc > 1 ? Math.min(0.4, 0.11 * (g('pierce') - 1)) : 0; }
+  else if (w === 'bow') { const lead = 1 - 0.15 * Math.min(1, s.speed / 110); const a = aim(g('tip'), s.scale, s.speed, s.er) * lead * 1.35, n = shotAttempts(s.Tw, mods.cap, mods.reload, 0.3 + g('draw'), ammo, lv); p = atLeastK(a, n, kHits); extra = d.conc > 1 ? 0.08 * (g('pierce') - 1) : 0; }
   else if (w === 'mg') {
     const rate = g('rate'), r = 3 + (12 - g('spread')) * 0.2;
     if (ammo.v < 4) { ammo.v = mods.cap; ammo.t += mods.reload; }
     const Tl = Math.max(0.2, s.Tw - ammo.t); ammo.t = 0;
     const n = Math.min(12, Math.floor(Tl / rate), ammo.v), a = aim(r, s.scale, s.speed, s.er) * 0.45;
-    p = atLeastK(a, n, hp); ammo.v -= Math.max(1, Math.round(p > 0.5 ? Math.min(n, 1 / Math.max(a, 0.05)) : n));
+    p = atLeastK(a, n, kHits); ammo.v -= Math.max(1, Math.round(p > 0.5 ? Math.min(n, 1 / Math.max(a, 0.05)) : n));
     extra = Math.min(0.35, 0.07 * (d.conc - 1));
   } else if (w === 'laser') {
     const dwell = g('power'), k = Math.pow(s.speed / 40, 0.7) * (1 + s.er) * Math.pow(1.5 / s.scale, 0.5) / Math.pow(g('width') / 2, 0.5);
     if (ammo.v < dwell * 2) { ammo.v = mods.cap; ammo.t += mods.reload; }
     const Tl = Math.max(0.2, s.Tw - ammo.t); ammo.t = 0;
-    const need = dwell * k * 1.6 * hp;
+    const need = dwell * k * 1.6 * kHits;
     const p1need = dwell * k * 1.6;
     p = 1 - Math.exp(-Math.min(Tl, ammo.v) / need); ammo.v -= Math.min(ammo.v, p1need * 1.2);
     extra = Math.min(0.3, 0.06 * (d.conc - 1));

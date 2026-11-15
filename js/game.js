@@ -1140,7 +1140,7 @@ function refreshBoostButtons() {
   const owned = boostOwnedForUi();
   const left = Meta.autoBoostLeft();
   const active = !owned && left > 0;
-  const stamp = (owned ? 'own' : active ? 'on:' + fmtBoostClock(left) : 'offer');
+  const stamp = (owned ? 'own' : active ? 'on:' + fmtBoostClock(left) : 'offer') + (Meta.isAdFree && Meta.isAdFree() ? ':af' : '');
   if (stamp === boostBtnStamp) return;
   boostBtnStamp = stamp;
   document.querySelectorAll('.boost-btn').forEach(b => {

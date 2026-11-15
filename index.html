@@ -280,8 +280,13 @@
 <script src="js/leaderboard.js"></script>
 <script src="js/share.js"></script>
 <script src="js/game.js"></script>
+<script src="js/native.js"></script>
 <script>
-if ('serviceWorker' in navigator && /^https?:/.test(location.protocol)) {
+// Capacitor / the test APK serve the game from https://localhost; a service worker there would
+// fight the bundled assets. Skip registration in the native shell. The PWA is unchanged.
+const PH_NATIVE = document.documentElement.hasAttribute('data-native')
+  || !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform());
+if (!PH_NATIVE && 'serviceWorker' in navigator && /^https?:/.test(location.protocol)) {
   window.addEventListener('load', () => navigator.serviceWorker.register('sw.js', { updateViaCache: 'none' })
     .then(r => { try { r.update(); } catch (e) {} }).catch(() => {}));
 }

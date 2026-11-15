@@ -31,7 +31,7 @@ window.Sfx = (() => {
       pumpMusic();
     } catch (e) { ac = null; sfxGain = null; musicGain = null; noiseBuf = null; }
   }
-  ['touchend', 'pointerup', 'click', 'keydown'].forEach(ev => document.addEventListener(ev, init, { capture: true, passive: true }));
+  ['touchstart', 'touchend', 'pointerdown', 'pointerup', 'click', 'keydown'].forEach(ev => document.addEventListener(ev, init, { capture: true, passive: true }));
 
   const sfxOk = () => ac && sfxOn && sfxGain;
   const saveSfx = () => { try { localStorage.setItem('pixelhunt.muted', sfxOn ? '0' : '1'); } catch (e) {} };

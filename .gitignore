@@ -1,1 +1,16 @@
 node_modules/
+www/
+dist/
+android/.gradle/
+android/build/
+android/app/build/
+android/app/src/main/assets/public/
+android/local.properties
+android/.idea/
+android/*.iml
+android/captures/
+android/.cxx/
+*.keystore
+*.jks
+tools/__pycache__/
+__pycache__/

@@ -8,12 +8,14 @@ Retro pixel hunting high-score game. Mobile-first HTML5 canvas, no build step, n
 python3 -m http.server 8080   # then open http://localhost:8080
 ```
 Any static host works (Render static site, GitHub Pages, Netlify, Cloudflare Pages). Publish dir = repo root, no build command.
-Live: https://pixel-hunt-o4vw.onrender.com/ (Render static site, auto-deploys from `main` of https://github.com/equalupcycled/pixel-hunt).
+Live game: https://pixel-hunt-o4vw.onrender.com/ (Render static site, auto-deploys from `main` of https://github.com/equalupcycled/pixel-hunt).
+Landing / download page (does not replace the game): https://pixel-hunt-o4vw.onrender.com/home.html.
 
 ## Files
-- `index.html` - layout + overlays (title + map select, how-to, upgrades, pause, continue, game over, name entry, leaderboard, credits, ad layer) + Open Graph tags
+- `index.html` - the game: layout + overlays (title + map select, how-to, upgrades, pause, continue, game over, name entry, leaderboard, credits, ad layer) + Open Graph tags. Title screen links to the landing page.
+- `home.html`, `css/home.css`, `img/` - public landing / download page (Play Now, Android APK, iPhone Add to Home Screen). The game stays at `/` and `/index.html` so the installed PWA is unchanged.
 - `privacy.html`, `terms.html` - Privacy Policy and Terms of Use (Cache Brands LLC)
-- `css/style.css` - pixel UI styling
+- `css/style.css` - pixel UI styling for the game
 - `js/game.js` - game loop, sprites, pixel font, maps/backgrounds, weapons, turrets, gadgets, bosses, upgrades UI, input
 - `js/economy.js` - weapons, turrets, gear, maps, cosmetics, price formula, difficulty curve, payouts (shared with the simulator)
 - `js/meta.js` - persistent save (schema v4: Classic bank/upgrades/equipment, plus a shared Infinity wallet + upgrade tree, missions, achievements, daily calendar, stats, per-map Classic and Infinity bests, map clears); migrates v1–v3 saves

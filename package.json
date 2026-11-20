@@ -1,6 +1,6 @@
 {
   "name": "pixel-hunt",
-  "version": "1.0.4",
+  "version": "1.0.5",
   "private": true,
   "description": "Pixel Hunt — retro pixel hunting game (web PWA and Android test APK).",
   "scripts": {

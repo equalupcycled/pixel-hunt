@@ -101,7 +101,7 @@ const BIRD_HIT = [
 const PAL = {
   bird:  { K: '#111', B: '#9a5a26', W: '#e9d6a8', G: '#1f8a45', E: '#fff', Y: '#ffb000', O: '#ff8a00', X: '#fff' },
   gold:  { K: '#3a2400', B: '#f2b705', W: '#fff4b0', G: '#ffe066', E: '#fff', Y: '#ff7a00', O: '#ff7a00', X: '#fff' },
-  decoy: { K: '#5a1838', B: '#ff8fc8', W: '#ffe0f0', G: '#ff5aa8', E: '#fff', Y: '#ffd23f', O: '#ffd23f', X: '#fff' },
+  decoy: { K: '#4a0528', B: '#ff5ec4', W: '#ffd0ee', G: '#ff3aa8', E: '#fff', Y: '#ffe066', O: '#ff8fc8', X: '#fff' },
   blue:  { K: '#111', B: '#2c5fbf', W: '#bfe3ff', G: '#e0303a', E: '#fff', Y: '#ffb000', O: '#ff8a00', X: '#fff' },
 };
 const DEER_A = [
@@ -297,6 +297,410 @@ SPR.egg = [makeSprite([
   '...KK...'
 ], EGG_PAL)];
 
+
+
+// ---- unique per-map animals (kept in addition to the shared roster) ----
+const CARD_UP = [
+  '......KK........',
+  '.....KRRKK......',
+  '....KRRRRK......',
+  '....KRREK..KKK..',
+  '.....KRRKKKRRRK.',
+  'KKK..KRRRRRKRYY.',
+  'KRRKKRRRRRRRKRY.',
+  '.KRRRRRWWWRRK...',
+  '..KRRRRWWWRK....',
+  '...KKRRRRRK.....',
+  '.....KKKKK......',
+  '......O..O......'];
+const CARD_DN = [
+  '................',
+  '................',
+  '......KK........',
+  '.....KRRK.......',
+  '....KRREK..KKK..',
+  'KKK..KRRKKKRRRK.',
+  'KRRKKRRRRRRKRYY.',
+  '.KRRRRRWWWRRKRY.',
+  '..KRRRRWWWRK....',
+  '...KKRRRRK......',
+  '......O.O.......',
+  '................'];
+const CARD_HIT = [
+  '....K......K....',
+  '...KRK....KRK...',
+  '....KRRKKRRK....',
+  '.....KRREK......',
+  '......KRRK.KKK..',
+  '.....KRRRRKRRRK.',
+  '....KRRRRRRKRYY.',
+  '...KRRRWWWRRKRY.',
+  '....KRRWWWRK....',
+  '.....KKRRRK.....',
+  '......O..O......',
+  '................'];
+const SQ_A = [
+  'K...........KKK.',
+  'KK.........KWWK.',
+  'KWK.......KWWWK.',
+  '.KWK.KKKKKWWWWN',
+  '.KWWKKWWWWWWEWK',
+  '..KWWWWWWWWWWK.',
+  '..KWWWKKKWWWK..',
+  '..KWWK...KWWK..',
+  '..KWK....KWK...',
+  '..KK.....KK....'];
+const SQ_B = [
+  '...........KKK..',
+  'K.........KWWK..',
+  'KK.......KWWWK..',
+  'KWK.KKKKKWWWWN..',
+  '.KWWKWWWWWWWEWK.',
+  '.KWWWWWWWWWWWK..',
+  'KWWWKKKKKWWWK...',
+  'KWWK.....KWWK...',
+  'KKK......KWK....',
+  '..........KK....'];
+const PH_A = [
+  '...............K',
+  '..............KTK',
+  '.............KTTK',
+  '..........KKKTTK.',
+  '.........KBBBTKYY',
+  '..K.....KBBBBK...',
+  '.KBKKKKKBBWBK....',
+  'KBBBBBBBBWWBK....',
+  '.KKBBBBBBWWK.....',
+  '...KKBBBBK.......',
+  '....K..K.........',
+  '...K....K........'];
+const PH_B = [
+  '...............K',
+  '..............KTK',
+  '.............KTTK',
+  '..........KKKTTK.',
+  '.........KBBBTKYY',
+  '..K.....KBBBBK...',
+  'KBBKKKKKBBWBK....',
+  '.KBBBBBBBWWBK....',
+  'KKKBBBBBBWWK.....',
+  '...KKBBBBK.......',
+  '....K.K..........',
+  '....K.K..........'];
+const KF_UP = [
+  '..........KK....',
+  '.........KWWK...',
+  '........KWWWKYYY',
+  '........KWWEK...',
+  '.......KCCCK....',
+  'KKK...KCCCCK....',
+  'KCCKKKCCCCCK....',
+  '.KCCCCCCCCK.....',
+  '..KCCCOOCCK.....',
+  '...KKCCCCK......',
+  '.....KKKK.......',
+  '......O..O......'];
+const KF_DN = [
+  '................',
+  '................',
+  '..........KK....',
+  '.........KWWKYYY',
+  '........KWWEK...',
+  'KKK....KCCCK....',
+  'KCCKKKKCCCCK....',
+  '.KCCCCCCCCK.....',
+  '..KCCCOOCCK.....',
+  '...KKCCCCK......',
+  '......O.O.......',
+  '................'];
+const KF_HIT = [
+  '....K......K....',
+  '...KWK....KWK...',
+  '....KWWKKWWKYYY.',
+  '.....KWWEK......',
+  '......KCCK.KKK..',
+  '.....KCCCCKCCK..',
+  '....KCCCCCCCK...',
+  '...KCCCOOCCK....',
+  '....KCCCCK......',
+  '.....KKKK.......',
+  '......O..O......',
+  '................'];
+const FROG_A = [
+  '................',
+  '....KKKKKK......',
+  '..KKGGGGGGKK....',
+  '.KGGWEGGGGGK....',
+  'KGGGGGGGGGGK....',
+  'KGGKKKKGGGGKKK..',
+  '.KK....KKKKGGK..',
+  '........KK..KK..'];
+const FROG_B = [
+  '................',
+  '....KKKKKK......',
+  '..KKGGGGGGKK....',
+  '.KGGWEGGGGGK....',
+  'KGGGGGGGGGGK....',
+  '.KGGKKKKGGGK....',
+  'KGGK....KKKKKK..',
+  'KKK.............'];
+const BEV_A = [
+  '...........KK...',
+  '.........KKBBK..',
+  '..KKKKKKKBBBBEK.',
+  '.KBBBBBBBBBBBN..',
+  'KBBBBBBBBBBBK...',
+  '.KKKKKKKBBBK....',
+  '.......KTTTTK...',
+  '......KTTTTTK...'];
+const BEV_B = [
+  '...........KK...',
+  '.........KKBBK..',
+  '.KKKKKKKKBBBBEK.',
+  'KBBBBBBBBBBBN...',
+  '.KBBBBBBBBBBK...',
+  '..KKKKKKBBBK....',
+  '........KTTTK...',
+  '.......KTTTTK...'];
+const FOX_A = [
+  '..............K.K',
+  '.............KK.K',
+  '..............KKK',
+  '.............KDDK',
+  '.............KDEDK',
+  '.KKK........KDDDDN',
+  'KTDDKKKKKKKKDDDKK.',
+  '.KDDDDDDDDDDDDKTTK',
+  '..KDDDDDDDDDDDKTTK',
+  '..KDLLLLLLLLDDK.KK',
+  '..KDDKKKKKKKDK....',
+  '.KDK.......KDK....',
+  'KDK.........KDK...',
+  'KK...........KK...'];
+const FOX_B = FOX_A.slice(0, 10).concat([
+  '...KDDKKKKKDDK....',
+  '...KDK.....KDK....',
+  '...KDK.....KDK....',
+  '...KK.......KK....']);
+const PTA_UP = [
+  '......KKKK......',
+  '.....KWWWWK.....',
+  '....KWWWEWWK....',
+  '...KWWWWWWWWK...',
+  '..KWWWWWWWWWWK..',
+  'KKKWWWWYWWWWWK..',
+  'KWWKWWWWWWWWK...',
+  '.KWWWWWWWWWK....',
+  '..KKWWWWWWK.....',
+  '....KKKKKK......',
+  '.....O..O.......',
+  '................'];
+const PTA_DN = [
+  '................',
+  '......KKKK......',
+  '.....KWWWWK.....',
+  '....KWWWEWWK....',
+  'KKKKWWWWWWWWK...',
+  'KWWKWWWWYWWWWK..',
+  '.KWWWWWWWWWWK...',
+  '..KWWWWWWWWK....',
+  '...KKWWWWK......',
+  '.....KKKK.......',
+  '......O.O.......',
+  '................'];
+const WEAS_A = [
+  '...............KK',
+  '..............KDK',
+  '.............KDED',
+  'KKKKKKKKKKKKKDDDN',
+  'KDDDDDDDDDDDDDDK.',
+  '.KKKKKKKKKKKDDK..',
+  '...........KDK...',
+  '...........KK....'];
+const WEAS_B = [
+  '...............KK',
+  '..............KDK',
+  '.............KDED',
+  '.KKKKKKKKKKKKDDDN',
+  'KDDDDDDDDDDDDDDK.',
+  'KDKKKKKKKKKKDDK..',
+  'KK.........KDK...',
+  '............KK...'];
+const HAWK_UP = [
+  'K...............K',
+  'KK.....KK......KK',
+  'KBK...KBBK....KBK',
+  '.KBK.KBBBKKKKKBK.',
+  '..KBKBBBBBWWEBK..',
+  '...KBBBBBBBBBK...',
+  '....KKBBBBBBK....',
+  '......KBBBK......',
+  '.......KYK.......',
+  '......KYYK.......',
+  '.......KK........',
+  '......O..O.......'];
+const HAWK_DN = [
+  '.................',
+  '.......KK........',
+  '......KBBK.......',
+  '.....KBBBKKKK....',
+  'KKKKKBBBBBWWEBKKK',
+  'KBBBKBBBBBBBBBKBK',
+  '.KBBKKBBBBBBKKBK.',
+  '..KK..KBBBK..KK..',
+  '.......KYK.......',
+  '......KYYK.......',
+  '......O..O.......',
+  '.................'];
+const HAWK_HIT = [
+  '....K.......K....',
+  '...KBK.....KBK...',
+  '....KBBKKKBBK....',
+  '.....KBBBWWEBK...',
+  '......KBBBBBBK...',
+  '.....KBBBBBBK....',
+  '......KBBBK......',
+  '.......KYK.......',
+  '......KYYK.......',
+  '......O..O.......',
+  '.................',
+  '.................'];
+const SCOR_A = [
+  'K...........K..K.',
+  'KK.........KSK.K.',
+  'KSK..KKKK..KSKK..',
+  '.KSKKSSSSKKSSSK..',
+  '..KSSSSSSSSSSK...',
+  '...KKSSSSSSKK....',
+  '.....KSSSSK......',
+  '......KSSK.......',
+  '.......KSK.......',
+  '........KK.......'];
+const SCOR_B = [
+  '..K.........K..K.',
+  '.KK........KSK.K.',
+  'KSKK.KKKK..KSKK..',
+  '.KSSKSSSSKKSSSK..',
+  '..KSSSSSSSSSSK...',
+  '...KKSSSSSSKK....',
+  '....KSSSSSK......',
+  '.....KSSSK.......',
+  '......KSK........',
+  '.......KK........'];
+const JACK_A = [
+  '...........K...K.',
+  '..........KWK.KWK',
+  '..........KWK.KWK',
+  '.........KWWKKWWK',
+  '..KKKKKKKWWWWEWK.',
+  '.KWWWWWWWWWWWWN.',
+  'KWWWWWWWWWWWWK..',
+  '.KWWKKKKKWWWK...',
+  '.KWK.....KWK....',
+  '..KK......KK....'];
+const JACK_B = [
+  '...........K...K.',
+  '..........KWK.KWK',
+  '..........KWK.KWK',
+  '.........KWWKKWWK',
+  'KKKKKKKKKWWWWEWK.',
+  'KWWWWWWWWWWWWWN.',
+  '.KWWWWWWWWWWWK..',
+  'KWKKKKKKKKWWK...',
+  'KK.......KWK....',
+  '..........KK....'];
+const COON_A = [
+  '.............KK..',
+  '............KWBWK',
+  '............KWWEK',
+  '..KK.......KWWWK.',
+  '.KTWKKKKKKKWWWWN',
+  'KTTWWWWWWWWWWWK.',
+  '.KTWWWWWWWWWWK..',
+  '..KWWKKKKKWWK...',
+  '..KWK.....KWK...',
+  '..KK.......KK...'];
+const COON_B = [
+  '.............KK..',
+  '............KWBWK',
+  '............KWWEK',
+  '.KK........KWWWK.',
+  'KTWKKKKKKKKWWWWN',
+  'KTTWWWWWWWWWWWK.',
+  '.KTWWWWWWWWWWK..',
+  'KWWKKKKKKKWWK...',
+  'KKK......KWK....',
+  '..........KK....'];
+const MOTH_A = [
+  'K..............K',
+  'KGK..........KGK',
+  'KGGK.KKKKKK.KGGK',
+  '.KGGKGGGGGGKGGK.',
+  '..KGGGGWWGGGK...',
+  '...KKGGWWGGKK...',
+  '.....KGGGGK.....',
+  '......KKKK......'];
+const MOTH_B = [
+  '................',
+  '..K..........K..',
+  '.KGKK......KKGK.',
+  'KGGGGKKKKKKGGGGK',
+  '.KGGGGGWWGGGGGK.',
+  '..KKGGGWWGGGKK..',
+  '....KKGGGGKK....',
+  '......KKKK......'];
+const SKUNK_A = [
+  '..............KK.',
+  '..........KKKWBK.',
+  '.........KWWWBBK.',
+  '..KK....KWWWWBK..',
+  '.KWBKKKKKWWWBK...',
+  'KWWBBBBBBBWWBK...',
+  '.KWBBBBBBBBBK....',
+  '..KWKKKKKWWK.....',
+  '..KWK...KWK......',
+  '..KK.....KK......'];
+const SKUNK_B = [
+  '..............KK.',
+  '..........KKKWBK.',
+  '.........KWWWBBK.',
+  '.KK.....KWWWWBK..',
+  'KWBKKKKKWWWWBK...',
+  '.KWBBBBBBBWWBK...',
+  'KWWBBBBBBBBBK....',
+  '.KWKKKKKKWWK.....',
+  'KKK.....KWK......',
+  '.........KK......'];
+APAL.cardinal = { K: '#2a0008', R: '#e01828', W: '#fff0f0', E: '#fff', Y: '#ffd23f', O: '#ff8a00' };
+APAL.squirrel = { K: '#2a1408', W: '#e07820', E: '#fff', N: '#ffb090' };
+APAL.pheasant = { K: '#1a0c00', B: '#8a4a18', W: '#e8c878', T: '#c05020', Y: '#ffe066' };
+APAL.kingfisher = { K: '#041018', C: '#1a7aaa', W: '#f0a040', E: '#fff', Y: '#ffd23f', O: '#e07020' };
+APAL.frog = { K: '#042004', G: '#4ce030', W: '#fff', E: '#111' };
+APAL.beaver = { K: '#1a0c04', B: '#6a3a18', E: '#fff', N: '#ffb090', T: '#4a2a10' };
+APAL.fox = { K: '#2a0c00', D: '#e07020', L: '#ffe0b0', E: '#111', N: '#fff', T: '#fff8f0' };
+APAL.ptarmigan = { K: '#4a5a6a', W: '#f8f8f8', E: '#111', Y: '#ffb000', O: '#d0d0d0' };
+APAL.weasel = { K: '#2a1808', D: '#c89858', E: '#111', N: '#ffd0a0' };
+APAL.hawk = { K: '#1a1008', B: '#7a5a38', W: '#e8d8b8', E: '#fff', Y: '#ffb000', O: '#ff8a00' };
+APAL.scorpion = { K: '#100400', S: '#6a1808' };
+APAL.jackrabbit = { K: '#4a3018', W: '#e8d0a8', E: '#111', N: '#ffb090' };
+APAL.raccoon = { K: '#141414', W: '#8a8a8a', B: '#111', E: '#fff', T: '#d8d8d8', N: '#fff' };
+APAL.moth = { K: '#1a2a10', G: '#b8f08a', W: '#f4ffe0' };
+APAL.skunk = { K: '#111', W: '#f4f4f4', B: '#2a2a2a' };
+SPR.cardinal = [makeSprite(CARD_UP, APAL.cardinal), makeSprite(CARD_DN, APAL.cardinal), makeSprite(CARD_HIT, APAL.cardinal)];
+SPR.squirrel = [makeSprite(SQ_A, APAL.squirrel), makeSprite(SQ_B, APAL.squirrel)];
+SPR.pheasant = [makeSprite(PH_A, APAL.pheasant), makeSprite(PH_B, APAL.pheasant)];
+SPR.kingfisher = [makeSprite(KF_UP, APAL.kingfisher), makeSprite(KF_DN, APAL.kingfisher), makeSprite(KF_HIT, APAL.kingfisher)];
+SPR.frog = [makeSprite(FROG_A, APAL.frog), makeSprite(FROG_B, APAL.frog)];
+SPR.beaver = [makeSprite(BEV_A, APAL.beaver), makeSprite(BEV_B, APAL.beaver)];
+SPR.fox = [makeSprite(FOX_A, APAL.fox), makeSprite(FOX_B, APAL.fox)];
+SPR.ptarmigan = [makeSprite(PTA_UP, APAL.ptarmigan), makeSprite(PTA_DN, APAL.ptarmigan)];
+SPR.weasel = [makeSprite(WEAS_A, APAL.weasel), makeSprite(WEAS_B, APAL.weasel)];
+SPR.hawk = [makeSprite(HAWK_UP, APAL.hawk), makeSprite(HAWK_DN, APAL.hawk), makeSprite(HAWK_HIT, APAL.hawk)];
+SPR.scorpion = [makeSprite(SCOR_A, APAL.scorpion), makeSprite(SCOR_B, APAL.scorpion)];
+SPR.jackrabbit = [makeSprite(JACK_A, APAL.jackrabbit), makeSprite(JACK_B, APAL.jackrabbit)];
+SPR.raccoon = [makeSprite(COON_A, APAL.raccoon), makeSprite(COON_B, APAL.raccoon)];
+SPR.moth = [makeSprite(MOTH_A, APAL.moth), makeSprite(MOTH_B, APAL.moth)];
+SPR.skunk = [makeSprite(SKUNK_A, APAL.skunk), makeSprite(SKUNK_B, APAL.skunk)];
 
 const ICONS = {
   shotgun: ['................', '................', '...KKKKKKKKKKKK.', 'KKKSSSSSSSSSSSSK', 'KWWWWWWKKKKKKKK.', 'KWWKWWK.........', 'KWK.KK..........', 'KK..............'],
@@ -528,6 +932,98 @@ if (window.visualViewport) visualViewport.addEventListener('resize', () => { // 
   clearTimeout(resize.t); resize.t = setTimeout(resize, 120); });
 
 // ---------------- content tables ----------------
+const MAP_ANIMALS = {
+  meadow: {
+    sig: 'bird', hint: 'DEER IN THE WOODS!',
+    fly: [
+      { k: 'bird', w: 1 }, { k: 'blue', w: 0.45 },
+      { k: 'cardinal', w: 0.95, intro: 2, name: 'CARDINAL' }
+    ],
+    ground: [
+      { k: 'deer', w: 1 },
+      { k: 'squirrel', w: 0.85, intro: 5, name: 'SQUIRREL' },
+      { k: 'pheasant', w: 0.8, intro: 8, name: 'PHEASANT' }
+    ]
+  },
+  lake: {
+    sig: 'goose', hint: 'GEESE ON THE WATER!',
+    fly: [
+      { k: 'goose', w: 1 },
+      { k: 'kingfisher', w: 0.95, intro: 2, name: 'KINGFISHER' }
+    ],
+    ground: [
+      { k: 'swimgoose', w: 1 },
+      { k: 'frog', w: 0.9, intro: 5, name: 'FROG' },
+      { k: 'beaver', w: 0.85, intro: 8, name: 'BEAVER' }
+    ]
+  },
+  snow: {
+    sig: 'owl', hint: 'RABBITS & WOLVES!',
+    fly: [
+      { k: 'owl', w: 1 },
+      { k: 'ptarmigan', w: 0.95, intro: 2, name: 'PTARMIGAN' }
+    ],
+    ground: [
+      { k: 'rabbit', w: 1 }, { k: 'wolf', w: 0.9 },
+      { k: 'fox', w: 0.95, intro: 5, name: 'FOX' },
+      { k: 'weasel', w: 0.8, intro: 8, name: 'WEASEL' }
+    ]
+  },
+  desert: {
+    sig: 'vulture', hint: 'ROADRUNNERS & COYOTES!',
+    fly: [
+      { k: 'vulture', w: 1 },
+      { k: 'hawk', w: 0.95, intro: 2, name: 'HAWK' }
+    ],
+    ground: [
+      { k: 'roadrunner', w: 1 }, { k: 'coyote', w: 0.85 },
+      { k: 'scorpion', w: 0.9, intro: 5, name: 'SCORPION' },
+      { k: 'jackrabbit', w: 0.85, intro: 8, name: 'JACKRABBIT' }
+    ]
+  },
+  night: {
+    sig: 'bat', hint: 'EYES IN THE BUSHES!',
+    fly: [
+      { k: 'bat', w: 1 }, { k: 'owl', w: 0.55 },
+      { k: 'moth', w: 0.95, intro: 2, name: 'MOTH' }
+    ],
+    ground: [
+      { k: 'eyes', w: 1 },
+      { k: 'raccoon', w: 0.9, intro: 5, name: 'RACCOON' },
+      { k: 'skunk', w: 0.8, intro: 8, name: 'SKUNK' }
+    ]
+  }
+};
+function mapRec(id) { return MAP_ANIMALS[id] || MAP_ANIMALS.meadow; }
+function sigFly(id) { return mapRec(id).sig || 'bird'; }
+function debutFor(mapId, r) {
+  const rec = mapRec(mapId);
+  return (rec.fly || []).concat(rec.ground || []).find(e => e.intro === r) || null;
+}
+function rosterFor(mapId, r) {
+  const idx = Math.max(0, ECON.mapIndex(mapId));
+  const flyW = {}, groundW = {};
+  for (let i = 0; i <= idx; i++) {
+    const mid = ECON.MAPS[i].id, rec = mapRec(mid);
+    const inherit = Math.pow(0.48, idx - i);
+    const bump = (e) => (i === idx && e.intro ? 1.2 : 1);
+    (rec.fly || []).forEach(e => {
+      if ((e.intro || 1) > r) return;
+      flyW[e.k] = (flyW[e.k] || 0) + e.w * inherit * bump(e);
+    });
+    (rec.ground || []).forEach(e => {
+      if ((e.intro || 1) > r) return;
+      groundW[e.k] = (groundW[e.k] || 0) + e.w * inherit * bump(e);
+    });
+  }
+  const norm = (w) => {
+    const items = Object.keys(w).map(k => [k, w[k]]);
+    const sum = items.reduce((a, x) => a + x[1], 0) || 1;
+    return items.map(([k, v]) => [k, v / sum]);
+  };
+  return { fly: norm(flyW), ground: norm(groundW) };
+}
+// Kept as a snapshot of each map's own animals (plus hints) for older hooks / attract mode.
 const MAP_SET = {
   meadow: { fly: [['bird', 0.7], ['blue', 0.3]], ground: ['deer'], hint: 'DEER IN THE WOODS!' },
   lake: { fly: [['goose', 0.45], ['bird', 0.35], ['blue', 0.20]], ground: ['swimgoose', 'swimgoose', 'deer'], hint: 'GEESE ON THE WATER!' },
@@ -536,14 +1032,29 @@ const MAP_SET = {
   night: { fly: [['bat', 0.42], ['owl', 0.24], ['vulture', 0.14], ['bird', 0.12], ['goose', 0.08]], ground: ['eyes', 'eyes', 'wolf', 'coyote'], hint: 'EYES IN THE BUSHES!' },
 };
 const KIND = {
-  bird: { set: 'bird', m: 'fly', hp: 2 }, blue: { set: 'blue', m: 'fly', hp: 2 }, gold: { set: 'gold', m: 'fly', spd: 1.35, size: 0.85, life: 0.8, hp: 2 }, decoy: { set: 'decoy', m: 'fly', hp: 1 },
-  goose: { set: 'goose', m: 'skim', hp: 4, size: 1.12, spd: 0.85 },
-  owl: { set: 'owl', m: 'glide', spd: 0.95, hp: 3 }, bat: { set: 'bat', m: 'flutter', size: 0.85, spd: 1.1, hp: 2 },
-  vulture: { set: 'vulture', m: 'circle', size: 1.1, spd: 0.9, hp: 4 },
-  deer: { set: 'deer', m: 'run', g: 1, size: 1.6, hp: 4 }, fawn: { set: 'deer', m: 'run', g: 1, size: 0.95, hp: 2, spd: 0.78 }, pup: { set: 'wolf', m: 'run', g: 1, size: 0.9, hp: 2, spd: 0.85 }, bag: { set: 'bag', m: 'fly', g: 0, size: 1, hp: 1, spd: 1 }, swimgoose: { set: 'goose', m: 'swim', g: 1, size: 1.2, hp: 4, spd: 0.45 },
-  rabbit: { set: 'rabbit', m: 'hop', g: 1, size: 1.25, spd: 0.9, hp: 3 }, wolf: { set: 'wolf', m: 'run', g: 1, size: 1.5, spd: 1.2, hp: 5 },
-  roadrunner: { set: 'roadrunner', m: 'run', g: 1, size: 1.25, spd: 1.55, hp: 3 }, coyote: { set: 'coyote', m: 'run', g: 1, size: 1.5, spd: 1.05, hp: 5 },
-  eyes: { set: null, m: 'peek', g: 1, size: 1, hp: 3 },
+  bird: { set: 'bird', m: 'fly', hp: 2, name: 'DUCK' }, blue: { set: 'blue', m: 'fly', hp: 2, name: 'BLUEBIRD' }, gold: { set: 'gold', m: 'fly', spd: 1.35, size: 0.85, life: 0.8, hp: 2, name: 'GOLDEN BIRD' }, decoy: { set: 'decoy', m: 'fly', hp: 1, name: 'PINK DECOY' },
+  goose: { set: 'goose', m: 'skim', hp: 4, size: 1.12, spd: 0.85, name: 'GOOSE' },
+  owl: { set: 'owl', m: 'glide', spd: 0.95, hp: 3, name: 'OWL' }, bat: { set: 'bat', m: 'flutter', size: 0.85, spd: 1.1, hp: 2, name: 'BAT' },
+  vulture: { set: 'vulture', m: 'circle', size: 1.1, spd: 0.9, hp: 4, name: 'VULTURE' },
+  deer: { set: 'deer', m: 'run', g: 1, size: 1.6, hp: 4, name: 'DEER' }, fawn: { set: 'deer', m: 'run', g: 1, size: 0.95, hp: 2, spd: 0.78, name: 'FAWN' }, pup: { set: 'wolf', m: 'run', g: 1, size: 0.9, hp: 2, spd: 0.85, name: 'PUP' }, bag: { set: 'bag', m: 'fly', g: 0, size: 1, hp: 1, spd: 1, name: 'BAG' }, swimgoose: { set: 'goose', m: 'swim', g: 1, size: 1.2, hp: 4, spd: 0.45, name: 'SWIMMING GOOSE' },
+  rabbit: { set: 'rabbit', m: 'hop', g: 1, size: 1.25, spd: 0.9, hp: 3, name: 'RABBIT' }, wolf: { set: 'wolf', m: 'run', g: 1, size: 1.5, spd: 1.2, hp: 5, name: 'WOLF' },
+  roadrunner: { set: 'roadrunner', m: 'run', g: 1, size: 1.25, spd: 1.55, hp: 3, name: 'ROADRUNNER' }, coyote: { set: 'coyote', m: 'run', g: 1, size: 1.5, spd: 1.05, hp: 5, name: 'COYOTE' },
+  eyes: { set: null, m: 'peek', g: 1, size: 1, hp: 3, name: 'EYES' },
+  cardinal: { set: 'cardinal', m: 'dart', hp: 2, spd: 1.15, size: 0.9, name: 'CARDINAL' },
+  squirrel: { set: 'squirrel', m: 'hop', g: 1, size: 1.05, spd: 1.05, hp: 2, hopH: 11, hopCyc: 0.55, name: 'SQUIRREL' },
+  pheasant: { set: 'pheasant', m: 'flush', g: 1, size: 1.3, spd: 1.05, hp: 3, name: 'PHEASANT' },
+  kingfisher: { set: 'kingfisher', m: 'dive', hp: 3, spd: 1.05, size: 0.95, name: 'KINGFISHER' },
+  frog: { set: 'frog', m: 'hop', g: 1, size: 1.05, spd: 0.7, hp: 2, hopH: 16, hopCyc: 0.9, name: 'FROG' },
+  beaver: { set: 'beaver', m: 'swim', g: 1, size: 1.25, spd: 0.4, hp: 4, name: 'BEAVER' },
+  fox: { set: 'fox', m: 'dash', g: 1, size: 1.45, spd: 1.15, hp: 4, name: 'FOX' },
+  ptarmigan: { set: 'ptarmigan', m: 'glide', spd: 0.9, hp: 3, size: 1.05, name: 'PTARMIGAN' },
+  weasel: { set: 'weasel', m: 'run', g: 1, size: 1.05, spd: 1.45, hp: 2, name: 'WEASEL' },
+  hawk: { set: 'hawk', m: 'stoop', size: 1.15, spd: 1.05, hp: 4, name: 'HAWK' },
+  scorpion: { set: 'scorpion', m: 'crawl', g: 1, size: 1.1, spd: 0.55, hp: 3, name: 'SCORPION' },
+  jackrabbit: { set: 'jackrabbit', m: 'hop', g: 1, size: 1.3, spd: 1.25, hp: 3, hopH: 13, hopCyc: 0.55, name: 'JACKRABBIT' },
+  raccoon: { set: 'raccoon', m: 'amble', g: 1, size: 1.35, spd: 0.75, hp: 4, name: 'RACCOON' },
+  moth: { set: 'moth', m: 'flutter', size: 0.9, spd: 1.05, hp: 2, name: 'MOTH' },
+  skunk: { set: 'skunk', m: 'amble', g: 1, size: 1.2, spd: 0.65, hp: 3, name: 'SKUNK' },
 };
 Object.keys(KIND).forEach(k => { KIND[k].hp = ECON.kindHp(k); });
 const BOSSES = {
@@ -702,12 +1213,20 @@ function resetRun() {
 function addCash(n) { n = Math.round(n); Meta.addBank(n); runCash += n; }
 function float(text, x, y, color = '#fff', sz = 1, life = 1) { floats.push({ text, x, y, t: 0, life, color, sz }); }
 
-function pickFly() {
-  const set = MAP_SET[M.id].fly; let x = Math.random(), acc = 0;
-  for (const [k, p] of set) { acc += p; if (x < acc) return k; }
-  return set[0][0];
+function weightedPick(items, fallback) {
+  if (!items || !items.length) return fallback;
+  let x = Math.random(), acc = 0;
+  for (const [k, p] of items) { acc += p; if (x < acc) return k; }
+  return items[0][0];
 }
-function pickGround() { const g = MAP_SET[M.id].ground; return g[Math.floor(Math.random() * g.length)]; }
+function pickFly() {
+  const ros = rosterFor(M.id, round);
+  return weightedPick(ros.fly, sigFly(M.id));
+}
+function pickGround() {
+  const ros = rosterFor(M.id, Math.max(4, round));
+  return weightedPick(ros.ground, 'deer');
+}
 function bossIdFor(r) { return ECON.bossIdFor(M.id, r); }
 function isGroundBoss(t) { return !!(t && t.m === 'brun'); }
 
@@ -722,7 +1241,7 @@ function startRound(opts) {
   } else {
     for (let i = 0; i < diff.count; i++) {
       const x = Math.random(); let k;
-      if (round === 1) k = MAP_SET[M.id].fly[0][0];
+      if (round === 1) k = sigFly(M.id);
       else if (x < diff.deer) k = pickGround();
       else if (x < diff.deer + diff.decoy) k = 'decoy';
       else if (x < diff.deer + diff.decoy + diff.gold) k = 'gold';
@@ -731,6 +1250,8 @@ function startRound(opts) {
     }
     if (round >= 4 && !queue.some(k => KIND[k] && KIND[k].g)) queue[Math.floor(rand(1, queue.length))] = pickGround();
     if (round >= 4 && Meta.levelOf('perk.deer') > 0) { queue.push(pickGround()); queue.push(pickGround()); }
+    const debut = debutFor(M.id, round);
+    if (debut && !queue.includes(debut.k)) queue[Math.floor(rand(0, Math.max(1, queue.length)))] = debut.k;
   }
   roundCash0 = runCash;
   roundTotal = queue.filter(k => k !== 'decoy').length;
@@ -743,8 +1264,9 @@ function startRound(opts) {
   if (bossRound) { const b = BOSSES[bossIdFor(round)]; banner = (infinity ? 'INF ' : '') + 'BOSS ROUND!'; banner2 = b.name + ' APPROACHES'; Sfx.boss(); }
   else {
     banner = (infinity ? 'INFINITY ' : '') + 'ROUND ' + round;
+    const debut = debutFor(M.id, round);
     banner2 = round === 1 ? (inp === 'hold' ? 'HOLD TO SPRAY' : inp === 'draw' ? 'HOLD TO DRAW, RELEASE' : inp === 'beam' ? 'HOLD TO FIRE BEAM' : 'TAP TO SHOOT')
-      : round === 4 ? MAP_SET[M.id].hint : round === 3 ? "DON'T SHOOT PINK BIRDS" : round === ECON.BOSS_EVERY - 1 ? 'BOSS NEXT ROUND!' : '';
+      : (debut ? ('NEW: ' + debut.name) : round === 3 ? "DON'T SHOOT PINK DECOYS (-$)" : round === 4 ? mapRec(M.id).hint : round === ECON.BOSS_EVERY - 1 ? 'BOSS NEXT ROUND!' : '');
     Sfx.roundStart();
   }
   if (round % CKPT_EVERY === 0) reachCheckpoint({ silent: !!(opts && opts.revive) });
@@ -802,8 +1324,8 @@ function spawn(kind) {
     const dir = 1, sc = K.size * (kind === 'swimgoose' ? 1 : Math.max(0.85, diff.scale));
     const sp = diff.deerSpeed * (K.spd || 1) * (perkDeer || 1) * rand(0.9, 1.15) / Math.sqrt(eyeMult);
     const y = K.m === 'swim' ? GROUND - 6 : groundY(set, sc);
-    targets.push(Object.assign(base, { x: dir > 0 ? -20 : W + 20, y, y0: y, vx: dir * sp, vy: 0, sc, life: 99, hop: 0, hopT: 0 }));
-    if (kind === 'deer' || kind === 'fawn' || kind === 'pup' || kind === 'wolf' || kind === 'coyote' || kind === 'rabbit' || kind === 'roadrunner') Sfx.rustle();
+    targets.push(Object.assign(base, { x: dir > 0 ? -20 : W + 20, y, y0: y, vx: dir * sp, vy: 0, sc, life: 99, hop: 0, hopT: 0, hopH: K.hopH, hopCyc: K.hopCyc, flushT: 0, dashT: 0 }));
+    if (kind !== 'eyes') Sfx.rustle();
     return;
   }
   targets.push(makeFlyer(kind, K, set, base));
@@ -814,11 +1336,14 @@ function crossTime(K) { return (diff.life * (K.life || 1) + 0.7) * eyeMult / Mat
 function makeFlyer(kind, K, set, base) {
   const sc = diff.scale * (K.size || 1), T = crossTime(K) * rand(0.9, 1.1);
   const x0 = -10, vx = (W + 22) / T;                 // from just off-left to just off-right
-  const lowBand = K.m === 'skim', yTop = lowBand ? SKY_BOT - 70 : SKY_TOP + 14, yBot = lowBand ? SKY_BOT - 6 : SKY_BOT - 10;
-  const y = rand(yTop + 6, yBot - 6), vsp = diff.speed * rand(0.85, 1.15) * (K.spd || 1); // vertical zig speed
+  const lowBand = K.m === 'skim', diveBand = K.m === 'dive';
+  const yTop = lowBand ? SKY_BOT - 70 : SKY_TOP + 14;
+  const yBot = lowBand ? SKY_BOT - 6 : (diveBand ? SKY_BOT - 4 : SKY_BOT - 10);
+  const y = rand(yTop + 6, Math.max(yTop + 8, (diveBand ? (yTop + yBot) / 2 : yBot) - 6));
+  const vsp = diff.speed * rand(0.85, 1.15) * (K.spd || 1); // vertical zig speed
   const t = Object.assign(base, { x: x0, y, y0: y, vx, vx0: vx, vy: (Math.random() < 0.5 ? -1 : 1) * vsp * 0.5, sp: vsp, sc, yTop, yBot,
-    erratic: Math.random() < diff.erratic || K.m === 'flutter', turnT: rand(0.4, 1), risen: true, ph: rand(0, 6), life: T });
-  if (K.m === 'circle') { t.R = rand(10, 16); t.w = 2.2 * (Math.random() < 0.5 ? 1 : -1); t.ang = 0; }
+    erratic: Math.random() < diff.erratic || K.m === 'flutter' || K.m === 'dart', turnT: rand(0.4, 1), risen: true, ph: rand(0, 6), life: T, diveT: rand(0.5, 1.1) });
+  if (K.m === 'circle' || K.m === 'stoop') { t.R = rand(10, 16); t.w = 2.2 * (Math.random() < 0.5 ? 1 : -1); t.ang = 0; }
   return t;
 }
 const live = t => t.state === 'fly' || t.state === 'flee';
@@ -993,7 +1518,7 @@ function hitDecoy(t) {
   const pen = Math.min(Meta.bank(), ECON.decoyPenalty(round));
   addCash(-pen); breakStreak(); Meta.event('decoy');
   score -= Math.min(score, 1000 * round);
-  float('LOVEBIRD! -$' + pen, t.x, t.y - 14, '#ff8fc8', 1.2, 1.4);
+  float('DECOY! -$' + pen, t.x, t.y - 14, '#ff5ec4', 1.2, 1.4);
   feathers(t.x, t.y, PAL.decoy, 14); Sfx.bad();
 }
 function beginShot() { shotKills = 0; }
@@ -1453,7 +1978,7 @@ function update(dt) {
 
   if (titleScene()) {
     if (targets.length < 3 && Math.random() < 0.02) {
-      const sp = rand(25, 45), fl = MAP_SET[curMap.id].fly[0][0];
+      const sp = rand(25, 45), fl = sigFly(curMap.id);
       const k = Math.random() < 0.2 ? 'gold' : fl, K = KIND[k];
       targets.push({ kind: k, set: k === 'owl' && curMap.id === 'snow' ? 'snowowl' : K.set, m: 'fly', x: -10, y: rand(SKY_TOP + 60, SKY_BOT - 20), vx: sp, vx0: sp, vy: rand(-1, 1) * sp * 0.4, sp: sp * 0.6, sc: 1.2, yTop: SKY_TOP + 40, yBot: SKY_BOT - 10, state: 'fly', anim: 0, life: 1e9, risen: true, erratic: true, turnT: 1, attract: true, hp: (K.hp || ECON.kindHp(k) || 2), hp0: (K.hp || ECON.kindHp(k) || 2), hurt: 0 });
     }
@@ -1602,10 +2127,32 @@ function updTarget(t, dt) {
   if (t.g) {
     if (t.state === 'fly') {
       if (t.m === 'hop') {
-        t.hopT += dt * slow; const cyc = t.hopT % 0.7;
-        if (cyc < 0.45) { t.x += t.vx * dt * slow * 1.5; t.hop = Math.sin(cyc / 0.45 * Math.PI) * 9; } else t.hop = 0;
+        const per = t.hopCyc || 0.7, air = Math.min(0.55, per * 0.64), h = t.hopH || 9;
+        t.hopT += dt * slow; const cyc = t.hopT % per;
+        if (cyc < air) { t.x += t.vx * dt * slow * 1.5; t.hop = Math.sin(cyc / air * Math.PI) * h; } else t.hop = 0;
       } else if (t.m === 'swim') {
         t.x += t.vx * dt * slow; t.hop = Math.sin(t.anim * 3) * 0.8;
+      } else if (t.m === 'dash') {
+        t.dashT = (t.dashT || 0) + dt * slow; const cyc = t.dashT % 1.15;
+        if (cyc < 0.4) t.hop = 0;
+        else { t.x += t.vx * dt * slow * 1.85; t.hop = Math.abs(Math.sin(cyc * 16)) * 3; }
+      } else if (t.m === 'amble') {
+        t.dashT = (t.dashT || 0) + dt * slow; const cyc = t.dashT % 1.4;
+        if (cyc < 0.35) t.hop = 0;
+        else { t.x += t.vx * dt * slow; t.hop = Math.abs(Math.sin(cyc * 10)) * 2; }
+      } else if (t.m === 'crawl') {
+        t.x += t.vx * dt * slow; t.hop = 0; t.y = (t.y0 || t.y) + Math.sin(t.anim * 7) * 0.6;
+      } else if (t.m === 'flush') {
+        t.flushT = (t.flushT || 0) + dt * slow;
+        t.x += t.vx * dt * slow; t.hop = Math.abs(Math.sin(t.anim * 12)) * 3;
+        if (!t.flushed && t.x > 48 && t.flushT > 0.55) {
+          t.flushed = true; t.g = 0; t.m = 'skim'; t.risen = true;
+          t.yTop = SKY_BOT - 70; t.yBot = SKY_BOT - 6;
+          t.vy = -90; t.sp = Math.max(36, Math.abs(t.vx));
+          t.vx = Math.max(t.vx, 55); t.vx0 = t.vx;
+          t.life = (W + 22 - t.x) / Math.max(20, t.vx);
+          t.hop = 0;
+        }
       } else {
         t.x += t.vx * dt * slow; t.hop = Math.abs(Math.sin(t.anim * 12)) * 3;
       }
@@ -1619,17 +2166,35 @@ function updTarget(t, dt) {
     // horizontal: always rightward. Zig-zaggers vary pace (never below 55% of base); decoy only slows them.
     if (t.erratic) {
       t.turnT -= dt;
-      if (t.turnT <= 0) { t.vx = t.vx0 * rand(0.7, 1.35); t.vy = (Math.random() < 0.5 ? -1 : 1) * t.sp * rand(0.5, 1); t.turnT = t.m === 'flutter' ? rand(0.15, 0.4) : rand(0.35, 0.9); }
+      if (t.turnT <= 0) { t.vx = t.vx0 * rand(0.7, 1.35); t.vy = (Math.random() < 0.5 ? -1 : 1) * t.sp * rand(0.5, 1); t.turnT = (t.m === 'flutter' || t.m === 'dart') ? rand(0.15, 0.4) : rand(0.35, 0.9); }
     }
     let vy = t.vy;
     if (t.m === 'glide') vy = Math.cos(t.anim * 1.6 + t.ph) * t.sp * 0.45;
+    if (t.m === 'dive') {
+      t.diveT = (t.diveT || 0) - dt * slow;
+      if (t.diving) {
+        vy = t.sp * 2.1;
+        if (t.y >= (t.yBot || SKY_BOT) - 5) { t.diving = false; t.diveT = rand(0.65, 1.2); vy = -t.sp * 1.4; t.vy = vy; }
+      } else {
+        vy = Math.cos(t.anim * 2 + (t.ph || 0)) * t.sp * 0.35;
+        if (t.diveT <= 0) t.diving = true;
+      }
+    }
+    if (t.m === 'stoop') {
+      t.diveT = (t.diveT || 0) - dt * slow;
+      if (t.diving) {
+        vy = t.sp * 2.0;
+        if (t.y >= (t.yBot || SKY_BOT) - 8) { t.diving = false; t.diveT = rand(0.8, 1.4); vy = -t.sp; t.vy = vy; }
+      } else if (t.diveT <= 0) t.diving = true;
+    }
     if (decoyObj) { const dy = decoyObj.y - t.y; t.vy += (Math.sign(dy) * t.sp - t.vy) * Math.min(1, dt * 2); vy = t.vy; }
     t.x += Math.max(t.vx0 * 0.55, t.vx) * dt * slow;
     t.y += vy * dt * slow;
-    if (t.m === 'circle') { t.ang += t.w * dt * slow; t.y += Math.cos(t.ang) * t.R * t.w * 0.6 * dt * slow; } // soaring loops, still drifting right
-    if (t.y < t.yTop) { t.y = t.yTop; t.vy = Math.abs(t.vy); }
+    if (t.m === 'circle' || (t.m === 'stoop' && !t.diving)) { t.ang += (t.w || 2) * dt * slow; t.y += Math.cos(t.ang) * (t.R || 12) * (t.w || 2) * 0.6 * dt * slow; }
+    if (t.y < t.yTop) { t.y = t.yTop; t.vy = Math.abs(t.vy); if (t.m === 'dive' || t.m === 'stoop') t.diving = false; }
     if (t.y > t.yBot) { t.y = t.yBot; t.vy = -Math.abs(t.vy); }
-    if (!t.erratic && t.m !== 'glide' && Math.random() < dt * 0.8) t.vy = -t.vy; // gentle zig-zag
+    if (!t.erratic && t.m !== 'glide' && t.m !== 'dive' && t.m !== 'stoop' && Math.random() < dt * 0.8) t.vy = -t.vy; // gentle zig-zag
+    if (t.erratic && t.m === 'dart' && t.turnT <= 0.01) t.turnT = rand(0.18, 0.4);
     if (t.x > W + 12) { if (t.attract) t.state = 'gone'; else escaped(t); }
   } else if (t.state === 'hit') {
     t.hitT -= dt;
@@ -2742,6 +3307,13 @@ function drawTarget(t) {
       spr(set[Math.abs(Math.floor(t.anim * (t.state === "flee" ? 14 : 9))) % 2], t.x, t.y, t.sc, flip, false, a);
       if (t.kind === 'decoy') heart(t.x, t.y - 11 * t.sc);
       if (t.kind === 'gold' && Math.floor(t.anim * 8) % 2) { ctx.fillStyle = '#fff'; ctx.fillRect(t.x + rand(-8, 8), t.y + rand(-6, 6), 1, 1); }
+      if (t.kind === 'moth' && live(t)) {
+        const g = 0.28 + 0.28 * Math.abs(Math.sin(t.anim * 8));
+        ctx.fillStyle = 'rgba(200,255,140,' + g + ')';
+        ctx.fillRect(t.x - 5, t.y - 4, 10, 8);
+        ctx.fillStyle = 'rgba(255,255,210,' + (g + 0.15) + ')';
+        ctx.fillRect(t.x - 1, t.y - 1, 2, 2);
+      }
     }
   }
   if (t.crown && live(t)) { const img = set[0]; ctx.drawImage(CROWN, t.x - 5, t.y - img.height * t.sc / 2 - 5, 10, 6); }
@@ -2904,9 +3476,9 @@ function drawCrosshair() {
   }
 }
 function heart(x, y) {
-  ctx.fillStyle = '#ff2d7a';
-  ctx.fillRect(x - 2, y, 1.5, 1); ctx.fillRect(x + 0.5, y, 1.5, 1);
-  ctx.fillRect(x - 2.5, y + 1, 5, 1); ctx.fillRect(x - 1.5, y + 2, 3, 1); ctx.fillRect(x - 0.5, y + 3, 1, 1);
+  ctx.fillStyle = '#ff1a7a';
+  ctx.fillRect(x - 3, y, 2, 1.5); ctx.fillRect(x + 1, y, 2, 1.5);
+  ctx.fillRect(x - 3.5, y + 1.5, 7, 2); ctx.fillRect(x - 2, y + 3.5, 4, 1.5); ctx.fillRect(x - 0.7, y + 5, 1.4, 1.2);
 }
 function drawTitle() {
   const y = H * 0.12;
@@ -3139,6 +3711,9 @@ window.PH = {
   makeCard: o => makeCard(o || {}).toDataURL('image/png'),
   rebuild() { buildBg(); }, toTitle() { toTitle(); }, showOver(rank) { showOver(rank); }, openShop(tab) { shopTab = tab || shopTab; openShop('title'); }, openInfShop() { shopInf = true; Meta.setMode('infinity'); openShop('infinity'); }, openBoard(m, from, inf) { openBoard(m, from || 'title', inf); },
   get banner() { return banner; }, get banner2() { return banner2; },
+  KIND, MAP_ANIMALS, rosterFor, debutFor, sigFly, pickFly, pickGround,
+  animalName: k => (KIND[k] && KIND[k].name) || (k || '').toUpperCase(),
+
   get browseMap() { return titleBrowseMap || Meta.save.equip.map; },
   hasMap: id => Meta.hasMap(id),
   isAdFree: () => Meta.isAdFree(),

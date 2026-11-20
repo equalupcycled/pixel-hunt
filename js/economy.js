@@ -108,15 +108,15 @@
   // Maps unlock in order by clearing the previous map's round 30 boss (not by purchase or upgrade count).
   const MAPS = [
     { id: 'meadow', name: 'Meadow', cash: 1.0, pts: 1.0, speed: 1.0, life: 1.0, size: 1.0, dark: 0,
-      role: 'Classic fields. Ducks, bluebirds, deer.', boss: 'eagle' },
+      role: 'Classic fields. Ducks, bluebirds, deer, plus cardinals, squirrels, and pheasants.', boss: 'eagle' },
     { id: 'lake', name: 'Lake', cash: 1.3, pts: 1.2, speed: 1.08, life: 0.95, size: 0.97, dark: 0,
-      role: 'Ducks & geese skim low over the water. Geese are tougher. Pays 1.3x.', boss: 'goose' },
+      role: 'Ducks & geese, plus kingfishers, frogs, and beavers. Keeps Meadow animals. Pays 1.3x.', boss: 'goose' },
     { id: 'snow', name: 'Snowy Forest', cash: 1.7, pts: 1.5, speed: 1.15, life: 0.92, size: 0.95, dark: 0,
-      role: 'Snow owls glide, rabbits zig-zag, wolves sprint. Pays 1.7x.', boss: 'yeti' },
+      role: 'Owls, rabbits, and wolves, plus ptarmigan, foxes, and weasels. Keeps earlier animals. Pays 1.7x.', boss: 'yeti' },
     { id: 'desert', name: 'Desert', cash: 2.2, pts: 1.8, speed: 1.22, life: 0.88, size: 0.93, dark: 0,
-      role: 'Vultures circle, roadrunners dash, coyotes. Heat haze. Pays 2.2x.', boss: 'vulture' },
+      role: 'Vultures, roadrunners, and coyotes, plus hawks, scorpions, and jackrabbits. Keeps earlier animals. Pays 2.2x.', boss: 'vulture' },
     { id: 'night', name: 'Night Hunt', cash: 2.8, pts: 2.3, speed: 1.3, life: 0.85, size: 0.92, dark: 1,
-      role: 'Bats & owls in the dark - only your flashlight shows them. Pays 2.8x.', boss: 'batking' },
+      role: 'Bats, owls, and glowing eyes, plus moths, raccoons, and skunks. Keeps earlier animals. Pays 2.8x.', boss: 'batking' },
   ];
   const mapIndex = id => MAPS.findIndex(m => m.id === id);
   const prevMap = id => { const i = mapIndex(id); return i > 0 ? MAPS[i - 1] : null; };
@@ -133,6 +133,11 @@
     bird: 2, blue: 2, gold: 2, decoy: 1,
     goose: 4, owl: 3, bat: 2, vulture: 4,
     deer: 4, swimgoose: 4, rabbit: 3, wolf: 5, roadrunner: 3, coyote: 5, eyes: 3, egg: 2, fawn: 2, pup: 2, bag: 1,
+    cardinal: 2, squirrel: 2, pheasant: 3,
+    kingfisher: 3, frog: 2, beaver: 4,
+    fox: 4, ptarmigan: 3, weasel: 2,
+    hawk: 4, scorpion: 3, jackrabbit: 3,
+    raccoon: 4, moth: 2, skunk: 3,
   };
   const kindHp = k => HP[k] || 2;
   const hitsNeeded = (hp, dmg) => Math.max(1, Math.ceil((hp || 1) / Math.max(1, dmg || 1)));
@@ -374,9 +379,15 @@
 
   const KILL = { bird: { pts: 500, cash: 5 }, blue: { pts: 750, cash: 7 }, gold: { pts: 2500, cash: 25 }, deer: { pts: 1500, cash: 15 },
     goose: { pts: 1200, cash: 12 }, owl: { pts: 900, cash: 9 }, rabbit: { pts: 1000, cash: 10 }, wolf: { pts: 2000, cash: 20 },
-    vulture: { pts: 900, cash: 9 }, roadrunner: { pts: 1600, cash: 16 }, coyote: { pts: 1800, cash: 18 }, bat: { pts: 800, cash: 8 }, eyes: { pts: 1400, cash: 14 } };
-  const killCash = (kind, round, moneyMult, mult) => Math.round(KILL[kind].cash * (1 + 0.08 * (round - 1)) * moneyMult * (1 + 0.1 * (mult - 1)));
-  const killPts = (kind, round, mult) => Math.round(KILL[kind].pts * (1 + (round - 1) * 0.25) * mult / 10) * 10;
+    vulture: { pts: 900, cash: 9 }, roadrunner: { pts: 1600, cash: 16 }, coyote: { pts: 1800, cash: 18 }, bat: { pts: 800, cash: 8 }, eyes: { pts: 1400, cash: 14 },
+    cardinal: { pts: 800, cash: 8 }, squirrel: { pts: 900, cash: 9 }, pheasant: { pts: 1200, cash: 12 },
+    kingfisher: { pts: 1100, cash: 11 }, frog: { pts: 800, cash: 8 }, beaver: { pts: 1400, cash: 14 },
+    fox: { pts: 1600, cash: 16 }, ptarmigan: { pts: 1000, cash: 10 }, weasel: { pts: 1300, cash: 13 },
+    hawk: { pts: 1400, cash: 14 }, scorpion: { pts: 1100, cash: 11 }, jackrabbit: { pts: 1500, cash: 15 },
+    raccoon: { pts: 1500, cash: 15 }, moth: { pts: 900, cash: 9 }, skunk: { pts: 1200, cash: 12 } };
+  const killRow = kind => KILL[kind] || KILL.bird;
+  const killCash = (kind, round, moneyMult, mult) => Math.round(killRow(kind).cash * (1 + 0.08 * (round - 1)) * moneyMult * (1 + 0.1 * (mult - 1)));
+  const killPts = (kind, round, mult) => Math.round(killRow(kind).pts * (1 + (round - 1) * 0.25) * mult / 10) * 10;
   const roundBonus = (r, perfect) => Math.round((10 + r * 5 + (perfect ? 10 + r * 3 : 0)));
   const decoyPenalty = r => 15 + r * 5;
   // Eggs dropped by patrolling bosses. Interval shortens with boss tier (round/10) and faster maps.

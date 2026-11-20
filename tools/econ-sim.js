@@ -20,7 +20,7 @@ const V = (lv, id) => T(id).val[lv[id] || 0];
 // Human tap-to-reload lag is off by default so the fitted ~6 games/purchase curve stays put.
 // --perks turns it on so Auto Reload (and manual reloads) can be measured fairly.
 let HUMAN_RELOAD = 0;
-const GROUND = new Set(['deer', 'fawn', 'wolf', 'coyote', 'rabbit', 'roadrunner', 'swimgoose', 'eyes']);
+const GROUND = new Set(['deer', 'fawn', 'wolf', 'coyote', 'rabbit', 'roadrunner', 'swimgoose', 'eyes', 'squirrel', 'pheasant', 'frog', 'beaver', 'fox', 'weasel', 'scorpion', 'jackrabbit', 'raccoon', 'skunk']);
 function P(lv, id) {
   const tr = T(id); if (!tr) return 0;
   const n = lv[id] | 0;
@@ -171,11 +171,11 @@ function weaponTry(w, lv, d, kind, slow, st, ammo, ctx) {
 function weaponOf(w) { return E.WEAPONS.find(x => x.id === w); }
 
 const MAP_SET = {
-  meadow: { fly: [['bird', 0.7], ['blue', 0.3]], ground: ['deer'] },
-  lake: { fly: [['bird', 0.55], ['goose', 0.45]], ground: ['swimgoose'] },
-  snow: { fly: [['owl', 1]], ground: ['rabbit', 'wolf'] },
-  desert: { fly: [['vulture', 1]], ground: ['roadrunner', 'coyote'] },
-  night: { fly: [['bat', 0.65], ['owl', 0.35]], ground: ['eyes'] },
+  meadow: { fly: [['bird', 0.5], ['blue', 0.25], ['cardinal', 0.25]], ground: ['deer', 'squirrel', 'pheasant'] },
+  lake: { fly: [['goose', 0.4], ['kingfisher', 0.3], ['bird', 0.2], ['cardinal', 0.1]], ground: ['swimgoose', 'frog', 'beaver', 'deer'] },
+  snow: { fly: [['owl', 0.4], ['ptarmigan', 0.3], ['goose', 0.2], ['bird', 0.1]], ground: ['rabbit', 'wolf', 'fox', 'weasel', 'deer'] },
+  desert: { fly: [['vulture', 0.4], ['hawk', 0.3], ['owl', 0.15], ['goose', 0.15]], ground: ['roadrunner', 'coyote', 'scorpion', 'jackrabbit'] },
+  night: { fly: [['bat', 0.4], ['moth', 0.25], ['owl', 0.2], ['vulture', 0.15]], ground: ['eyes', 'raccoon', 'skunk', 'wolf'] },
 };
 function pickFlyMap(mapId) {
   const set = (MAP_SET[mapId] || MAP_SET.meadow).fly; let x = rnd(), acc = 0;
@@ -509,6 +509,11 @@ const KIND_INFO = {
   rabbit: { g: 1, size: 1.25, spd: 0.9 }, wolf: { g: 1, size: 1.5, spd: 1.2, hp: 2 },
   roadrunner: { g: 1, size: 1.25, spd: 1.55 }, coyote: { g: 1, size: 1.5, spd: 1.05, hp: 2 },
   eyes: { g: 1, size: 1 },
+  cardinal: { spd: 1.15, size: 0.9 }, squirrel: { g: 1, size: 1.05, spd: 1.05 }, pheasant: { g: 1, size: 1.3, spd: 1.05 },
+  kingfisher: { spd: 1.05, size: 0.95 }, frog: { g: 1, size: 1.05, spd: 0.7 }, beaver: { g: 1, size: 1.25, spd: 0.4 },
+  fox: { g: 1, size: 1.45, spd: 1.15 }, ptarmigan: { spd: 0.9, size: 1.05 }, weasel: { g: 1, size: 1.05, spd: 1.45 },
+  hawk: { size: 1.15, spd: 1.05 }, scorpion: { g: 1, size: 1.1, spd: 0.55 }, jackrabbit: { g: 1, size: 1.3, spd: 1.25 },
+  raccoon: { g: 1, size: 1.35, spd: 0.75 }, moth: { size: 0.9, spd: 1.05 }, skunk: { g: 1, size: 1.2, spd: 0.65 },
   egg: { size: 0.7, spd: 0.55, life: 1.2 },
   fawn: { g: 1, size: 0.95, spd: 0.78, hp: 2 },
 };

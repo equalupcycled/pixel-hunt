@@ -220,6 +220,51 @@ window.Sfx = (() => {
       } else if (k === 'eyes') {
         tone('sine', 760, 200, 0.22, 0.07);
         tone('triangle', 500, 140, 0.2, 0.04, 0.04);
+      } else if (k === 'cardinal') {
+        cryBird(1240);
+        tone('triangle', 1600, 1100, 0.06, 0.05, 0.04);
+      } else if (k === 'squirrel') {
+        tone('square', 1600, 1100, 0.05, 0.06);
+        tone('triangle', 900, 600, 0.07, 0.04, 0.04);
+      } else if (k === 'pheasant') {
+        tone('sawtooth', 520, 280, 0.08, 0.09);
+        tone('square', 880, 420, 0.07, 0.06, 0.06);
+      } else if (k === 'kingfisher') {
+        cryBird(1500);
+        tone('square', 1800, 900, 0.05, 0.05, 0.04);
+      } else if (k === 'frog') {
+        tone('sine', 220, 140, 0.10, 0.10);
+        tone('square', 180, 90, 0.08, 0.06, 0.06);
+      } else if (k === 'beaver') {
+        tone('sawtooth', 200, 120, 0.10, 0.10);
+        noise(0.10, 0.16, 400, 80);
+      } else if (k === 'fox') {
+        tone('sawtooth', 560, 320, 0.10, 0.08);
+        tone('triangle', 360, 200, 0.12, 0.06, 0.06);
+      } else if (k === 'ptarmigan') {
+        cryBird(700);
+        tone('sawtooth', 400, 220, 0.08, 0.06, 0.05);
+      } else if (k === 'weasel') {
+        tone('square', 1500, 900, 0.05, 0.06);
+        tone('sawtooth', 800, 400, 0.06, 0.05, 0.04);
+      } else if (k === 'hawk') {
+        tone('sawtooth', 620, 240, 0.16, 0.09);
+        cryBird(780);
+      } else if (k === 'scorpion') {
+        tone('square', 300, 160, 0.06, 0.07);
+        noise(0.08, 0.2, 1800, 400);
+      } else if (k === 'jackrabbit') {
+        tone('square', 1200, 700, 0.06, 0.07);
+        tone('triangle', 900, 500, 0.07, 0.05, 0.04);
+      } else if (k === 'raccoon') {
+        tone('sawtooth', 340, 180, 0.09, 0.09);
+        tone('square', 260, 140, 0.08, 0.06, 0.07);
+      } else if (k === 'moth') {
+        tone('sine', 1400, 900, 0.08, 0.05);
+        tone('triangle', 1800, 1200, 0.07, 0.04, 0.04);
+      } else if (k === 'skunk') {
+        tone('sawtooth', 240, 140, 0.10, 0.08);
+        noise(0.08, 0.18, 700, 120);
       } else if (k === 'gold') {
         cryBird(1100);
       } else if (k === 'blue') {

@@ -35,7 +35,7 @@ with sync_playwright() as p:
       const failed = [];
       names.forEach(n => { try { n === 'cry' ? Sfx.cry('deer') : n === 'streak' ? Sfx.streak(3) : Sfx[n](); } catch (e) { failed.push(n+': '+e.message); } });
       try { Sfx.setMusic('menu'); Sfx.setSfxOn(true); Sfx.setMusicOn(true); } catch (e) { failed.push('reset: '+e.message); }
-      const kinds = ['bird','blue','gold','deer','goose','swimgoose','owl','rabbit','wolf','vulture','roadrunner','coyote','bat','eyes','decoy','boss'];
+      const kinds = ['bird','blue','gold','deer','goose','swimgoose','owl','rabbit','wolf','vulture','roadrunner','coyote','bat','eyes','decoy','boss','cardinal','squirrel','pheasant','kingfisher','frog','beaver','fox','ptarmigan','weasel','hawk','scorpion','jackrabbit','raccoon','moth','skunk'];
       kinds.forEach(k => { try { Sfx.cry(k); } catch (e) { failed.push('cry '+k+': '+e.message); } });
       return { n: names.length, failed };
     })()""")

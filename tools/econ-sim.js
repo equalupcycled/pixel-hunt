@@ -280,10 +280,11 @@ function run(lv, equip, mapId = 'meadow', start = 1) {
     // turret rescue budget this round
     let tb = 0;
     turrets.forEach(t => {
-      if (t === 'pellet') tb += V(lv, 'pellet.ammo') * [0.4, 0.5, 0.58, 0.66][lv['pellet.aim'] || 0] * Math.min(1, 2.5 / V(lv, 'pellet.rate') * 0.5);
-      if (t === 'tesla') tb += V(lv, 'tesla.ammo') * (0.75 + 0.15 * (V(lv, 'tesla.chain') - 1)) * (V(lv, 'tesla.range') / 120);
-      if (t === 'missile') tb += V(lv, 'missile.ammo') * (0.85 + V(lv, 'missile.blast') / 50) * Math.min(1, 5 / V(lv, 'missile.rate') * 0.6);
+      if (t === 'pellet') tb += V(lv, 'pellet.ammo');
+      if (t === 'tesla') tb += V(lv, 'tesla.ammo') * (1 + 0.5 * Math.max(0, (V(lv, 'tesla.chain') || 1) - 1));
+      if (t === 'missile') tb += V(lv, 'missile.ammo') * (1 + Math.min(0.25, (V(lv, 'missile.blast') || 0) / 80));
     });
+    tb *= 0.45; // reliable cleanup, not enough budget to cover a whole late-map miss count
     let golds = (calls > 0 && r >= 4) ? (calls--, 3) : 0;
     const extraDeer = (r >= 4 && (lv['perk.deer'] | 0)) ? 2 : 0;
     for (let i = 0; i < d.count + extraDeer && alive; i++) {
@@ -307,7 +308,7 @@ function run(lv, equip, mapId = 'meadow', start = 1) {
         time += d.life * 0.35 / d.conc + d.interval / d.conc;
       } else {
         time += d.life / d.conc;
-        if (tb > 0 && rnd() < Math.min(1, tb) * 0.85) { tb -= 1; cash += pay(kind, 1) * E.TURRET_CASH; continue; }
+        if (tb > 0) { tb -= 1; cash += pay(kind, 1) * E.TURRET_CASH; continue; }
         if (missRun === st.maxMiss - 1 && flak > 0) { flak--; hits++; cash += pay(kind, 1) * 1.5; continue; }
         if (missRun === st.maxMiss - 1 && decoys > 0) { decoys--; boost = 5; }
         if (isGroundKind(kind) && deerMercy > 0) { deerMercy--; continue; }
@@ -614,10 +615,11 @@ function runScored(lv, equip, mapId, start) {
     let hits = 0, total = 0, focusLeft = Math.round(st.focus * st.focusDur / 2.5);
     let tb = 0;
     turrets.forEach(t => {
-      if (t === 'pellet') tb += V(lv, 'pellet.ammo') * [0.4, 0.5, 0.58, 0.66][lv['pellet.aim'] || 0] * Math.min(1, 2.5 / V(lv, 'pellet.rate') * 0.5);
-      if (t === 'tesla') tb += V(lv, 'tesla.ammo') * (0.75 + 0.15 * (V(lv, 'tesla.chain') - 1)) * (V(lv, 'tesla.range') / 120);
-      if (t === 'missile') tb += V(lv, 'missile.ammo') * (0.85 + V(lv, 'missile.blast') / 50) * Math.min(1, 5 / V(lv, 'missile.rate') * 0.6);
+      if (t === 'pellet') tb += V(lv, 'pellet.ammo');
+      if (t === 'tesla') tb += V(lv, 'tesla.ammo') * (1 + 0.5 * Math.max(0, (V(lv, 'tesla.chain') || 1) - 1));
+      if (t === 'missile') tb += V(lv, 'missile.ammo') * (1 + Math.min(0.25, (V(lv, 'missile.blast') || 0) / 80));
     });
+    tb *= 0.45; // reliable cleanup, not enough budget to cover a whole late-map miss count
     let golds = (calls > 0 && r >= 4) ? (calls--, 3) : 0;
 
     const resolve = (kind, canTurret) => {
@@ -642,7 +644,7 @@ function runScored(lv, equip, mapId, start) {
         }
         return 'hit';
       }
-      if (canTurret && tb > 0 && rnd() < Math.min(1, tb) * 0.85) { tb -= 1; hits++; award(kind, false, false); return 'turret'; }
+      if (canTurret && tb > 0) { tb -= 1; hits++; award(kind, false, false); return 'turret'; }
       if (missRun === st.maxMiss - 1 && flak > 0) { flak--; hits++; streak++; award(kind, true, false); return 'flak'; }
       if (missRun === st.maxMiss - 1 && decoys > 0) { decoys--; boost = 5; }
       if (isGroundKind(kind) && deerMercy > 0) { deerMercy--; return 'mercy'; }

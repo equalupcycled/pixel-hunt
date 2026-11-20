@@ -63,23 +63,23 @@
       ] },
   ];
 
-  // ---------- turrets (auto-fire, limited ammo per round, only "clean up" birds about to escape) ----------
+  // ---------- turrets (auto-fire, limited ammo per round; lock on and finish regular targets) ----------
   const TURRETS = [
-    { id: 'pellet', name: 'Pellet Turret', req: 20, ownW: 1.3, role: 'Cheap auto-gun. Fires at birds that are about to get away.',
+    { id: 'pellet', name: 'Pellet Turret', req: 20, ownW: 1.3, role: 'Cheap auto-gun. Locks on and drops a target with a clear tracer.',
       tracks: [
         { k: 'ammo', name: 'Hopper', val: [2, 3, 3, 4, 4, 5], desc: v => `${v} shots/round` },
         { k: 'rate', name: 'Servo', icon: 'hand', val: [2.5, 2.1, 1.8, 1.5, 1.2], desc: v => `Every ${v}s` },
-        { k: 'aim', name: 'Optics', icon: 'scope', val: [10, 7, 5, 3], desc: v => `Aim error ${v}px` },
+        { k: 'aim', name: 'Optics', icon: 'scope', val: [10, 7, 5, 3], desc: v => 'Shots always land' },
         { k: 'dmg', name: 'Shot Weight', icon: 'scope', w: 1.15, val: [2, 3, 4, 5, 6], desc: v => `DMG ${v}` },
       ] },
-    { id: 'tesla', name: 'Tesla Coil', req: 55, ownW: 1.5, role: 'Instant chain lightning. Few charges, never misses in range.',
+    { id: 'tesla', name: 'Tesla Coil', req: 55, ownW: 1.5, role: 'Instant chain lightning. Few charges, locks a target and never misses in range.',
       tracks: [
         { k: 'ammo', name: 'Capacitors', val: [1, 1, 2, 2, 3], desc: v => `${v} zap${v > 1 ? 's' : ''}/round` },
         { k: 'chain', name: 'Arc Chain', icon: 'choke', val: [1, 2, 3], desc: v => `Chains to ${v}` },
         { k: 'range', name: 'Coil Size', icon: 'scope', val: [70, 85, 100, 120], desc: v => `Range ${v}px` },
         { k: 'dmg', name: 'Voltage', icon: 'scope', w: 1.2, val: [3, 4, 5, 6, 8], desc: v => `DMG ${v}` },
       ] },
-    { id: 'missile', name: 'Missile Pod', req: 75, ownW: 1.6, role: 'Homing missiles with splash. Loves deer and golden birds.',
+    { id: 'missile', name: 'Missile Pod', req: 75, ownW: 1.6, role: 'Fast homing missiles with splash. Tracks until they connect. Loves deer and golden birds.',
       tracks: [
         { k: 'ammo', name: 'Pods', val: [1, 1, 2, 2, 3], desc: v => `${v} missile${v > 1 ? 's' : ''}/round` },
         { k: 'blast', name: 'Warhead', icon: 'choke', val: [8, 10, 12, 15], desc: v => `Blast ${v}px` },

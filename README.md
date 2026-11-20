@@ -55,7 +55,7 @@ Landing / download page (does not replace the game): https://pixel-hunt-o4vw.onr
 Each has 3-5 upgrade tracks (capacity, reload, accuracy/size, special). **Gun Sling** (30 upgrades) adds a 2nd slot and a SWAP button.
 
 Turrets (need **Turret Pads**, up to 3 slots): Pellet Turret (20), Tesla Coil (55, chain lightning), Missile Pod (75, homing splash).
-They only shoot targets that are about to escape, have a few shots per round, and pay 40% / 50% points.
+They lock on and fire (shots land; regular animals go down in one hit, bosses take normal turret damage), have a few shots per round, and pay 40% / 50% points. They will not waste a shot on a decoy or a target already leaving the screen.
 
 Gadgets (charges per run): Flak Grenade (tap FLAK, tap the sky), Bird Call (next 3 birds golden), Duck Decoy (birds gather + slow 6 s).
 Gear: Hunter's Eye, Focus Scope (slow-mo), Lucky Feather (4-5 misses allowed), Bounty Hunter ($ multiplier), Flashlight (Night map).

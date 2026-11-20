@@ -597,7 +597,7 @@ let fromCkpt = 0, ckptFlash = 0, ckptRound = 0;
 const CKPT_EVERY = 5;
 let infinity = false, bossKilled = false, mapJustCleared = false, failedClear = false;
 let roundHits = 0, roundEsc = 0, roundTotal = 0, queue = [], spawnT = 0, diff = null, bossT = null, bossRound = false;
-let introT = 0, clearT = 0, dieT = 0, banner = '', banner2 = '';
+let introT = 0, clearT = 0, dieT = 0, banner = '', banner2 = '', holdRound = false;
 let targets = [], parts = [], floats = [], flashes = [], projs = [], zaps = [], tracers = [];
 let shake = 0, hitStop = 0, skyFlash = 0, whiteFlash = 0, cursor = null, lastTouch = 0, contTimer = null;
 let weapons = [], wi = 0, wpn = null, turrets = [], gadgets = { flak: 0, call: 0, decoy: 0 }, armed = false, decoyObj = null;
@@ -632,7 +632,7 @@ function makeWeapon(id) {
 }
 function makeTurret(id, i) {
   const g = k => Meta.val(id + '.' + k);
-  const t = { id, x: TURRET_X[i] || 40 + i * 30, y: H - BAR - 9, ammo0: g('ammo'), ammo: 0, cool: rand(0.6, 1.4), ang: -Math.PI / 2, flash: 0 };
+  const t = { id, x: TURRET_X[i] || 40 + i * 30, y: H - BAR - 9, ammo0: g('ammo'), ammo: 0, cool: rand(0.6, 1.4), ang: -Math.PI / 2, flash: 0, lock: null };
   t.dmg = g('dmg') || 2;
   if (id === 'pellet') { t.rate = g('rate'); t.err = g('aim'); }
   if (id === 'tesla') { t.rate = 3; t.chain = g('chain'); t.range = g('range'); }
@@ -695,6 +695,7 @@ function resetRun() {
   gadgets = { flak: Meta.val('gadget.flak'), call: Meta.val('gadget.call'), decoy: Meta.val('gadget.decoy') };
   armed = false; decoyObj = null; holding = false; drawing = null; bossT = null;
   targets = []; parts = []; floats = []; projs = []; zaps = []; tracers = [];
+  holdRound = false;
 }
 function addCash(n) { n = Math.round(n); Meta.addBank(n); runCash += n; }
 function float(text, x, y, color = '#fff', sz = 1, life = 1) { floats.push({ text, x, y, t: 0, life, color, sz }); }
@@ -733,7 +734,7 @@ function startRound(opts) {
   roundTotal = queue.filter(k => k !== 'decoy').length;
   roundHits = 0; roundEsc = 0; spawnT = 0.6; bossT = null; bossKilled = false;
   weapons.forEach(w => { w.ammo = w.id === 'laser' ? 0 : w.cap; w.heat = 0; w.overheated = false; w.reloading = false; });
-  turrets.forEach(t => { t.ammo = t.ammo0; t.cool = rand(0.6, 1.4); });
+  turrets.forEach(t => { t.ammo = t.ammo0; t.cool = rand(0.6, 1.4); t.lock = null; }); resetTurretStats();
   focusCharges = focusMax; focusT = 0; armed = false;
   state = 'intro'; introT = bossRound ? 2.2 : 1.6;
   const inp = wpn.def.input;
@@ -904,6 +905,8 @@ function damage(t, dmg, src, info = {}) {
   if (!hittable(t)) return false;
   dmg = Math.max(1, Math.round(dmg || 1));
   if (t.kind === 'decoy') { if (src !== 'turret') hitDecoy(t); return true; }
+  // Purchased turrets should finish regular animals (eggs, fawns, hatchlings included). Bosses take normal turret damage only.
+  if (src === 'turret' && t.kind !== 'boss') dmg = Math.max(dmg, Math.ceil(t.hp || 1));
   t.hp -= dmg; t.hurt = 0.16;
   const xo = (info.fx || 0);
   float((info.crit ? 'CRIT ' : '') + dmg, t.x + xo, t.y - 14, info.crit ? '#ff5a5a' : '#ffe066', info.crit ? 1.3 : 1.15, 0.7);
@@ -1153,48 +1156,122 @@ function releaseArrow() {
 }
 
 // ---------------- turrets ----------------
-function dangerOf(t) {
-  if (t.kind === 'decoy' || !hittable(t)) return -1;
-  if (t.kind === 'egg') return -1;
-  if (t.kind === 'boss') return 2;
-  if (t.state === 'flee') return 1.5;
-  if (t.kind === 'eyes') return t.peeks <= 1 ? 1.2 : -1;
-  const p = t.x / W; // everything crosses left -> right; the further right, the closer to escaping
-  return p > 0.55 ? p : -1;
+// Telemetry for tests: a "shot" is one fire event; a "hit" means that event damaged its mark.
+const turretStats = { shots: 0, hits: 0, kills: 0, misses: 0 };
+function resetTurretStats() { turretStats.shots = 0; turretStats.hits = 0; turretStats.kills = 0; turretStats.misses = 0; }
+function timeToLeave(t) {
+  if (!t || !hittable(t)) return 0;
+  if (t.kind === 'eyes') return Math.max(0, t.pt || 0);
+  if (t.kind === 'egg') {
+    const vy = Math.max(20, t.vy || 20);
+    if (t.hatchY != null) return Math.max(0, (t.hatchY - t.y) / vy);
+    return 0.4;
+  }
+  if (t.kind === 'boss') {
+    if (!t.leaving) return Math.max(0.2, t.timer || 1);
+    const edge = (t.vx || 0) >= 0 ? (W + 16 * (t.sc || 1) - t.x) : (t.x + 16 * (t.sc || 1));
+    return Math.max(0, edge / Math.max(24, Math.abs(t.vx || 0)));
+  }
+  const vx = t.g ? (t.vx || 0) : Math.max((t.vx0 || 0) * 0.55, t.vx || 0);
+  if (vx > 0) return Math.max(0, (W + 12 - t.x) / vx);
+  if (vx < 0) return Math.max(0, (t.x + 24) / Math.abs(vx));
+  return 1;
+}
+function turretLeadTime(tu, t) {
+  if (!tu || !t) return 0;
+  if (tu.id === 'missile') return Math.hypot(t.x - tu.x, t.y - (tu.y - 8)) / 480;
+  return 0; // pellet + tesla are hitscan
+}
+function turretValid(t, tu, leadT) {
+  if (!t || !hittable(t) || (t.hp || 0) <= 0.001) return false;
+  if (t.kind === 'decoy' || t.kind === 'bag') return false; // decoys penalize; bags are bonus, don't spend ammo
+  if (t.x < -10 || t.x > W + 10 || t.y < -24 || t.y > H + 16) return false;
+  if (tu && tu.id === 'tesla' && Math.hypot(t.x - tu.x, t.y - (tu.y - 6)) > tu.range) return false;
+  // Cleanup, not wave-clear: wait until a regular is well onto the screen, but not so late the shot cannot connect.
+  const earlyOk = t.kind === 'egg' || t.kind === 'fawn' || t.kind === 'pup' || t.kind === 'eyes' || t.kind === 'boss' || t.hatched;
+  if (!earlyOk && (t.x / W) < 0.32) return false;
+  return timeToLeave(t) > (leadT || 0) + 0.08;
+}
+function turretPriority(t) {
+  if (t.kind === 'boss') return 0.35;
+  if (t.kind === 'gold') return 2.3;
+  if (t.kind === 'egg') return 1.7;
+  if (t.kind === 'fawn' || t.kind === 'pup' || t.hatched) return 1.55;
+  if (t.g) return 1.45;
+  return 1 + (t.x / W); // closer to the right edge is a higher priority, but only if still hittable in time
+}
+function turretTaken(tu) {
+  const locked = new Set();
+  for (const o of turrets) if (o !== tu && o.lock && o.lock.kind !== 'boss') locked.add(o.lock);
+  for (const p of projs) if (p.type === 'missile' && p.target && p.target.kind !== 'boss') locked.add(p.target);
+  return locked;
+}
+function pickTurretTarget(tu) {
+  if (tu.lock && turretValid(tu.lock, tu, turretLeadTime(tu, tu.lock))) return tu.lock;
+  tu.lock = null;
+  const taken = turretTaken(tu);
+  let best = null, bd = -1;
+  for (const t of targets) {
+    if (taken.has(t)) continue;
+    const lead = turretLeadTime(tu, t);
+    if (!turretValid(t, tu, lead)) continue;
+    let d = turretPriority(t);
+    if (tu.id === 'missile' && (t.kind === 'gold' || t.g)) d += 0.3;
+    if (d > bd) { bd = d; best = t; }
+  }
+  return best;
+}
+function dangerOf(t) { // kept for older hooks / missile retarget fallback
+  return turretValid(t, null, 0) ? turretPriority(t) : -1;
+}
+function noteTurretKillIfDead(t) {
+  if (t && ((t.hp || 0) <= 0.001 || t.state === 'gone' || t.state === 'hit' || t.state === 'fall')) turretStats.kills++;
 }
 function updTurrets(dt) {
   for (const tu of turrets) {
     tu.flash = Math.max(0, tu.flash - dt);
     tu.cool -= dt;
+    if (tu.lock && !turretValid(tu.lock, tu, turretLeadTime(tu, tu.lock))) tu.lock = null;
     if (tu.cool > 0 || tu.ammo <= 0 || (state !== 'play' && state !== 'bonus')) continue;
-    let best = null, bd = 0;
-    for (const t of targets) {
-      let d = dangerOf(t); if (d < 0) continue;
-      if (tu.id === 'tesla' && Math.hypot(t.x - tu.x, t.y - tu.y) > tu.range) continue;
-      if (tu.id === 'missile' && (t.kind === 'gold' || t.g || t.kind === 'boss')) d += 1;
-      if (d > bd) { bd = d; best = t; }
-    }
+    const best = pickTurretTarget(tu);
     if (!best) continue;
-    tu.ammo--; tu.cool = tu.rate; tu.flash = 0.15;
-    tu.ang = Math.atan2(best.y - (tu.y - 6), best.x - tu.x);
+    tu.lock = best;
+    tu.ammo--; tu.cool = tu.rate; tu.flash = 0.18;
+    const mx = tu.x, my = tu.y - 6;
+    const ty = best.y - (best.hop || 0);
+    tu.ang = Math.atan2(ty - my, best.x - mx);
+    turretStats.shots++;
     if (tu.id === 'pellet') {
-      const sp = 260, dist = Math.hypot(best.x - tu.x, best.y - tu.y), tt = dist / sp;
-      const tx = best.x + (best.vx || 0) * tt + rand(-tu.err, tu.err), ty = best.y + (best.vy || 0) * tt + rand(-tu.err, tu.err);
-      const L = Math.hypot(tx - tu.x, ty - tu.y + 6) || 1;
-      projs.push({ type: 'pellet', x: tu.x, y: tu.y - 6, vx: (tx - tu.x) / L * sp, vy: (ty - tu.y + 6) / L * sp, r: 2.5, life: 1.6, dmg: tu.dmg || 2 });
+      // Hitscan + a bright tracer so the player sees the shot land. No aim error, no slow projectile to miss.
+      tracers.push({ x0: mx, y0: my, x1: best.x, y1: ty, t: 0, life: 0.22, c: '#fff6a0', w: 2.2 });
+      flashes.push({ x: best.x, y: ty, t: 0, r: 7 });
+      beginShot();
+      const ok = damage(best, tu.dmg || 2, 'turret');
+      shotKills = 0;
+      if (ok) { turretStats.hits++; noteTurretKillIfDead(best); } else turretStats.misses++;
+      if (!hittable(best)) tu.lock = null;
       Sfx.pellet();
     } else if (tu.id === 'tesla') {
       const chain = [best]; let cur = best;
       while (chain.length < tu.chain) {
-        const nx = targets.filter(t => hittable(t) && t.kind !== 'decoy' && !chain.includes(t) && Math.hypot(t.x - cur.x, t.y - cur.y) < 45).sort((a, b) => Math.hypot(a.x - cur.x, a.y - cur.y) - Math.hypot(b.x - cur.x, b.y - cur.y))[0];
+        const nx = targets.filter(t => turretValid(t, tu, 0) && !chain.includes(t) && Math.hypot(t.x - cur.x, t.y - cur.y) < 55)
+          .sort((a, b) => Math.hypot(a.x - cur.x, a.y - cur.y) - Math.hypot(b.x - cur.x, b.y - cur.y))[0];
         if (!nx) break; chain.push(nx); cur = nx;
       }
-      const pts = [{ x: tu.x, y: tu.y - 10 }].concat(chain.map(t => ({ x: t.x, y: t.y })));
+      const pts = [{ x: tu.x, y: tu.y - 10 }].concat(chain.map(t => ({ x: t.x, y: t.y - (t.hop || 0) })));
       zaps.push({ pts, t: 0 });
-      beginShot(); chain.forEach(t => damage(t, tu.dmg || 3, 'turret')); shotKills = 0;
+      tracers.push({ x0: mx, y0: my, x1: best.x, y1: ty, t: 0, life: 0.2, c: '#bff4ff', w: 1.8 });
+      beginShot();
+      let hit = 0;
+      chain.forEach(t => { if (damage(t, tu.dmg || 3, 'turret')) { hit++; noteTurretKillIfDead(t); } });
+      shotKills = 0;
+      if (hit) turretStats.hits++; else turretStats.misses++;
+      if (!hittable(best)) tu.lock = null;
       Sfx.zap();
     } else if (tu.id === 'missile') {
-      projs.push({ type: 'missile', x: tu.x, y: tu.y - 8, vx: 0, vy: -90, target: best, blast: tu.blast, life: 3.2, dmg: tu.dmg || 3 });
+      const dx = best.x - mx, dy = ty - (tu.y - 8), L = Math.hypot(dx, dy) || 1;
+      projs.push({ type: 'missile', x: tu.x, y: tu.y - 8, vx: dx / L * 220, vy: dy / L * 220, target: best, blast: tu.blast, life: 2.4, dmg: tu.dmg || 3, x0: mx, y0: my, marked: false });
+      tracers.push({ x0: mx, y0: my, x1: best.x, y1: ty, t: 0, life: 0.16, c: '#ffb030', w: 1.6 });
       Sfx.missile();
     }
   }
@@ -1377,7 +1454,7 @@ function update(dt) {
     spawnT -= gdt;
     const conc = bossT ? 2 : diff.conc;
     if (spawnT <= 0 && queue.length && alive() < conc) { spawn(queue.shift()); spawnT = diff.interval * rand(0.8, 1.2); }
-    if (!queue.length && targets.length === 0 && !projs.some(p => p.type === 'flak')) roundClear();
+    if (!holdRound && !queue.length && targets.length === 0 && !projs.some(p => p.type === 'flak')) roundClear();
     updTurrets(gdt);
   } else if (state === 'bonus') {
     if (bonusIntroT > 0) bonusIntroT -= dt;
@@ -1435,17 +1512,48 @@ function updProjs(dt) {
       for (const t of targets) if (hittable(t) && t.kind !== 'decoy' && boxDist(t, p.x, p.y) <= p.r) { damage(t, p.dmg || 2, 'turret'); p.dead = true; break; }
       if (p.y < -10 || p.x < -10 || p.x > W + 10 || p.life <= 0) p.dead = true;
     } else if (p.type === 'missile') {
-      const t = p.target;
-      if (t && hittable(t)) {
-        const a = Math.atan2(t.y - p.y, t.x - p.x), cur = Math.atan2(p.vy, p.vx); let da = a - cur;
-        while (da > Math.PI) da -= 2 * Math.PI; while (da < -Math.PI) da += 2 * Math.PI;
-        const na = cur + clamp(da, -5 * dt, 5 * dt), sp = Math.min(170, Math.hypot(p.vx, p.vy) + 140 * dt);
-        p.vx = Math.cos(na) * sp; p.vy = Math.sin(na) * sp;
-        if (Math.hypot(t.x - p.x, t.y - p.y) < 6) { explode(p.x, p.y, p.blast, 'turret', p.dmg || 3); p.dead = true; }
-      } else p.target = targets.filter(x => dangerOf(x) >= 0)[0] || null;
-      p.x += p.vx * dt; p.y += p.vy * dt;
-      if (Math.random() < 0.8) parts.push({ x: p.x, y: p.y, vx: rand(-5, 5), vy: rand(-5, 5), c: Math.random() < 0.5 ? '#ccc' : '#ff9a3d', t: 0, life: 0.35, g: 0, s: 1 });
-      if (!p.dead && (p.life <= 0 || p.y < -20)) { if (p.life <= 0) explode(p.x, p.y, p.blast, 'turret', 2); p.dead = true; }
+      const mark = (hit) => { if (p.marked) return; p.marked = true; if (hit) turretStats.hits++; else turretStats.misses++; };
+      const alreadyDown = t => t && (t.kind !== 'decoy') && ((t.hp || 0) <= 0.001 || t.state === 'hit' || t.state === 'fall' || t.state === 'gone');
+      let t = p.target;
+      if (!(t && turretValid(t, null, 0))) {
+        const nxt = targets.filter(x => turretValid(x, null, 0) && x.kind !== 'boss').sort((a, b) => Math.hypot(a.x - p.x, a.y - p.y) - Math.hypot(b.x - p.x, b.y - p.y))[0] || null;
+        if (nxt) { p.target = nxt; t = nxt; }
+        else if (alreadyDown(t)) {
+          // Original mark is already down and nothing else to chase — count a hit, not a miss.
+          const tx = t.x, ty = (t.y || 0) - (t.hop || 0);
+          explode(tx, ty, p.blast, 'turret', p.dmg || 3);
+          tracers.push({ x0: p.x0 != null ? p.x0 : p.x, y0: p.y0 != null ? p.y0 : p.y, x1: tx, y1: ty, t: 0, life: 0.18, c: '#ffb030', w: 2 });
+          mark(true);
+          p.dead = true;
+        } else {
+          p.target = null; t = null;
+        }
+      }
+      if (!p.dead && t && hittable(t) && t.kind !== 'decoy') {
+        const tx = t.x, ty = t.y - (t.hop || 0);
+        const a = Math.atan2(ty - p.y, tx - p.x);
+        const sp = Math.min(520, Math.max(220, Math.hypot(p.vx, p.vy)) + 620 * dt);
+        p.vx = Math.cos(a) * sp; p.vy = Math.sin(a) * sp;
+        if (Math.hypot(tx - p.x, ty - p.y) < Math.max(10, (p.blast || 8) * 0.7)) {
+          const any = explode(tx, ty, p.blast, 'turret', p.dmg || 3);
+          tracers.push({ x0: p.x0 != null ? p.x0 : p.x, y0: p.y0 != null ? p.y0 : p.y, x1: tx, y1: ty, t: 0, life: 0.2, c: '#ffb030', w: 2.2 });
+          mark(!!any || alreadyDown(t));
+          if (any) noteTurretKillIfDead(t);
+          p.dead = true;
+        }
+      }
+      if (!p.dead) {
+        p.x += p.vx * dt; p.y += p.vy * dt;
+        if (Math.random() < 0.8) parts.push({ x: p.x, y: p.y, vx: rand(-5, 5), vy: rand(-5, 5), c: Math.random() < 0.5 ? '#ccc' : '#ff9a3d', t: 0, life: 0.35, g: 0, s: 1 });
+        if (p.life <= 0 || p.y < -20 || p.x < -20 || p.x > W + 20) {
+          if (t && (hittable(t) || alreadyDown(t))) {
+            const any = hittable(t) ? explode(t.x, t.y - (t.hop || 0), p.blast, 'turret', p.dmg || 3) : true;
+            mark(!!any || alreadyDown(t));
+            if (hittable(t)) noteTurretKillIfDead(t);
+          } else mark(false);
+          p.dead = true;
+        }
+      }
     } else if (p.type === 'flak') {
       p.t += dt; const k = Math.min(1, p.t / p.T);
       p.x = HUNTER_X + (p.tx - HUNTER_X) * k; p.y = (H - BAR - 20) + (p.ty - (H - BAR - 20)) * k - Math.sin(k * Math.PI) * 30;
@@ -1867,7 +1975,7 @@ function openShop(from = 'title', keep) {
     const slots = Meta.val('turret.slots');
     list.appendChild(trackItem(Meta.track('turret.slots')));
     const n = document.createElement('div'); n.className = 'note';
-    n.textContent = `Turrets fire on their own at targets about to escape. Limited shots per round; kills pay ${Math.round(ECON.TURRET_CASH * 100)}% and don't reset your miss counter. Mounted: ${eq.turrets.length}/${slots}`;
+    n.textContent = `Turrets lock on and shoot on their own — shots land, and a regular target goes down. They will not waste a shot on a decoy or something already leaving. Limited shots per round; kills pay ${Math.round(ECON.TURRET_CASH * 100)}% and don't reset your miss counter. Mounted: ${eq.turrets.length}/${slots}`;
     list.appendChild(n);
     ECON.TURRETS.forEach(tu => {
       const owned = Meta.hasTurret(tu.id), mounted = eq.turrets.includes(tu.id);
@@ -2903,6 +3011,9 @@ if ($('btn-adfree-cancel')) $('btn-adfree-cancel').addEventListener('click', can
 // debug/test hooks (used by tools/test_playwright.py)
 window.PH = {
   get state() { return state; }, get targets() { return targets; }, get score() { return score; }, get weapon() { return wpn; }, get turrets() { return turrets; },
+  turretStats: () => turretStats, resetTurretStats, dropEgg(boss) { dropEgg(boss || bossT || { x: W / 2, y: SKY_TOP + 70 }); },
+  holdRound(on) { holdRound = !!on; }, get holdRoundOn() { return holdRound; },
+  pickTurretTarget, turretValid, timeToLeave,
   get money() { return Meta.bank(); }, Meta, get missRun() { return missRun; }, get round() { return round; }, get shells() { return wpn ? wpn.ammo : 0; },
   get boss() { return bossT; }, get projs() { return projs; },
   setMoney(m) { Meta.setBank(m); Meta.persist(); }, setScore(n) { score = n; }, setCash(n) { runCash = n; }, toLogical: (x, y) => ({ x: x / W, y: y / H }), dims: () => ({ W, H, GROUND, SKY_TOP, SKY_BOT, BAR, S, U }),

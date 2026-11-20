@@ -45,28 +45,27 @@ with sync_playwright() as p:
       };
     })()""")
 
-    # forceMapClear must skip bonus and show next-map
+    # forceMapClear must skip bonus and auto-advance into Lake with score carried
     tap('#btn-play'); pg.wait_for_timeout(600)
+    ev("document.getElementById('ov-title').classList.add('hidden')")
     ev("PH.forceMapClear()")
-    pg.wait_for_function("PH.state==='clear' || PH.state==='over' || PH.state==='bonus'", timeout=5000)
-    R['force_banner'] = ev("({state:PH.state, banner:PH.banner, perfect:PH.perfectRun, want:false})")
-    pg.wait_for_function("!document.getElementById('ov-over').classList.contains('hidden') || !document.getElementById('ov-name').classList.contains('hidden')", timeout=8000)
-    if vis('#ov-name'): ev("document.getElementById('ov-name').classList.add('hidden')")
+    pg.wait_for_function("PH.state==='clear' || PH.state==='mapshift' || PH.state==='bonus'", timeout=5000)
+    R['force_banner'] = ev("({state:PH.state, banner:PH.banner, banner2:PH.banner2, perfect:PH.perfectRun})")
+    ev("PH.setScore(123456)")
+    ev("PH.advanceMapFlow()")
+    pg.wait_for_function("PH.Meta.save.equip.map==='lake' && PH.round===1", timeout=8000)
     R['cleared'] = ev("""({
-      title: document.getElementById('go-title').innerText,
+      banner: PH.banner,
+      banner2: PH.banner2,
+      over: !document.getElementById('ov-over').classList.contains('hidden'),
       next: !document.getElementById('btn-next-map').classList.contains('hidden'),
-      nextText: document.getElementById('btn-next-map').innerText.replace(/\\s+/g,' ').trim(),
-      bonus: document.getElementById('go-bonus').classList.contains('hidden'),
       meadow: !!PH.Meta.isCleared('meadow'),
       lake: !!PH.Meta.hasMap('lake'),
       defer: !!PH.deferredRun,
-      state: PH.state
+      state: PH.state,
+      map: PH.Meta.save.equip.map,
+      round: PH.round
     })""")
-    ev("document.getElementById('btn-next-map').scrollIntoView({block:'center'})")
-    pg.screenshot(path=OUT + f'158-next-map-{TAG}.png')
-
-    ev("PH.setScore(123456)")
-    tap('#btn-next-map'); pg.wait_for_timeout(900)
     R['next'] = ev("({state:PH.state, map:PH.Meta.save.equip.map, round:PH.round, score:PH.score, miss:PH.missRun, ranked:PH.runRanked, infinity:PH.infinity, defer:!!PH.deferredRun})")
 
     # unique meadow R30 boss sprite via jump (after next map we are on lake; go back via title would finalize)
@@ -239,7 +238,7 @@ with sync_playwright() as p:
     if not e.get('lakeMatches'): fails.append('Lake R1 != Meadow R29 after multipliers, %r' % (e.get('m29'), e.get('l1')))
     if not e.get('infDifferent'): fails.append('Infinity Lake R1 used campaign curve, %r' % e.get('l1inf'))
     cl=R.get('cleared') or {}
-    if cl.get('title') != 'MAP CLEARED!' or not cl.get('next') or not cl.get('meadow'): fails.append('map clear/next, %r' % cl)
+    if cl.get('over') or cl.get('next') or not cl.get('meadow') or not cl.get('lake'): fails.append('map clear should auto-unlock and not pop a next-map modal, %r' % cl)
     if (R.get('force_banner') or {}).get('state')=='bonus': fails.append('forceMapClear entered bonus')
     nx=R.get('next') or {}
     if nx.get('map')!='lake' or nx.get('score')!=123456 or nx.get('round')!=1 or nx.get('miss')!=0: fails.append('next-map carry, %r' % nx)

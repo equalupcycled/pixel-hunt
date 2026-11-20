@@ -26,7 +26,7 @@ const G = {
   '4':'101101111001001','5':'111100110001110','6':'011100111101111','7':'111001010010010','8':'111101111101111',
   '9':'111101111001110','+':'000010111010000','-':'000000111000000','!':'010010010000010','$':'011110010011110',
   ':':'000010000010000','.':'000000000000010',',':'000000000010100','/':'001001010100100','?':'110001010000010',
-  '%':'101001010100101',"'":'010010000000000',' ':'000000000000000','>':'100010001010100','<':'001010100010001',
+  '%':'101001010100101',"'":'010010000000000',' ':'000000000000000','>':'100010001010100','<':'001010100010001','\u2192':'100010001010100',
   '\u00b7':'000000010000000','&':'010101010101011','(':'010100100100010',')':'010001001001010','#':'101111101111101','=':'000111000111000',
 };
 function drawStr(s, x, y, sz) {
@@ -598,6 +598,7 @@ const CKPT_EVERY = 5;
 let infinity = false, bossKilled = false, mapJustCleared = false, failedClear = false;
 let roundHits = 0, roundEsc = 0, roundTotal = 0, queue = [], spawnT = 0, diff = null, bossT = null, bossRound = false;
 let introT = 0, clearT = 0, dieT = 0, banner = '', banner2 = '', holdRound = false;
+let pendingNext = null, shiftT = 0, runMaps = [], cashSettled = 0;
 let targets = [], parts = [], floats = [], flashes = [], projs = [], zaps = [], tracers = [];
 let shake = 0, hitStop = 0, skyFlash = 0, whiteFlash = 0, cursor = null, lastTouch = 0, contTimer = null;
 let weapons = [], wi = 0, wpn = null, turrets = [], gadgets = { flak: 0, call: 0, decoy: 0 }, armed = false, decoyObj = null;
@@ -685,6 +686,7 @@ function resetRun() {
   score = 0; runCash = 0; round = 0; shots = 0; hits = 0; streak = 0; bestStreak = 0; missRun = 0; reviveUsed = false; fromCkpt = 0; ckptFlash = 0;
   bossKilled = false; mapJustCleared = false; failedClear = false;
   wantBonus = false; bonusCashEarned = 0; bonusT = 0; bonusIntroT = 0;
+  pendingNext = null; shiftT = 0; runMaps = []; cashSettled = 0;
   applyGear();
   const eq = Meta.activeEquip();
   weapons = [makeWeapon(Meta.owns(eq.primary) ? eq.primary : 'shotgun')];
@@ -755,7 +757,14 @@ function reachCheckpoint(opts) {
   const bag = infinity ? 'ckptInf' : 'ckpt';
   const c = Meta.save[bag] || (Meta.save[bag] = {});
   const isNew = round > (c[M.id] || 0);
-  if (isNew) { c[M.id] = round; Meta.persist(); }
+  if (isNew) {
+    c[M.id] = round;
+    if (!infinity) {
+      Meta.save.ckptRun = Meta.save.ckptRun || {};
+      Meta.save.ckptRun[M.id] = { score, runCash, hits, shots, bestStreak, round, maps: runMaps.slice() };
+    }
+    Meta.persist();
+  }
   if (!(opts && opts.silent) && round !== fromCkpt) { ckptFlash = 2.6; ckptRound = round; Sfx.buy(); if (bossRound) introT = Math.max(introT, 2.8); }
 }
 function checkpointFor(mapId, inf) { const c = (inf ? Meta.save.ckptInf : Meta.save.ckpt) || {}; return c[mapId] || 0; }
@@ -1471,11 +1480,14 @@ function update(dt) {
       if (mapJustCleared) {
         mapJustCleared = false;
         if (wantBonus) startBonusRound();
-        else victory();
+        else afterMapClear();
       }
       else if (failedClear) { failedClear = false; gameOver(); }
       else startRound(); // shop is only on the title / game-over screens, never mid-run
     }
+  } else if (state === 'mapshift') {
+    shiftT -= dt;
+    if (shiftT <= 0) afterMapClear();
   } else if (state === 'dying') {
     dieT -= dt; if (dieT <= 0) { state = 'ad'; onDeath(); }
   }
@@ -1672,21 +1684,21 @@ function roundClear() {
   const campaignEnd = !infinity && round >= ECON.CLEAR_ROUND;
   mapJustCleared = campaignEnd && bossKilled;
   failedClear = campaignEnd && !bossKilled;
-  wantBonus = !!(mapJustCleared && perfectRun && !infinity && runRanked && !reviveUsed && !fromCkpt);
+  // Perfect-run (R31 bonus) is per map: broken by an X or a continue on this map only.
+  wantBonus = !!(mapJustCleared && perfectRun && !infinity && !reviveUsed);
   if (mapJustCleared && wantBonus) {
     banner = 'PERFECT! BONUS ROUND';
     banner2 = 'BAG THE CASH!';
     clearT = 2.4;
   } else if (mapJustCleared) {
-    const first = !Meta.isCleared(M.id);
-    const nxt = ECON.nextMap(M.id);
-    const newly = first && nxt && !Meta.hasMap(nxt.id);
-    banner = 'MAP CLEARED!';
-    if (newly) banner2 = 'NEW MAP UNLOCKED: ' + nxt.name.toUpperCase() + '!';
-    else if (first) banner2 = 'INFINITY MODE UNLOCKED';
-    else banner2 = M.name.toUpperCase() + ' COMPLETE';
-    if (perfect) banner2 += '  +$' + bonusCash;
-    clearT = 3.2;
+    beginMapShiftBanner();
+    if (!pendingNext) {
+      const first = !Meta.isCleared(M.id);
+      banner = first ? 'ALL MAPS CLEARED!' : 'MAP CLEARED!';
+      banner2 = first ? 'YOU HUNTED EVERY RANGE' : (M.name.toUpperCase() + ' COMPLETE');
+      if (perfect) banner2 += '  +$' + bonusCash;
+      clearT = 3.2;
+    }
   } else if (failedClear) {
     banner = 'SO CLOSE!'; banner2 = 'BEAT THE ROUND ' + ECON.CLEAR_ROUND + ' BOSS TO CLEAR ' + M.name.toUpperCase();
     clearT = 2.6;
@@ -1719,10 +1731,66 @@ function startBonusRound() {
   Sfx.gold();
 }
 function endBonus() {
+  showGameButtons(false);
+  if (!infinity && ECON.nextMap(M.id)) {
+    beginMapShiftBanner(true);
+    return;
+  }
   banner = 'MAP CLEARED!';
   banner2 = 'BONUS +$' + fmt(bonusCashEarned);
-  showGameButtons(false);
   victory();
+}
+function beginMapShiftBanner(fromBonus) {
+  const nxt = ECON.nextMap(M.id);
+  if (!nxt || infinity) { pendingNext = null; return; }
+  Meta.markCleared(M.id);
+  pendingNext = nxt;
+  banner = M.name.toUpperCase() + ' CLEARED!';
+  banner2 = (fromBonus && bonusCashEarned ? ('BONUS +$' + fmt(bonusCashEarned) + '  ') : '') + '\u2192  ' + nxt.name.toUpperCase();
+  showGameButtons(false);
+  show('btn-pause', true);
+  state = 'mapshift';
+  shiftT = 2.6;
+  Sfx.gold();
+}
+function afterMapClear() {
+  if (infinity) { pendingNext = null; victory(); return; }
+  const nxt = pendingNext || ECON.nextMap(M.id);
+  pendingNext = null;
+  if (!nxt) { victory(); return; }
+  startNextMap(nxt);
+}
+function startNextMap(nxt) {
+  if (!nxt) { victory(); return; }
+  const keep = {
+    score, runCash, hits, shots, bestStreak, runRanked,
+    gadgets: { flak: gadgets.flak, call: gadgets.call, decoy: gadgets.decoy }
+  };
+  Meta.markCleared(M.id);
+  Meta.selectMap(nxt.id);
+  curMap = nxt; M = nxt;
+  buildBg();
+  missRun = 0; streak = 0; reviveUsed = false; fromCkpt = 0;
+  // Perfect-run tracking for R31 is per map.
+  perfectRun = true;
+  wantBonus = false; bonusCashEarned = 0; bonusT = 0; bonusIntroT = 0;
+  bossKilled = false; mapJustCleared = false; failedClear = false;
+  pendingNext = null; shiftT = 0; holdRound = false;
+  round = 0;
+  score = keep.score; runCash = keep.runCash; hits = keep.hits; shots = keep.shots; bestStreak = keep.bestStreak;
+  runRanked = keep.runRanked;
+  gadgets = keep.gadgets;
+  decoyObj = null; armed = false; holding = false; drawing = null; bossT = null;
+  targets = []; queue = []; projs = []; parts = []; floats = []; zaps = []; tracers = []; flashes = [];
+  if (runMaps.indexOf(nxt.id) < 0) runMaps.push(nxt.id);
+  startRound();
+}
+function runIsActive() {
+  return state === 'play' || state === 'intro' || state === 'clear' || state === 'bonus' || state === 'mapshift' || state === 'dying';
+}
+function runMapsLabel() {
+  if (!runMaps.length) return M ? M.name.toUpperCase() : '';
+  return runMaps.map(id => { const m = ECON.MAPS.find(x => x.id === id); return (m ? m.name : id).toUpperCase(); }).join(' + ');
 }
 // ---------------- overlays / UI ----------------
 function show(id, on) { $(id).classList.toggle('hidden', !on); }
@@ -2092,14 +2160,14 @@ function finishRun(opts) {
   if (defer) {
     Meta.endRun({ score: 0, round, earned: 0, ranked: false, infinity, cleared, deferScore: true, map: M.id });
     deferredRun = true;
-    lastRun = { score, round, map: M.id, mapName: M.name, weapon: wpn.id, isBest: false, isAll: false, fromCkpt, infinity, cleared, unlockedMap: unlockedMap && unlockedMap.name, nextMap: nxt && nxt.name, nextMapId: nxt && nxt.id, allCleared: false, bonusCash: bonusCashEarned, defer: true, runRanked: ranked };
+    lastRun = { score, round, map: M.id, mapName: M.name, weapon: wpn.id, isBest: false, isAll: false, fromCkpt, infinity, cleared, unlockedMap: unlockedMap && unlockedMap.name, nextMap: nxt && nxt.name, nextMapId: nxt && nxt.id, allCleared: false, bonusCash: bonusCashEarned, defer: true, runRanked: ranked, maps: runMapsLabel() ? runMapsLabel().split(' + ') : [] };
     showOver(null);
     return;
   }
   if (opts && opts.finalize && deferredRun) deferredRun = false;
   Meta.endRun({ score: ranked ? score : 0, round, earned: runCash, ranked, infinity, cleared, skipCleared: !!(opts && opts.finalize), skipStats: !!(opts && opts.skipStats), map: M.id });
   deferredRun = false;
-  lastRun = { score, round, map: M.id, mapName: M.name, weapon: wpn.id, isBest: isBest && score > 0, isAll: isAll && score > 0, fromCkpt, infinity, cleared, unlockedMap: unlockedMap && unlockedMap.name, nextMap: allCleared ? null : (nxt && nxt.name), nextMapId: allCleared ? null : (nxt && nxt.id), allCleared, bonusCash: bonusCashEarned, defer: false, runRanked: ranked };
+  lastRun = { score, round, map: M.id, mapName: M.name, weapon: wpn.id, isBest: isBest && score > 0, isAll: isAll && score > 0, fromCkpt, infinity, cleared, unlockedMap: unlockedMap && unlockedMap.name, nextMap: allCleared ? null : (nxt && nxt.name), nextMapId: allCleared ? null : (nxt && nxt.id), allCleared, bonusCash: bonusCashEarned, defer: false, runRanked: ranked, maps: runMapsLabel() ? runMapsLabel().split(' + ') : [] };
   if (ranked && window.Leaderboard && Leaderboard.qualifies(M.id, score, infinity)) openNameEntry();
   else showOver(null);
 }
@@ -2163,7 +2231,7 @@ function showOver(rank) {
   const boardName = r.infinity ? (r.mapName.toUpperCase() + ' INFINITY') : 'CLASSIC';
   $('go-rank').textContent = rank ? `#${rank} ON THE ${boardName} LEADERBOARD!` : '';
   show('go-rank', !!rank);
-  earnedShown = Math.max(0, runCash);
+  earnedShown = Math.max(0, runCash - (cashSettled || 0));
   $('go-earned').textContent = '+$' + fmt(earnedShown);
   $('newbest').textContent = r.infinity ? 'NEW ' + r.mapName.toUpperCase() + ' INFINITY BEST!' : 'NEW HIGH SCORE!';
   show('newbest', r.isBest);
@@ -2183,10 +2251,10 @@ function showOver(rank) {
         ? ('NEW MAP UNLOCKED: ' + r.unlockedMap.toUpperCase() + '! \u00b7 INFINITY UNLOCKED')
         : 'MAP CLEARED \u00b7 INFINITY UNLOCKED';
     if (!r.runRanked) note += ' \u00b7 CHECKPOINT RUN, NOT RANKED';
-    if (r.defer) note += ' \u00b7 SCORE CARRIES TO THE NEXT MAP';
   }
   else if (!r.runRanked) note = (r.infinity ? 'INFINITY ' : '') + `CHECKPOINT RUN (FROM ROUND ${r.fromCkpt || 0}) \u00b7 NOT RANKED`;
   else if (r.infinity) note = 'INFINITY RUN \u00b7 RANKED ON THIS MAP\'S INFINITY BOARD';
+  if (r.maps && r.maps.length > 1) note = (note ? note + ' \u00b7 ' : '') + 'FULL RUN: ' + r.maps.join(' + ');
   $('go-unranked').textContent = note;
   show('go-unranked', !!note);
   if ($('go-bonus')) {
@@ -2194,13 +2262,13 @@ function showOver(rank) {
     $('go-bonus').textContent = bc > 0 ? ('PERFECT BONUS +$' + fmt(bc)) : '';
     show('go-bonus', bc > 0);
   }
-  if ($('btn-next-map')) {
-    const showNext = !!(r.cleared && r.nextMap && !r.infinity);
-    if (showNext) $('btn-next-map').innerHTML = 'GO TO NEXT MAP<br><small>' + r.nextMap.toUpperCase() + ' \u00b7 SCORE ' + fmt(r.score) + ' CARRIES</small>';
-    show('btn-next-map', showNext);
-  }
+  if ($('btn-next-map')) show('btn-next-map', false);
   const ck = checkpointFor(r.map, r.infinity);
-  $('btn-ckpt').innerHTML = `CONTINUE FROM ROUND ${ck}<br><small>CHECKPOINT \u00b7 SCORE 0 \u00b7 X'S CLEARED \u00b7 NOT RANKED</small>`;
+  const snap = (!r.infinity && Meta.save.ckptRun) ? Meta.save.ckptRun[r.map] : null;
+  const ckScore = (snap && snap.round === ck) ? snap.score : 0;
+  $('btn-ckpt').innerHTML = ckScore
+    ? (`CONTINUE FROM ROUND ${ck}<br><small>CHECKPOINT \u00b7 SCORE ${fmt(ckScore)} KEPT \u00b7 X'S CLEARED \u00b7 NOT RANKED</small>`)
+    : (`CONTINUE FROM ROUND ${ck}<br><small>CHECKPOINT \u00b7 SCORE 0 \u00b7 X'S CLEARED \u00b7 NOT RANKED</small>`);
   show('btn-ckpt', ck > 0 && !r.cleared);
   const againMode = r.infinity ? 'INFINITY' : 'RANKED RUN';
   $('btn-again').innerHTML = ck > 0 ? `START FROM ROUND 1<br><small>${againMode}</small>` : (r.infinity ? 'PLAY INFINITY AGAIN' : 'PLAY AGAIN');
@@ -2510,10 +2578,9 @@ function newGame(fromRound, opts) {
   if (!Meta.hasMap(Meta.save.equip.map)) { const owned = ECON.MAPS.filter(m => Meta.hasMap(m.id)); Meta.selectMap((owned[owned.length - 1] || ECON.MAPS[0]).id); }
 
   const carry = !!(opts && opts.carry);
-  const keepScore = carry ? score : 0;
-  const keepRanked = carry ? runRanked : true;
-  const keepDeferred = carry && deferredRun;
-  if (!carry) finalizeDeferredRun();
+  const resume = opts && opts.resume;
+  const keep = (carry || resume) ? { score, runCash, hits, shots, bestStreak, runRanked, deferredRun, gadgets: { flak: gadgets.flak, call: gadgets.call, decoy: gadgets.decoy }, maps: runMaps.slice() } : null;
+  if (!carry && !resume) finalizeDeferredRun();
 
   Sfx.init(); Sfx.click(); Ads.init();
   ['ov-title', 'ov-over', 'ov-pause', 'ov-shop', 'ov-daily', 'ov-board', 'ov-how', 'ov-about', 'ov-missions', 'ov-infinity'].forEach(id => show(id, false));
@@ -2524,16 +2591,27 @@ function newGame(fromRound, opts) {
   targets = []; resetRun();
   const ck = fromRound > 1 ? fromRound : 0;
   if (carry) {
-    score = keepScore;
-    runRanked = keepRanked;
-    deferredRun = keepDeferred;
+    score = keep.score; runCash = keep.runCash; hits = keep.hits; shots = keep.shots; bestStreak = keep.bestStreak;
+    runRanked = keep.runRanked; deferredRun = keep.deferredRun;
+    gadgets = keep.gadgets; runMaps = keep.maps.length ? keep.maps : [M.id];
+    missRun = 0; fromCkpt = 0; perfectRun = true;
+  } else if (resume) {
+    score = resume.score || 0; runCash = resume.runCash || 0; hits = resume.hits || 0; shots = resume.shots || 0;
+    bestStreak = resume.bestStreak || 0;
+    runMaps = (resume.maps && resume.maps.length) ? resume.maps.slice() : [M.id];
+    cashSettled = runCash;
+    runRanked = false; deferredRun = false;
+    missRun = 0;
   } else {
     runRanked = !ck;
     deferredRun = false;
+    runMaps = [M.id];
   }
   Meta.startRun({ base: ck ? ck - 1 : 0 });
-  if (ck) { fromCkpt = ck; round = ck - 1; runRanked = false; } // checkpoint: score 0, X's cleared, not ranked
-  perfectRun = runRanked && !infinity;
+  if (ck) { fromCkpt = ck; round = ck - 1; runRanked = false; } // checkpoint continue is not ranked
+  if (carry) perfectRun = !infinity; // next map starts at R1, so its own R31 can still be earned
+  else if (resume) perfectRun = false; // mid-map resume is not a from-R1 perfect
+  else perfectRun = runRanked && !infinity && !ck;
   startRound();
 }
 function goToNextMap() {
@@ -2548,8 +2626,12 @@ function goToNextMap() {
 }
 function continueCheckpoint() {
   const inf = !!(lastRun && lastRun.infinity);
-  const ck = checkpointFor(Meta.save.equip.map, inf);
-  if (ck) newGame(ck, { infinity: inf }); else newGame(0, { infinity: inf });
+  const mapId = Meta.save.equip.map;
+  const ck = checkpointFor(mapId, inf);
+  if (inf) { if (ck) newGame(ck, { infinity: true }); else newGame(0, { infinity: true }); return; }
+  const snap = (Meta.save.ckptRun || {})[mapId];
+  const resume = (snap && ck && snap.round === ck) ? snap : null;
+  if (ck) newGame(ck, { infinity: false, resume }); else newGame(0, { infinity: false });
 }
 $('btn-play').addEventListener('click', () => {
   const m = shownMap();
@@ -2588,7 +2670,7 @@ function togglePause() {
 }
 $('btn-pause').addEventListener('click', togglePause);
 $('btn-resume').addEventListener('click', togglePause);
-$('btn-quit').addEventListener('click', () => { Sfx.click(); leaveOverToTitle(); });
+$('btn-quit').addEventListener('click', () => { Sfx.click(); paused = false; show('ov-pause', false); if (runIsActive()) { gameOver(); return; } leaveOverToTitle(); });
 ['btn-auto-boost-t', 'btn-auto-boost-o', 'btn-auto-boost-p'].forEach(id => { const el = $(id); if (el) el.addEventListener('click', startAutoBoostAd); });
 function syncAudio() {
   document.querySelectorAll('.sfx-btn').forEach(b => {
@@ -2792,7 +2874,7 @@ function render() {
   if (state === 'play' || state === 'intro' || state === 'bonus') drawCrosshair();
   if (titleScene()) return drawTitle();
   drawHud();
-  if ((state === 'intro' || state === 'clear' || state === 'dying' || (state === 'bonus' && bonusIntroT > 0)) && banner) {
+  if ((state === 'intro' || state === 'clear' || state === 'mapshift' || state === 'dying' || (state === 'bonus' && bonusIntroT > 0)) && banner) {
     const y = H * 0.4;
     ctx.fillStyle = 'rgba(0,0,0,0.55)'; ctx.fillRect(0, y - 6, W, banner2 ? 30 : 22);
     text(banner, W / 2, y, 2, state === 'dying' || (bossRound && state === 'intro') ? '#ff5a5a' : '#ffe066', 'center');
@@ -3027,6 +3109,9 @@ window.PH = {
   isGroundBoss: (t) => isGroundBoss(t),
   reviveNow() { reviveUsed = true; revive(); },
   forceMapClear() { infinity = false; bossKilled = true; round = ECON.CLEAR_ROUND; bossRound = true; queue = []; targets = []; projs = []; mapJustCleared = false; failedClear = false; perfectRun = false; wantBonus = false; if (state !== 'play') state = 'play'; },
+  advanceMapFlow() { if (state === 'bonus') endBonus(); if (state === 'clear') clearT = 0; if (state === 'mapshift') shiftT = 0; },
+  startNextMap(id) { const nxt = (id && ECON.MAPS.find(m => m.id === id)) || pendingNext || ECON.nextMap(M.id); if (nxt) startNextMap(nxt); },
+  get runCash() { return runCash; }, get runMaps() { return runMaps.slice(); }, get cashSettled() { return cashSettled; }, get pendingNext() { return pendingNext && pendingNext.id; },
   forcePerfectClear() { infinity = false; bossKilled = true; round = ECON.CLEAR_ROUND; bossRound = true; queue = []; targets = []; projs = []; mapJustCleared = false; failedClear = false; perfectRun = true; runRanked = true; reviveUsed = false; fromCkpt = 0; wantBonus = false; if (state !== 'play') state = 'play'; },
   startInfinity() { newGame(0, { infinity: true }); },
   openInfinity() { openInfinityLobby(); },

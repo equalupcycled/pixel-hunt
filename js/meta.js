@@ -10,7 +10,7 @@ window.Meta = (() => {
     stats: { runs: 0, kills: 0, gold: 0, deer: 0, perfect: 0, multi: 0, bestRound: 0, bestStreak: 0, shots: 0, hits: 0, earned: 0, bosses: 0, turretKills: 0 },
     missions: [], mDone: 0, ach: {}, daily: { last: null, day: -1 }, ads: { date: null, doubles: 0 },
     equip: { primary: 'shotgun', secondary: null, turrets: [], skin: 'classic', cross: 'white', map: 'meadow' },
-    cosm: ['classic', 'white'], bestByMap: {}, bestClassic: 0, roundByMap: {}, ckpt: {},
+    cosm: ['classic', 'white'], bestByMap: {}, bestClassic: 0, roundByMap: {}, ckpt: {}, ckptRun: {},
     cleared: {}, bestInfinityByMap: {}, roundInfinityByMap: {}, ckptInf: {},
     infBank: 0, infLv: Object.fromEntries(E.TRACKS.map(t => [t.id, 0])),
     infEquip: { primary: 'shotgun', secondary: null, turrets: [] },
@@ -38,6 +38,7 @@ window.Meta = (() => {
       save.bestInfinityByMap = save.bestInfinityByMap || {};
       save.roundInfinityByMap = save.roundInfinityByMap || {};
       save.ckptInf = save.ckptInf || {};
+      save.ckptRun = save.ckptRun || {};
       E.MAPS.forEach(m => {
         if ((save.roundByMap[m.id] || 0) >= E.CLEAR_ROUND && !save.cleared[m.id]) save.cleared[m.id] = 'migrated';
         if ((save.ckpt[m.id] || 0) > E.CLEAR_ROUND) save.ckpt[m.id] = E.CLEAR_ROUND;

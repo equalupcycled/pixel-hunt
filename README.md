@@ -112,19 +112,21 @@ The Android test APK (`com.cachebrands.pixelhunt`) already ships the existing si
 **Remove Ads** ($2.99 label) is a simulated in-game purchase today: the title, pause, and game over screens offer a button that opens a confirm sheet ("Remove Ads — $2.99 (test purchase, no charge)" with Buy / Cancel). Buy calls `completeRemoveAdsPurchase()` (the single hook later billing can replace), marks this device ad-free in local storage (schema v9), and shows a thanks toast. Ad-free skips forced death ads and grants rewarded features instantly (continue once per run, 2X daily limits, and the 15-minute Auto Reload still apply).
 
 ## Legal
-`privacy.html` and `terms.html` are linked from the title screen footer (also in Credits). Owner: **Cache Brands LLC**, P.O. Box 425, Ullin, IL 62992, dowdyboy1992-qhj8xm@mail.grokbot.com. Last updated Nov 14, 2026. A **© 2026 Cache Brands LLC** line appears on the title screen.
+`privacy.html` and `terms.html` are linked from the title screen footer (also in Credits). Owner: **Cache Brands LLC**, P.O. Box 425, Ullin, IL 62992, dowdyboy1992-qhj8xm@mail.grokbot.com. Last updated Nov 20, 2026. A **© 2026 Cache Brands LLC** line appears on the title screen.
 
 ## Debug hooks
 `window.PH` (state, targets, weapon, turrets, boss, `jumpRound(n)`, `forceClear()`, `forceDie()`, `setMoney(n)`, `grantAll()`, `makeCard(o)`) for headless tests.
 
-## Android test APK
-The game also ships as a debug-signed Android package that bundles the web files and runs offline (no Render URL). Package id `com.cachebrands.pixelhunt`, version `1.0.7` (versionCode 8), portrait, immersive fullscreen, Pixel Hunt launcher icon. The hardware back button closes menus, pauses a run, quits to title from the pause menu, and exits the app from the title screen. The service worker is not registered in the native shell so it cannot fight the bundled assets. Audio unlocks on the first tap, same as the PWA.
+## Android app (Play Store release)
+The game ships as a Capacitor Android app that bundles the web files and runs offline (no Render URL). Package id `com.cachebrands.pixelhunt`, version `1.1.0` (versionCode 9), minSdk 24 / targetSdk 36, portrait, full-screen, adaptive Pixel Hunt icon. The hardware back button closes menus, pauses a run (BACK again resumes), and exits the app from the title screen. The service worker is not registered in the native shell so it cannot fight the bundled assets. Audio unlocks on the first tap, same as the PWA.
 
-Prerelease builds are attached to GitHub releases (for example `v1.0.7-test`). To rebuild a sideloadable debug APK:
+**Signed release (Play Store):** `STORE=1` marks the bundled `index.html` with `data-store="1"`. In that build, if no AdMob plugin is installed (`window.ADS_OFF`), the game shows no ads at all, grants rewarded perks (continue, 2X) directly, and hides the simulated Remove Ads purchase, so nothing fake ships to Play. Once `@capacitor-community/admob` is installed, real ads switch on automatically.
 
     export JAVA_HOME=/home/box/jdk21 ANDROID_HOME=/home/box/android-sdk
     npm install
-    bash tools/build-apk.sh
+    bash tools/build-release.sh   # -> dist/PixelHunt-1.1.0.aab + dist/PixelHunt-1.1.0.apk (signed, R8-minified, verified)
 
-The APK is copied to `dist/PixelHunt-1.0.7-test.apk`. Requires JDK 21 (Capacitor 8) and an Android SDK (platforms + build-tools). JDK 17 is also installed on the build box but is not sufficient for this wrapper. `www/`, `android/app/build/`, and `android/local.properties` are generated and not committed.
+The upload key is read from `/home/box/secrets/pixelhunt-upload.properties` (or `PH_UPLOAD_PROPS=/path`). It lives outside the repo and must **never** be committed. Store listing assets, policy-form answers, and the publishing checklist are in [`playstore/`](playstore/README.md). Releases are on GitHub (`v1.1.0`).
+
+`bash tools/build-apk.sh` still builds a debug-signed sideload APK (`dist/PixelHunt-1.1.0-test.apk`, web build with placeholder ads). Requires JDK 21 (Capacitor 8) and an Android SDK (platforms + build-tools). `www/`, `dist/`, `android/app/build/`, and `android/local.properties` are generated and not committed.
 

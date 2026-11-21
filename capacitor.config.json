@@ -4,11 +4,15 @@
   "webDir": "www",
   "android": {
     "backgroundColor": "#0d1b2a",
-    "webContentsDebuggingEnabled": true,
+    "webContentsDebuggingEnabled": false,
     "allowMixedContent": false,
     "buildOptions": {
-      "keystorePath": "",
-      "releaseType": "APK"
+      "releaseType": "AAB"
+    }
+  },
+  "plugins": {
+    "SystemBars": {
+      "insetsHandling": "disable"
     }
   }
 }

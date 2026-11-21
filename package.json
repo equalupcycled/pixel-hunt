@@ -1,8 +1,8 @@
 {
   "name": "pixel-hunt",
-  "version": "1.0.7",
+  "version": "1.1.0",
   "private": true,
-  "description": "Pixel Hunt — retro pixel hunting game (web PWA and Android test APK).",
+  "description": "Pixel Hunt — retro pixel hunting game (web PWA and Android app).",
   "scripts": {
     "native:prepare": "bash tools/prepare-native.sh",
     "native:sync": "bash tools/prepare-native.sh && npx cap sync android",

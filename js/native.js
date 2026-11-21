@@ -47,7 +47,7 @@ window.PH_handleBack = function PH_handleBack() {
   if (vis('ov-shop')) return tap('btn-next');
   if (vis('ov-name')) return true; // don't drop a high-score name
   if (vis('ov-continue')) return tap('btn-norevive');
-  if (vis('ov-pause')) return tap('btn-quit');
+  if (vis('ov-pause')) return tap('btn-resume'); // BACK closes the pause menu; quitting a run stays an explicit button
   if (vis('ov-over')) return tap('btn-over-close') || tap('btn-menu');
   if (vis('ov-title')) {
     const App = window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.App;
@@ -62,9 +62,12 @@ window.PH_handleBack = function PH_handleBack() {
 };
 
 (function hookNativeBack() {
+  let hooked = false; // boot runs on DOMContentLoaded AND load: register once, or one BACK press fires twice (pause, then quit)
   const boot = () => {
+    if (hooked) return;
     const App = window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.App;
     if (!App || !App.addListener) return;
+    hooked = true;
     App.addListener('backButton', () => { window.PH_handleBack(); });
   };
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);

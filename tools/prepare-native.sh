@@ -12,12 +12,12 @@ cp "$ROOT/icons/"*.png "$WWW/icons/"
 if ls "$ROOT/img/"*.webp >/dev/null 2>&1; then cp "$ROOT/img/"*.webp "$WWW/img/"; fi
 # Mark the bundled copy as native so the service worker never registers, even if
 # the WebView user-agent check misses Capacitor (it serves https://localhost).
-python3 - <<'PY' "$WWW/index.html"
+python3 - <<'PY' "$WWW/index.html" "${STORE:-0}"
 from pathlib import Path
 import sys
 p = Path(sys.argv[1])
 t = p.read_text()
-t = t.replace('<html lang="en">', '<html lang="en" data-native="1">', 1)
+t = t.replace('<html lang="en">', '<html lang="en" data-native="1"' + (' data-store="1"' if sys.argv[2] == '1' else '') + '>', 1)
 p.write_text(t)
 PY
-echo "Prepared $WWW"
+echo "Prepared $WWW (store build: ${STORE:-0})"

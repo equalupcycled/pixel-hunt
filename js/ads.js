@@ -35,6 +35,10 @@ window.Ads = (() => {
   const platform = cap && cap.getPlatform ? cap.getPlatform() : 'web';
   const ids = () => cfg.admob[platform === 'ios' ? 'ios' : 'android'];
   let ready = false;
+  // Play Store build without an ad SDK wired (html data-store="1", set by tools/prepare-native.sh STORE=1):
+  // show NO ads at all (no placeholder "ads"), grant rewards directly, and hide the not-yet-real Remove Ads purchase.
+  const storeBuild = document.documentElement.getAttribute('data-store') === '1';
+  window.ADS_OFF = !!(storeBuild && !AdMob);
 
   async function init() {
     if (!AdMob || ready) return;
@@ -110,11 +114,13 @@ window.Ads = (() => {
     rewardedAvailable: () => true,
     /** Interstitial between death and game over. Resolves when closed. */
     showInterstitial() {
+      if (window.ADS_OFF) return Promise.resolve(true);
       if (window.Meta && Meta.isAdFree && Meta.isAdFree()) return Promise.resolve(true);
       return AdMob ? nativeInterstitial() : webAd({ seconds: cfg.interstitialSeconds, rewarded: false });
     },
     /** Rewarded ad. Resolves true if the user earned the reward. */
     showRewarded() {
+      if (window.ADS_OFF) return Promise.resolve(true);
       if (window.Meta && Meta.isAdFree && Meta.isAdFree()) return Promise.resolve(true);
       return AdMob ? nativeRewarded() : webAd({ seconds: cfg.rewardedSeconds, rewarded: true });
     },

@@ -344,7 +344,7 @@ h2.gold, #go-title.gold { color: #ffe066; }
 .wallet-lbl { font-size: 14px; letter-spacing: 1px; color: #9fc4ff; }
 .wallet-amt, #shop-wallet .cash, .shop-wallet .wallet-amt {
   font-size: 28px; color: #7dff7a; text-shadow: 2px 2px 0 #000; letter-spacing: 0; min-width: 0;
-  overflow-wrap: anywhere;
+  white-space: nowrap;
 }
 #ov-shop .shop-sub { font-size: 13px; color: #cfe0ff; text-align: center; line-height: 1.3; }
 #shop-modes { width: 100%; max-width: none; margin: 0; }
@@ -651,3 +651,8 @@ h2.gold, #go-title.gold { color: #ffe066; }
 }
 @keyframes rotphone { 0%, 30% { transform: rotate(-90deg); } 70%, 100% { transform: rotate(0deg); } }
 
+
+/* Tablets: the canvas grows to ~770px wide but the HTML menus were phone-sized. --uiz (1 on phones, up to 1.6) scales
+   overlay content with the canvas. The title spacer is already measured in canvas px, so it must not be zoomed again. */
+.overlay > * { zoom: var(--uiz, 1); }
+#ov-title .title-spacer { zoom: 1; }

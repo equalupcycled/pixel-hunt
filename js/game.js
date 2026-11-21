@@ -916,6 +916,7 @@ function resize() {
   cvs.style.width = cw + 'px'; cvs.style.height = ch + 'px';
   wrap.style.width = cw + 'px'; wrap.style.height = ch + 'px';
   wrap.style.setProperty('--u', U + 'px');
+  wrap.style.setProperty('--uiz', clamp(cw / 400, 1, 1.6).toFixed(3)); // tablets: scale menu UI up with the canvas (phones stay 1)
   wrap.style.setProperty('--logo-bottom', Math.round((H * 0.12 + 70) * U) + 'px'); // bottom of the canvas-drawn PIXEL HUNT logo
   const r = wrap.getBoundingClientRect(), cs = getComputedStyle(document.documentElement);
   const sat = parseFloat(cs.getPropertyValue('--sat')) || 0, sar = parseFloat(cs.getPropertyValue('--sar')) || 0;
@@ -2563,6 +2564,9 @@ function openShop(from = 'title', keep) {
   if (!keep) $('shop-list').scrollTop = 0;
   const scroll = $('shop-list').scrollTop;
   $('shop-money').textContent = fmt(Meta.bank());
+  // big wallets ($10M+) used to wrap mid-number on 360px phones: shrink the digits to fit instead
+  { const amt = document.querySelector('#shop-wallet .wallet-amt'), n = ('$' + fmt(Meta.bank())).length;
+    if (amt) amt.style.fontSize = n > 9 ? Math.max(14, Math.floor(28 * 9 / n)) + 'px' : ''; }
   const infMapName = (mapDef(Meta.save.equip.map) || { name: 'Meadow' }).name.toUpperCase();
   $('shop-sub').textContent = shopInf
     ? (infMapName + ' INFINITY WALLET · NO LEVEL CAP · THIS MAP ONLY · ' + Meta.totalBought() + ' BOUGHT')
@@ -3677,7 +3681,8 @@ function refreshAdFreeUI() {
     b.classList.toggle('hidden', on);
     b.textContent = 'REMOVE ADS ' + adFreePriceLabel();
   });
-  document.querySelectorAll('.adfree-owned').forEach(n => n.classList.toggle('hidden', !on));
+  document.querySelectorAll('.adfree-owned').forEach(n => n.classList.toggle('hidden', !on || !!window.ADS_OFF));
+  if (window.ADS_OFF) document.querySelectorAll('.adfree-buy').forEach(b => b.classList.add('hidden'));
   const sheet = $('ov-adfree');
   if (sheet && on) show('ov-adfree', false);
   refreshBoostButtons();
@@ -3688,6 +3693,7 @@ function showRemoveAdsConfirm(on) {
 // Single entry point used by every REMOVE ADS button. Later this can open a real checkout instead of the confirm sheet.
 function purchaseRemoveAds() {
   Sfx.init(); Sfx.click();
+  if (window.ADS_OFF) return; // store build: no purchase until Play Billing is wired
   if (Meta.isAdFree()) { refreshAdFreeUI(); return; }
   showRemoveAdsConfirm(true);
 }

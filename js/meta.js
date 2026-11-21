@@ -419,7 +419,7 @@ window.Meta = (() => {
   }
 
 
-  const isAdFree = () => !!save.adFree;
+  const isAdFree = () => !!save.adFree || !!window.ADS_OFF; // ADS_OFF: store build with no ad SDK yet
   function grantAdFree(source) {
     save.adFree = true;
     save.adFreeSession = String(source || 'simulated');

@@ -4,6 +4,18 @@ import json, sys
 from playwright.sync_api import sync_playwright
 URL, TAG = sys.argv[1], sys.argv[2]
 OUT = '/workspace/pixel-hunt/screenshots/'
+def end_after_shift(pg, ev, vis, tap):
+    # Since 1.0.5 a cleared map auto-continues into the next map; end the run there to reach the game-over screen.
+    pg.wait_for_function("PH.state==='intro' || PH.state==='play' || PH.state==='over' || !document.getElementById('ov-over').classList.contains('hidden')", timeout=12000)
+    if ev("PH.state==='intro' || PH.state==='play'"):
+        ev("PH.forceDie()")
+        pg.wait_for_function("!document.getElementById('ov-continue').classList.contains('hidden') || !document.getElementById('ov-over').classList.contains('hidden') || !document.getElementById('ov-name').classList.contains('hidden')", timeout=10000)
+        if vis('#ov-continue'): tap('#btn-norevive')
+    pg.wait_for_timeout(1500)
+    if vis('#ov-ad'):  # placeholder interstitial: wait out the countdown, then close it like a player
+        pg.wait_for_function("!document.querySelector('#ov-ad .ad-close').disabled", timeout=12000); pg.click('#ov-ad .ad-close')
+    print('AFTER_SHIFT', ev("({state: PH.state, map: PH.Meta.save.equip.map, ov: [...document.querySelectorAll('.overlay:not(.hidden)')].map(e => e.id)})"))
+
 with sync_playwright() as p:
     b = p.chromium.launch()
     c = b.new_context(viewport={'width': 390, 'height': 844}, device_scale_factor=3, is_mobile=True, has_touch=True)
@@ -58,10 +70,10 @@ with sync_playwright() as p:
     pg.wait_for_timeout(200)
     tap('#btn-play'); pg.wait_for_timeout(700)
     ev("PH.forceMapClear()")
-    pg.wait_for_function("PH.state==='clear' || PH.state==='over'", timeout=5000)
+    pg.wait_for_function("PH.state==='clear' || PH.state==='over' || PH.state==='mapshift'", timeout=5000)
     pg.wait_for_timeout(200)
     R['banner'] = ev("({state: PH.state, banner: PH.banner, banner2: PH.banner2})")
-    pg.wait_for_timeout(3600)
+    end_after_shift(pg, ev, vis, tap)
     pg.wait_for_function("!document.getElementById('ov-name').classList.contains('hidden') || !document.getElementById('ov-over').classList.contains('hidden')", timeout=8000)
     if vis('#ov-name'):
         ev("document.getElementById('name-input').value='Hunter'")
@@ -78,7 +90,7 @@ with sync_playwright() as p:
     tap('#btn-menu'); pg.wait_for_timeout(500)
     if vis('#ov-daily'): ev("document.getElementById('ov-daily').classList.add('hidden')")
     ev("Sfx && Sfx.init()")
-    tap('#btn-map-next')
+    if 'LAKE' not in ev("document.getElementById('title-map').innerText"): tap('#btn-map-next')  # the run already moved the player to Lake
     pg.wait_for_timeout(300)
     R['lake_open'] = ev("""({
       map: document.getElementById('title-map').innerText.replace(/\\s+/g,' ').trim(),
@@ -168,7 +180,7 @@ with sync_playwright() as p:
     if 'NEW MAP UNLOCKED' not in b2 or 'LAKE' not in b2:
         fails.append('clear banner missing new-map message, %r' % bn)
     cl = R['cleared']
-    if cl.get('title') != 'MAP CLEARED!': fails.append('over title, %r' % cl)
+    if cl.get('title') not in ('MAP CLEARED!', 'GAME OVER'): fails.append('over title, %r' % cl)  # run auto-continues into Lake, then ends there
     if 'NEW MAP UNLOCKED: LAKE!' not in (cl.get('note') or ''):
         fails.append('over note missing new-map message, %r' % cl)
     if not cl.get('meadow') or not cl.get('maps', {}).get('lake') or cl.get('maps', {}).get('snow'):

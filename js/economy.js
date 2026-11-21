@@ -132,7 +132,7 @@
   const HP = {
     bird: 2, blue: 2, gold: 2, decoy: 1,
     goose: 4, owl: 3, bat: 2, vulture: 4,
-    deer: 4, swimgoose: 4, rabbit: 3, wolf: 5, roadrunner: 3, coyote: 5, eyes: 3, egg: 2, fawn: 2, pup: 2, bag: 1,
+    deer: 4, swimgoose: 4, rabbit: 3, wolf: 4, roadrunner: 3, coyote: 4, eyes: 3, egg: 2, fawn: 2, pup: 2, bag: 1,
     cardinal: 2, squirrel: 2, pheasant: 3,
     kingfisher: 3, frog: 2, beaver: 4,
     fox: 4, ptarmigan: 3, weasel: 2,

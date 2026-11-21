@@ -4,6 +4,18 @@ import sys, json
 from playwright.sync_api import sync_playwright
 URL, TAG = sys.argv[1], sys.argv[2]
 OUT = '/workspace/pixel-hunt/screenshots/'
+def end_after_shift(pg, ev, vis, tap):
+    # Since 1.0.5 a cleared map auto-continues into the next map; end the run there to reach the game-over screen.
+    pg.wait_for_function("PH.state==='intro' || PH.state==='play' || PH.state==='over' || !document.getElementById('ov-over').classList.contains('hidden')", timeout=12000)
+    if ev("PH.state==='intro' || PH.state==='play'"):
+        ev("PH.forceDie()")
+        pg.wait_for_function("!document.getElementById('ov-continue').classList.contains('hidden') || !document.getElementById('ov-over').classList.contains('hidden') || !document.getElementById('ov-name').classList.contains('hidden')", timeout=10000)
+        if vis('#ov-continue'): tap('#btn-norevive')
+    pg.wait_for_timeout(1500)
+    if vis('#ov-ad'):  # placeholder interstitial: wait out the countdown, then close it like a player
+        pg.wait_for_function("!document.querySelector('#ov-ad .ad-close').disabled", timeout=12000); pg.click('#ov-ad .ad-close')
+    print('AFTER_SHIFT', ev("({state: PH.state, map: PH.Meta.save.equip.map, ov: [...document.querySelectorAll('.overlay:not(.hidden)')].map(e => e.id)})"))
+
 with sync_playwright() as p:
     b = p.chromium.launch(); c = b.new_context(viewport={'width': 390, 'height': 844}, device_scale_factor=3, is_mobile=True, has_touch=True); pg = c.new_page(); errs = []
     pg.on('pageerror', lambda e: errs.append(str(e))); pg.on('console', lambda m: m.type == 'error' and errs.append(m.text))
@@ -99,11 +111,11 @@ with sync_playwright() as p:
     if vis('#ov-title'):
         tap('#btn-play'); pg.wait_for_timeout(700)
     ev("PH.forceMapClear()")
-    pg.wait_for_function("PH.state==='clear' || PH.state==='over'", timeout=5000)
+    pg.wait_for_function("PH.state==='clear' || PH.state==='over' || PH.state==='mapshift'", timeout=5000)
     pg.wait_for_timeout(400)
     R['clear_banner'] = ev("({state:PH.state})")
     # wait for victory overlay (clearT 3.2s + maybe name entry)
-    pg.wait_for_timeout(3600)
+    end_after_shift(pg, ev, vis, tap)
     pg.wait_for_function("!document.getElementById('ov-name').classList.contains('hidden') || !document.getElementById('ov-over').classList.contains('hidden')", timeout=8000)
     if vis('#ov-name'):
         tap('#btn-name-ok'); pg.wait_for_timeout(400)
@@ -120,6 +132,7 @@ with sync_playwright() as p:
     # 6) title shows unlocked infinity
     tap('#btn-menu'); pg.wait_for_timeout(500)
     if vis('#ov-daily'): ev("document.getElementById('ov-daily').classList.add('hidden')")
+    if 'MEADOW' not in ev("document.getElementById('title-map').innerText"): tap('#btn-map-prev'); pg.wait_for_timeout(300)  # run auto-continued to Lake
     R['title_unlocked'] = ev("""({
       map: document.getElementById('title-map').innerText,
       clear: document.getElementById('title-clear').innerText.replace(/\\s+/g,' ').trim(),
@@ -172,6 +185,7 @@ with sync_playwright() as p:
 
     # 7) play infinity from its own lobby, HUD, separate high score
     if vis('#ov-title') and not vis('#ov-infinity'):
+        if not vis('#btn-infinity'): tap('#btn-map-prev'); pg.wait_for_timeout(300)  # the run auto-continued to Lake; Meadow holds the Infinity mode
         tap('#btn-infinity'); pg.wait_for_timeout(300)
     tap('#btn-inf-play'); pg.wait_for_timeout(1000)
     R['infinity_start'] = ev("({state:PH.state, round:PH.round, infinity:PH.infinity, fromCkpt:PH.fromCkpt, score:PH.score})")
@@ -359,7 +373,7 @@ with sync_playwright() as p:
     if not (R['revived_run_ranked'].get('name') or 'NOT RANKED' not in (R['revived_run_ranked'].get('unranked') or '')):
         # name entry should appear for a ranked revived run with score 12400
         if not R['revived_run_ranked'].get('name'): fails.append('revived run not offered name/rank')
-    if not R['cleared']['clearedFlag'] or R['cleared']['title'] != 'MAP CLEARED!': fails.append('map clear')
+    if not R['cleared']['clearedFlag'] or R['cleared']['title'] not in ('MAP CLEARED!', 'GAME OVER'): fails.append('map clear')
     if not R['title_unlocked']['infBtn']: fails.append('infinity button hidden after clear')
     if not R['infinity_start']['infinity'] or R['infinity_start']['round'] != 1: fails.append('infinity start')
     if not R['infinity_over'].get('boardHasInf') and (R['infinity_over'].get('infBest') or 0) <= 0: fails.append('infinity high score not saved')

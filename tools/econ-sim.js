@@ -506,7 +506,7 @@ const KIND_INFO = {
   owl: { spd: 0.95 }, bat: { size: 0.85, spd: 1.1 },
   vulture: { size: 1.1, spd: 0.9 },
   deer: { g: 1, size: 1.6 }, swimgoose: { g: 1, size: 1.2, hp: 2, spd: 0.45 },
-  rabbit: { g: 1, size: 1.25, spd: 0.9 }, wolf: { g: 1, size: 1.5, spd: 1.2, hp: 2 },
+  rabbit: { g: 1, size: 1.25, spd: 0.9 }, wolf: { g: 1, size: 1.5, spd: 1.05, hp: 2 },
   roadrunner: { g: 1, size: 1.25, spd: 1.55 }, coyote: { g: 1, size: 1.5, spd: 1.05, hp: 2 },
   eyes: { g: 1, size: 1 },
   cardinal: { spd: 1.15, size: 0.9 }, squirrel: { g: 1, size: 1.05, spd: 1.05 }, pheasant: { g: 1, size: 1.3, spd: 1.05 },

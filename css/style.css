@@ -121,8 +121,9 @@ ul.how li { margin-bottom: 6px; }
 .ach.done { opacity: 1; border-color: #ffd23f; }
 .stats.small { font-size: 12px; }
 .row2 { display: flex; gap: 10px; } .row2 .pbtn { flex: 1; }
-.cal { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
-.dc { background: #0f1a2e; border: 3px solid #000; padding: 6px 2px; font-size: 10px; display: flex; flex-direction: column; gap: 2px; }
+.cal { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
+.dc { background: #0f1a2e; border: 3px solid #000; padding: 6px 2px; font-size: 10px; display: flex; flex-direction: column; gap: 2px; min-width: 0; overflow-wrap: anywhere; }
+@media (orientation: landscape) and (max-height: 520px) { .cal { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 .dc b { color: #7dff7a; font-size: 12px; }
 .dc.got { opacity: .45; } .dc.now { border-color: #ffd23f; background: #3a2f0a; }
 .dc.big { grid-column: span 2; background: #2a1f4a; }
@@ -631,3 +632,22 @@ h2.gold, #go-title.gold { color: #ffe066; }
 #go-bonus { margin: 4px 0 8px; font-size: 14px; text-shadow: 2px 2px 0 #000; }
 #btn-next-map { width: 100%; max-width: none; margin: 8px 0; }
 .hud-perfect { color: #ffe066; text-shadow: 1px 1px 0 #000; }
+
+/* Title: keep the menu below the canvas-drawn logo on every aspect ratio, and scroll instead of overlapping on short screens. */
+#ov-title { overflow-y: auto; -webkit-overflow-scrolling: touch; justify-content: safe center; }
+#ov-title .title-spacer { height: max(0px, calc(var(--logo-bottom, 30vh) - 20px)); flex-shrink: 0; }
+@media (min-aspect-ratio: 1/1.9) and (orientation: portrait) {
+  #ov-title { gap: 8px; padding-top: 10px; padding-bottom: 10px; }
+  #ov-title .pbtn.big { padding-top: 10px; padding-bottom: 10px; }
+}
+
+/* Phones held sideways: the portrait UI would be cramped, so ask for portrait (the Android app is portrait-locked anyway). */
+#rotate-hint { display: none; }
+@media (orientation: landscape) and (max-height: 500px) and (pointer: coarse) {
+  #rotate-hint { display: flex; position: fixed; inset: 0; z-index: 9999; background: #0d1b2a; color: #ffe066; flex-direction: column;
+    align-items: center; justify-content: center; gap: 12px; text-align: center; font-size: 18px; text-shadow: 2px 2px 0 #000; }
+  #rotate-hint small { color: #fff; font-size: 13px; }
+  #rotate-hint .rot-phone { width: 34px; height: 58px; border: 4px solid #ffe066; border-radius: 6px; box-shadow: 3px 3px 0 #000; animation: rotphone 1.6s steps(4) infinite; }
+}
+@keyframes rotphone { 0%, 30% { transform: rotate(-90deg); } 70%, 100% { transform: rotate(0deg); } }
+

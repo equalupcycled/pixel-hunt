@@ -45,7 +45,7 @@ with sync_playwright() as p:
     print('TABLES', json.dumps(tables, indent=2))
     if tables.get('v') != 10: fails.append('fresh schema not v10, %r' % tables.get('v'))
     expect_hp = dict(duck=2, blue=2, gold=2, decoy=1, goose=4, owl=3, bat=2, vulture=4,
-                     deer=4, swimgoose=4, rabbit=3, wolf=5, roadrunner=3, coyote=5, eyes=3, egg=2, fawn=2, boss10=20)
+                     deer=4, swimgoose=4, rabbit=3, wolf=4, roadrunner=3, coyote=4, eyes=3, egg=2, fawn=2, boss10=20)
     for k, want in expect_hp.items():
         if tables.get(k) != want: fails.append('hp %s want %s got %r' % (k, want, tables.get(k)))
     if tables.get('sg') != [2,3,4,5,6,7,8]: fails.append('shotgun dmg %r' % tables.get('sg'))

@@ -916,6 +916,7 @@ function resize() {
   cvs.style.width = cw + 'px'; cvs.style.height = ch + 'px';
   wrap.style.width = cw + 'px'; wrap.style.height = ch + 'px';
   wrap.style.setProperty('--u', U + 'px');
+  wrap.style.setProperty('--logo-bottom', Math.round((H * 0.12 + 70) * U) + 'px'); // bottom of the canvas-drawn PIXEL HUNT logo
   const r = wrap.getBoundingClientRect(), cs = getComputedStyle(document.documentElement);
   const sat = parseFloat(cs.getPropertyValue('--sat')) || 0, sar = parseFloat(cs.getPropertyValue('--sar')) || 0;
   wrap.style.setProperty('--safe-top', Math.max(0, sat - r.top) + 'px');
@@ -985,13 +986,15 @@ function rosterFor(mapId, r) {
     const mid = ECON.MAPS[i].id, rec = mapRec(mid);
     const inherit = Math.pow(0.48, idx - i);
     const bump = (e) => (i === idx && e.intro ? 1.1 : 1);
-    const locked = e => i === idx && (e.intro || 1) > r; // earlier maps were finished: their full roster is in
+    // Earlier maps were finished: their full roster is in. On the current map, a later map's own ground animals
+    // arrive at round 4 (that is when the header announces them), and debut animals at their intro round.
+    const locked = (e, ground) => i === idx && (e.intro || (ground && i > 0 ? 4 : 1)) > r;
     (rec.fly || []).forEach(e => {
-      if (locked(e)) return;
+      if (locked(e, false)) return;
       flyW[e.k] = (flyW[e.k] || 0) + e.w * inherit * bump(e);
     });
     (rec.ground || []).forEach(e => {
-      if (locked(e)) return;
+      if (locked(e, true)) return;
       groundW[e.k] = (groundW[e.k] || 0) + e.w * inherit * bump(e);
     });
   }
@@ -1016,8 +1019,8 @@ const KIND = {
   owl: { set: 'owl', m: 'glide', spd: 0.95, hp: 3, name: 'OWL' }, bat: { set: 'bat', m: 'flutter', size: 0.85, spd: 1.1, hp: 2, name: 'BAT' },
   vulture: { set: 'vulture', m: 'circle', size: 1.1, spd: 0.9, hp: 4, name: 'VULTURE' },
   deer: { set: 'deer', m: 'run', g: 1, size: 1.6, hp: 4, name: 'DEER' }, fawn: { set: 'deer', m: 'run', g: 1, size: 0.95, hp: 2, spd: 0.78, name: 'FAWN' }, pup: { set: 'wolf', m: 'run', g: 1, size: 0.9, hp: 2, spd: 0.85, name: 'PUP' }, bag: { set: 'bag', m: 'fly', g: 0, size: 1, hp: 1, spd: 1, name: 'BAG' }, swimgoose: { set: 'goose', m: 'swim', g: 1, size: 1.2, hp: 4, spd: 0.45, name: 'SWIMMING GOOSE' },
-  rabbit: { set: 'rabbit', m: 'hop', g: 1, size: 1.25, spd: 0.9, hp: 3, name: 'RABBIT' }, wolf: { set: 'wolf', m: 'run', g: 1, size: 1.5, spd: 1.2, hp: 5, name: 'WOLF' },
-  roadrunner: { set: 'roadrunner', m: 'run', g: 1, size: 1.25, spd: 1.55, hp: 3, name: 'ROADRUNNER' }, coyote: { set: 'coyote', m: 'run', g: 1, size: 1.5, spd: 1.05, hp: 5, name: 'COYOTE' },
+  rabbit: { set: 'rabbit', m: 'hop', g: 1, size: 1.25, spd: 0.9, hp: 3, name: 'RABBIT' }, wolf: { set: 'wolf', m: 'run', g: 1, size: 1.5, spd: 1.05, hp: 4, name: 'WOLF' },
+  roadrunner: { set: 'roadrunner', m: 'run', g: 1, size: 1.25, spd: 1.55, hp: 3, name: 'ROADRUNNER' }, coyote: { set: 'coyote', m: 'run', g: 1, size: 1.5, spd: 1.05, hp: 4, name: 'COYOTE' },
   eyes: { set: null, m: 'peek', g: 1, size: 1, hp: 3, name: 'EYES' },
   cardinal: { set: 'cardinal', m: 'dart', hp: 2, spd: 1.15, size: 0.9, name: 'CARDINAL' },
   squirrel: { set: 'squirrel', m: 'hop', g: 1, size: 1.05, spd: 1.05, hp: 2, hopH: 11, hopCyc: 0.55, name: 'SQUIRREL' },
@@ -1173,6 +1176,7 @@ function breakStreak() {
 function resetRun() {
   if (!curMap || curMap.id !== Meta.save.equip.map) buildBg();
   M = curMap;
+  runUnlocked = [];
   score = 0; runCash = 0; round = 0; shots = 0; hits = 0; streak = 0; bestStreak = 0; missRun = 0; reviveUsed = false; fromCkpt = 0; ckptFlash = 0;
   bossKilled = false; mapJustCleared = false; failedClear = false;
   wantBonus = false; bonusCashEarned = 0; bonusT = 0; bonusIntroT = 0;
@@ -1203,7 +1207,8 @@ function pickFly() {
   return weightedPick(ros.fly, sigFly(M.id));
 }
 function pickGround() {
-  const ros = rosterFor(M.id, Math.max(4, round));
+  // Real round: a map's own ground animals stay hidden until the round-4 header announces them (earlier maps' fill in).
+  const ros = rosterFor(M.id, round);
   return weightedPick(ros.ground, 'deer');
 }
 function bossIdFor(r) { return ECON.bossIdFor(M.id, r); }
@@ -1220,7 +1225,9 @@ function startRound(opts) {
   } else {
     for (let i = 0; i < diff.count; i++) {
       const x = Math.random(); let k;
-      if (round === 1) k = sigFly(M.id);
+      // Round 1 introduces the map's signature flyer. On later maps it is about half the flock (the rest is the familiar
+      // mix), because R1 already runs at the previous map's R29 pace and an all-tough-flyer R1 was a wall for arriving players.
+      if (round === 1) k = (M.id === 'meadow' || Math.random() < 0.5) ? sigFly(M.id) : (x < diff.gold ? 'gold' : pickFly());
       else if (x < diff.deer) k = pickGround();
       else if (x < diff.deer + diff.decoy) k = 'decoy';
       else if (x < diff.deer + diff.decoy + diff.gold) k = 'gold';
@@ -1534,6 +1541,7 @@ function escaped(t) {
     return;
   }
   missRun++; perfectRun = false; roundEsc++; breakStreak(); skyFlash = 0.5;
+  if (botStats.esc) { const key = M.id + ':' + t.kind; botStats.esc[key] = (botStats.esc[key] || 0) + 1; }
   float(t.kind === 'boss' ? 'BOSS ESCAPED!' : 'GOT AWAY', clamp(t.x, 30, W - 30), t.g ? GROUND - 20 : SKY_TOP + 8, '#ff5a5a', 1.5, 1.2);
   Sfx.escape();
   if (missRun >= maxMiss) die();
@@ -2025,7 +2033,7 @@ function updProjs(dt) {
         }
       }
       if (p.pierce <= 0) p.dead = true;
-      if (p.y > GROUND + 14 || p.x < -10 || p.x > W + 10 || p.y < -60 || p.life <= 0) { p.dead = true; if (!p.any && canAct()) float('MISS', clamp(p.x, 12, W - 12), clamp(p.y, SKY_TOP + 10, GROUND), '#9aa', 1, 0.6); }
+      if ((p.vy > 0 && p.y > GROUND + 14) || p.y > H + 10 || p.x < -10 || p.x > W + 10 || p.y < -60 || p.life <= 0) { p.dead = true; if (!p.any && canAct()) float('MISS', clamp(p.x, 12, W - 12), clamp(p.y, SKY_TOP + 10, GROUND), '#9aa', 1, 0.6); }
     } else if (p.type === 'pellet') {
       p.x += p.vx * dt; p.y += p.vy * dt;
       for (const t of targets) if (hittable(t) && t.kind !== 'decoy' && boxDist(t, p.x, p.y) <= p.r) { damage(t, p.dmg || 2, 'turret'); p.dead = true; break; }
@@ -2290,10 +2298,15 @@ function endBonus() {
 function beginMapShiftBanner(fromBonus) {
   const nxt = ECON.nextMap(M.id);
   if (!nxt || infinity) { pendingNext = null; return; }
+  const firstUnlock = !Meta.isCleared(M.id) && !Meta.hasMap(nxt.id);
   Meta.markCleared(M.id);
   pendingNext = nxt;
   banner = M.name.toUpperCase() + ' CLEARED!';
-  banner2 = (fromBonus && bonusCashEarned ? ('BONUS +$' + fmt(bonusCashEarned) + '  ') : '') + '\u2192  ' + nxt.name.toUpperCase();
+  if (firstUnlock) {
+    runUnlocked.push(nxt.name.toUpperCase());
+    banner2 = 'NEW MAP UNLOCKED: ' + nxt.name.toUpperCase() + '!';
+    if (fromBonus && bonusCashEarned) float('BONUS +$' + fmt(bonusCashEarned), W / 2, H / 2 + 34, '#ffd23f', 1.5, 2.4);
+  } else banner2 = (fromBonus && bonusCashEarned ? ('BONUS +$' + fmt(bonusCashEarned) + '  ') : '') + '\u2192  ' + nxt.name.toUpperCase();
   showGameButtons(false);
   show('btn-pause', true);
   state = 'mapshift';
@@ -2692,7 +2705,7 @@ function revive() {
   banner = 'SECOND CHANCE!';
   banner2 = 'ROUND ' + keep.round + '  \u00b7  SCORE KEPT  ' + fmt(keep.score);
 }
-let earnedShown = 0, lastRun = null;
+let earnedShown = 0, lastRun = null, runUnlocked = [];
 function finishRun(opts) {
   state = 'over';
   const ranked = !!runRanked; // checkpoint or carried-from-checkpoint stays unranked
@@ -2707,14 +2720,14 @@ function finishRun(opts) {
   if (defer) {
     Meta.endRun({ score: 0, round, earned: 0, ranked: false, infinity, cleared, deferScore: true, map: M.id });
     deferredRun = true;
-    lastRun = { score, round, map: M.id, mapName: M.name, weapon: wpn.id, isBest: false, isAll: false, fromCkpt, infinity, cleared, unlockedMap: unlockedMap && unlockedMap.name, nextMap: nxt && nxt.name, nextMapId: nxt && nxt.id, allCleared: false, bonusCash: bonusCashEarned, defer: true, runRanked: ranked, maps: runMapsLabel() ? runMapsLabel().split(' + ') : [] };
+    lastRun = { score, round, map: M.id, mapName: M.name, weapon: wpn.id, isBest: false, isAll: false, fromCkpt, infinity, cleared, unlockedMap: unlockedMap && unlockedMap.name, nextMap: nxt && nxt.name, nextMapId: nxt && nxt.id, allCleared: false, bonusCash: bonusCashEarned, defer: true, runRanked: ranked, runUnlocked: runUnlocked.slice(), maps: runMapsLabel() ? runMapsLabel().split(' + ') : [] };
     showOver(null);
     return;
   }
   if (opts && opts.finalize && deferredRun) deferredRun = false;
   Meta.endRun({ score: ranked ? score : 0, round, earned: runCash, ranked, infinity, cleared, skipCleared: !!(opts && opts.finalize), skipStats: !!(opts && opts.skipStats), map: M.id });
   deferredRun = false;
-  lastRun = { score, round, map: M.id, mapName: M.name, weapon: wpn.id, isBest: isBest && score > 0, isAll: isAll && score > 0, fromCkpt, infinity, cleared, unlockedMap: unlockedMap && unlockedMap.name, nextMap: allCleared ? null : (nxt && nxt.name), nextMapId: allCleared ? null : (nxt && nxt.id), allCleared, bonusCash: bonusCashEarned, defer: false, runRanked: ranked, maps: runMapsLabel() ? runMapsLabel().split(' + ') : [] };
+  lastRun = { score, round, map: M.id, mapName: M.name, weapon: wpn.id, isBest: isBest && score > 0, isAll: isAll && score > 0, fromCkpt, infinity, cleared, unlockedMap: unlockedMap && unlockedMap.name, nextMap: allCleared ? null : (nxt && nxt.name), nextMapId: allCleared ? null : (nxt && nxt.id), allCleared, bonusCash: bonusCashEarned, defer: false, runRanked: ranked, runUnlocked: runUnlocked.slice(), maps: runMapsLabel() ? runMapsLabel().split(' + ') : [] };
   if (ranked && window.Leaderboard && Leaderboard.qualifies(M.id, score, infinity)) openNameEntry();
   else showOver(null);
 }
@@ -2801,6 +2814,7 @@ function showOver(rank) {
   }
   else if (!r.runRanked) note = (r.infinity ? 'INFINITY ' : '') + `CHECKPOINT RUN (FROM ROUND ${r.fromCkpt || 0}) \u00b7 NOT RANKED`;
   else if (r.infinity) note = 'INFINITY RUN \u00b7 RANKED ON THIS MAP\'S INFINITY BOARD';
+  if (!r.allCleared && r.runUnlocked && r.runUnlocked.length && !r.unlockedMap) note = 'NEW MAP' + (r.runUnlocked.length > 1 ? 'S' : '') + ' UNLOCKED: ' + r.runUnlocked.join(', ') + '!' + (note ? ' \u00b7 ' + note : '');
   if (r.maps && r.maps.length > 1) note = (note ? note + ' \u00b7 ' : '') + 'FULL RUN: ' + r.maps.join(' + ');
   $('go-unranked').textContent = note;
   show('go-unranked', !!note);
@@ -2968,10 +2982,12 @@ function nextToast() {
 function notify() { Meta.takeNotices().forEach(n => { toast(n.text, n.sub, n.reward); Sfx.gold(); }); }
 
 // ---------- daily reward ----------
-function maybeDaily() {
+let dailyAutoShown = false; // auto-open once per session; after that the DAILY! button on the title opens it
+function maybeDaily(auto) {
   const st = Meta.dailyStatus();
   $('btn-daily').classList.toggle('hidden', !st.available);
   if (!st.available) return false;
+  if (auto) { if (dailyAutoShown) return false; dailyAutoShown = true; }
   const cal = $('daily-cal'); cal.innerHTML = '';
   ECON.DAILY_PCT.forEach((_, d) => {
     const c = document.createElement('div');
@@ -3114,7 +3130,7 @@ function toTitle() {
   Meta.setMode('campaign'); shopInf = false;
   if (!curMap || curMap.id !== Meta.save.equip.map) buildBg();
   Sfx.setMusic('menu');
-  updateTitle(); refreshAdFreeUI(); show('ov-title', true); maybeDaily();
+  updateTitle(); refreshAdFreeUI(); show('ov-title', true); maybeDaily(true);
 }
 function leaveOverToTitle() {
   if (lastRun && lastRun.infinity) { finalizeDeferredRun(); openInfinityLobby(); return; }
@@ -3216,6 +3232,12 @@ function togglePause() {
   paused = !paused; holding = false; drawing = null; show('ov-pause', paused); if (!paused) Sfx.click(); boostBtnStamp = ''; refreshBoostButtons();
 }
 $('btn-pause').addEventListener('click', togglePause);
+// Auto-pause when a phone is turned sideways (the rotate hint covers the game).
+try {
+  const sideways = window.matchMedia('(orientation: landscape) and (max-height: 500px) and (pointer: coarse)');
+  const onSideways = () => { if (sideways.matches && !paused && (state === 'play' || state === 'intro' || state === 'bonus')) togglePause(); };
+  if (sideways.addEventListener) sideways.addEventListener('change', onSideways); else if (sideways.addListener) sideways.addListener(onSideways);
+} catch (e) {}
 $('btn-resume').addEventListener('click', togglePause);
 $('btn-quit').addEventListener('click', () => { Sfx.click(); paused = false; show('ov-pause', false); if (runIsActive()) { gameOver(); return; } leaveOverToTitle(); });
 ['btn-auto-boost-t', 'btn-auto-boost-o', 'btn-auto-boost-p'].forEach(id => { const el = $(id); if (el) el.addEventListener('click', startAutoBoostAd); });
@@ -3588,6 +3610,52 @@ function drawHud() {
   if (weapons.length > 1) { const o = weapons[1 - wi]; const sw = $('swap-n'); const s = o.def.name.toUpperCase(); if (sw.textContent !== s) sw.textContent = s; }
 }
 
+
+// ---------------- QA autoplay (test hooks only; never runs unless a test calls PH.ff) ----------------
+let botStats = { shots: 0, decoyWaits: 0 };
+function botStep(opts) {
+  if (state === 'intro' || !wpn) return;
+  const w = wpn, o = opts || {};
+  for (const t of targets) { t._mvx = t._ox == null ? (t.vx || 0) : (t.x - t._ox) * 60; t._mvy = t._oy == null ? (t.vy || 0) : (t.y - t._oy) * 60; t._ox = t.x; t._oy = t.y; }
+  const cands = targets.filter(t => hittable(t) && t.kind !== 'decoy' && (t.kind !== 'bag' || state === 'bonus'));
+  const urgency = t => t.kind === 'boss' ? Math.min(timeToLeave(t), 0.9) : timeToLeave(t); // a player focuses the boss unless something is about to escape
+  const byUrgency = (a, b) => urgency(a) - urgency(b);
+  if (w.id === 'laser' || w.id === 'mg') {
+    if (w.reloading || w.overheated) { holding = false; return; }
+    if (needsReload(w)) { holding = false; startReload(w); return; }
+    if (!cands.length) { holding = false; return; }
+    cands.sort(byUrgency);
+    const t = cands[0]; aim = { x: t.x, y: t.y }; lightPos = aim; holding = true; return;
+  }
+  if (o.react && (botStats.cd = (botStats.cd || 0) - 1 / 60) > 0) return; // human reaction time between shots
+  if (needsReload(w)) { startReload(w); return; }
+  if (w.def.input === 'draw') {
+    if (w.reloading || w.swapT > 0) return;
+    if (!drawing) { if (cands.length && w.cool <= 0) drawing = { t: 0 }; return; }
+    if (drawing.t < w.draw || !cands.length) return;
+    cands.sort(byUrgency);
+    const t = cands[0], m = muzzle(), v = 370; let px = t.x, py = t.y;
+    for (let k = 0; k < 3; k++) { const T = Math.max(0.12, Math.hypot(px - m.x, py - m.y) / v); px = t.x + t._mvx * T; py = t.y + t._mvy * T; }
+    aim = { x: px, y: py }; lightPos = aim; releaseArrow(); botStats.shots++; if (o.react) botStats.cd = o.react * rand(0.7, 1.3); return;
+  }
+  if (w.reloading || w.cool > 0 || w.swapT > 0 || !cands.length) return;
+  if (o.missRate && Math.random() < o.missRate) { fireTap(clamp(rand(10, W - 10), 0, W), SKY_TOP + 4); botStats.shots++; return; }
+  cands.sort(byUrgency);
+  const t = cands.find(c => !(w.id === 'shotgun' && targets.some(d => d.kind === 'decoy' && hittable(d) && boxDist(d, c.x, c.y) <= w.radius)));
+  if (!t) { botStats.decoyWaits++; return; }
+  aim = { x: t.x + (o.jitter ? rand(-o.jitter, o.jitter) : 0), y: t.y + (o.jitter ? rand(-o.jitter, o.jitter) : 0) }; lightPos = aim; fireTap(aim.x, aim.y); botStats.shots++; if (o.react) botStats.cd = o.react * rand(0.7, 1.3);
+}
+function fastForward(sec, opts) {
+  const o = opts || {}, steps = Math.round(sec * 60);
+  let n = 0;
+  for (; n < steps; n++) {
+    if (o.bot && canAct()) botStep(o);
+    update(1 / 60);
+    if (o.until && o.until()) break;
+  }
+  try { render(); } catch (e) { console.error(e); }
+  return n / 60;
+}
 // ---------------- loop ----------------
 let last = performance.now();
 let frameErrs = 0;
@@ -3693,6 +3761,9 @@ window.PH = {
   autoReloadDelay: () => autoReloadDelay(), get perkAuto() { return perkAuto; },
 
   spawn(k) { spawn(k); }, setAim(x, y) { aim = { x, y }; lightPos = { x, y }; }, hold(on) { holding = on; },
+  ff(sec, opts) { return fastForward(sec, opts); }, get botStats() { return botStats; }, timeToLeaveOf: t => timeToLeave(t),
+  get stateX() { return { state, round, map: M && M.id, missRun, maxMiss, score, runCash, perfectRun, bossKilled, wantBonus, infinity, queue: queue.length, targets: targets.length, paused, wpn: wpn && wpn.id }; },
+  canActNow: () => canAct(), equipPrimary(id) { Meta.equipWeapon(id, 'primary'); },
   kindHp: k => ECON.kindHp(k), bossHp: r => ECON.bossHp(r), dmgOf: (id, lv) => ECON.dmgOf(id, lv),
   shotDmg, damage, makeWeapon, makeTurret, hitsNeeded: (hp, d) => ECON.hitsNeeded(hp, d),
   flakDmg: l => ECON.flakDmg(l), dmgLine, fireTap,

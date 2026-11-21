@@ -1,4 +1,4 @@
-# Google Play Data safety form: answers for Pixel Hunt 1.1.0
+# Google Play Data safety form: answers for Pixel Hunt 1.1.1
 
 Basis (audited in code, Nov 20 2026): the store build (`STORE=1`, `data-store="1"`) has **no ad SDK, no analytics, no
 crash reporter, no Play Billing, and no account system**. The online leaderboard is a disabled stub

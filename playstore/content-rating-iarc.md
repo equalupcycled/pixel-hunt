@@ -1,6 +1,6 @@
-# IARC content rating questionnaire: suggested answers (Pixel Hunt 1.1.0)
+# IARC content rating questionnaire: suggested answers (Pixel Hunt 1.1.1)
 
-Play Console → Policy → App content → Content ratings → Start questionnaire. Email: the developer contact email.
+Play Console → Policy → App content → Content ratings → Start questionnaire. Email: hello@cachebrands.com (the developer contact email).
 Category: **Game**.
 
 | Question (IARC) | Answer | Notes |
@@ -17,10 +17,10 @@ Category: **Game**.
 | Language / profanity / crude humor | No | Player can type a 12-char name for the LOCAL Top 10 only; it is never sent anywhere. |
 | Controlled substances (drugs, alcohol, tobacco) | No | |
 | Gambling / simulated gambling | **No** | No loot boxes and no real-money items. Daily rewards are fixed. |
-| Users can interact or exchange content (chat, UGC) | **No** | No online features in 1.1.0. Score sharing goes through the OS share sheet. |
+| Users can interact or exchange content (chat, UGC) | **No** | No online features in 1.1.1. Score sharing goes through the OS share sheet. |
 | Shares user location | No | |
-| Digital purchases | **No** for 1.1.0 (answer **Yes** once Remove Ads billing ships) | |
-| Ads | No for 1.1.0 | Ads are declared separately under App content. |
+| Digital purchases | **No** for 1.1.1 (answer **Yes** once Remove Ads billing ships) | |
+| Ads | No for 1.1.1 | Ads are declared separately under App content. |
 | Unrestricted internet access (browser) | No | It only opens a few fixed links in the external browser. |
 
 **Expected result:** ESRB **E10+** (Fantasy Violence) or Everyone, PEGI **7** (mild violence), USK 6, ClassInd 10.

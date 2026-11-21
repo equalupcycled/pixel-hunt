@@ -1,4 +1,4 @@
-# Pixel Hunt: Google Play release kit (v1.1.0, versionCode 9)
+# Pixel Hunt: Google Play release kit (v1.1.1, versionCode 10)
 
 Everything that can be done without the developer's Google accounts is done: a signed release AAB/APK, store listing
 text and graphics, privacy policy, and Data safety / IARC / audience answers. The checklist below is what **John** must do.
@@ -7,9 +7,9 @@ text and graphics, privacy policy, and Data safety / IARC / audience answers. Th
 
 | Item | Where |
 |---|---|
-| Signed **AAB** (upload this to Play) | GitHub release **v1.1.0** → `PixelHunt-1.1.0.aab` (local: `dist/PixelHunt-1.1.0.aab`) |
-| Signed **APK** (sideload / testing) | GitHub release v1.1.0 → `PixelHunt-1.1.0.apk` and the web landing page download |
-| Version | `versionName 1.1.0`, `versionCode 9` |
+| Signed **AAB** (upload this to Play) | GitHub release **v1.1.1** → `PixelHunt-1.1.1.aab` (local: `dist/PixelHunt-1.1.1.aab`) |
+| Signed **APK** (sideload / testing) | GitHub release v1.1.1 → `PixelHunt-1.1.1.apk` and the web landing page download |
+| Version | `versionName 1.1.1`, `versionCode 10` |
 | SDK levels | `minSdk 24`, `targetSdk 36`, `compileSdk 36` (meets Play's API 36 target requirement for new apps/updates since Aug 31 2026) |
 | Hardening | `debuggable=false`, WebView remote debugging off, no cleartext / mixed content, R8 minify + resource shrinking |
 | Permissions | `INTERNET` only (plus AndroidX's non-dangerous internal `DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION`) |
@@ -45,9 +45,9 @@ Bump `versionCode` (+1 every upload) and `versionName` in `android/app/build.gra
 2. **Verify identity / contact details** when prompted. The developer name and address may be shown publicly.
 3. **Create the app** in Play Console: name *Pixel Hunt*, Game, Free, default language English (US). Accept the declarations.
 4. **App content** section: fill it from `target-audience.md`, `data-safety.md`, `content-rating-iarc.md`, plus the privacy policy URL. Ads: No. App access: no login needed.
-5. **Store listing**: paste the texts from `listing.md` and upload `icon-512.png`, `feature-graphic-1024x500.png`, 4–8 phone screenshots, and the 7" and 10" tablet screenshots. Set category **Arcade**, contact email, and website.
+5. **Store listing**: paste the texts from `listing.md` and upload `icon-512.png`, `feature-graphic-1024x500.png`, 4–8 phone screenshots, and the 7" and 10" tablet screenshots. Set category **Arcade**, contact email hello@cachebrands.com, and website.
 6. **Play App Signing**: keep the default (Google-managed key). The first AAB upload registers the upload key above.
-7. **Upload `PixelHunt-1.1.0.aab`** (from the v1.1.0 GitHub release) to a testing track.
+7. **Upload `PixelHunt-1.1.1.aab`** (from the v1.1.1 GitHub release) to a testing track.
 8. **New *personal* accounts (created after Nov 13 2023): run a closed test with at least 12 testers opted in for 14 continuous days** before you can apply for Production access. Tips: collect 12+ Gmail addresses (friends/family) into an email list, share the opt-in link, and ask them to keep it installed and open it a few times. Then answer the "apply for production" questionnaire.
 9. **Countries / pricing**: Free, choose countries (all or US first). Then **send for review → roll out to Production**.
 10. **Back up the upload keystore and passwords** off the box (password manager plus an offline copy).

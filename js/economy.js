@@ -108,15 +108,15 @@
   // Maps unlock in order by clearing the previous map's round 30 boss (not by purchase or upgrade count).
   const MAPS = [
     { id: 'meadow', name: 'Meadow', cash: 1.0, pts: 1.0, speed: 1.0, life: 1.0, size: 1.0, dark: 0,
-      role: 'Classic fields. Ducks, bluebirds, deer, plus cardinals, squirrels, and pheasants.', boss: 'eagle' },
+      role: 'Classic fields. Ducks, bluebirds, deer.', boss: 'eagle' },
     { id: 'lake', name: 'Lake', cash: 1.3, pts: 1.2, speed: 1.08, life: 0.95, size: 0.97, dark: 0,
-      role: 'Ducks & geese, plus kingfishers, frogs, and beavers. Keeps Meadow animals. Pays 1.3x.', boss: 'goose' },
+      role: 'Ducks & geese over the water, then kingfishers, frogs, and beavers one at a time. Keeps Meadow animals. Pays 1.3x.', boss: 'goose' },
     { id: 'snow', name: 'Snowy Forest', cash: 1.7, pts: 1.5, speed: 1.15, life: 0.92, size: 0.95, dark: 0,
-      role: 'Owls, rabbits, and wolves, plus ptarmigan, foxes, and weasels. Keeps earlier animals. Pays 1.7x.', boss: 'yeti' },
+      role: 'Owls, rabbits, and wolves, then ptarmigan, foxes, and weasels one at a time. Keeps earlier animals. Pays 1.7x.', boss: 'yeti' },
     { id: 'desert', name: 'Desert', cash: 2.2, pts: 1.8, speed: 1.22, life: 0.88, size: 0.93, dark: 0,
-      role: 'Vultures, roadrunners, and coyotes, plus hawks, scorpions, and jackrabbits. Keeps earlier animals. Pays 2.2x.', boss: 'vulture' },
+      role: 'Vultures, roadrunners, and coyotes, then hawks, scorpions, and jackrabbits one at a time. Keeps earlier animals. Pays 2.2x.', boss: 'vulture' },
     { id: 'night', name: 'Night Hunt', cash: 2.8, pts: 2.3, speed: 1.3, life: 0.85, size: 0.92, dark: 1,
-      role: 'Bats, owls, and glowing eyes, plus moths, raccoons, and skunks. Keeps earlier animals. Pays 2.8x.', boss: 'batking' },
+      role: 'Bats, owls, and glowing eyes, then moths, raccoons, and skunks one at a time. Keeps earlier animals. Pays 2.8x.', boss: 'batking' },
   ];
   const mapIndex = id => MAPS.findIndex(m => m.id === id);
   const prevMap = id => { const i = mapIndex(id); return i > 0 ? MAPS[i - 1] : null; };

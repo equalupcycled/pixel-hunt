@@ -933,65 +933,33 @@ if (window.visualViewport) visualViewport.addEventListener('resize', () => { // 
 
 // ---------------- content tables ----------------
 const MAP_ANIMALS = {
+  // Meadow is the original roster only (ducks, bluebirds, deer; gold birds and pink decoys come from the round mix).
   meadow: {
     sig: 'bird', hint: 'DEER IN THE WOODS!',
-    fly: [
-      { k: 'bird', w: 1 }, { k: 'blue', w: 0.45 },
-      { k: 'cardinal', w: 0.95, intro: 2, name: 'CARDINAL' }
-    ],
-    ground: [
-      { k: 'deer', w: 1 },
-      { k: 'squirrel', w: 0.85, intro: 5, name: 'SQUIRREL' },
-      { k: 'pheasant', w: 0.8, intro: 8, name: 'PHEASANT' }
-    ]
+    fly: [{ k: 'bird', w: 1 }, { k: 'blue', w: 0.45 }],
+    ground: [{ k: 'deer', w: 1 }]
   },
+  // Later maps: their original animals arrive as before (flyer at round 1, ground animals from round 4),
+  // then ONE new animal at a time at rounds 6, 14 and 22 (never a boss round).
   lake: {
-    sig: 'goose', hint: 'GEESE ON THE WATER!',
-    fly: [
-      { k: 'goose', w: 1 },
-      { k: 'kingfisher', w: 0.95, intro: 2, name: 'KINGFISHER' }
-    ],
-    ground: [
-      { k: 'swimgoose', w: 1 },
-      { k: 'frog', w: 0.9, intro: 5, name: 'FROG' },
-      { k: 'beaver', w: 0.85, intro: 8, name: 'BEAVER' }
-    ]
+    sig: 'goose', sigName: 'GEESE', hint: 'GEESE ON THE WATER!',
+    fly: [{ k: 'goose', w: 1 }, { k: 'kingfisher', w: 0.8, intro: 6, name: 'KINGFISHER' }],
+    ground: [{ k: 'swimgoose', w: 1 }, { k: 'frog', w: 0.8, intro: 14, name: 'FROG' }, { k: 'beaver', w: 0.75, intro: 22, name: 'BEAVER' }]
   },
   snow: {
-    sig: 'owl', hint: 'RABBITS & WOLVES!',
-    fly: [
-      { k: 'owl', w: 1 },
-      { k: 'ptarmigan', w: 0.95, intro: 2, name: 'PTARMIGAN' }
-    ],
-    ground: [
-      { k: 'rabbit', w: 1 }, { k: 'wolf', w: 0.9 },
-      { k: 'fox', w: 0.95, intro: 5, name: 'FOX' },
-      { k: 'weasel', w: 0.8, intro: 8, name: 'WEASEL' }
-    ]
+    sig: 'owl', sigName: 'SNOW OWLS', hint: 'RABBITS & WOLVES!',
+    fly: [{ k: 'owl', w: 1 }, { k: 'ptarmigan', w: 0.8, intro: 6, name: 'PTARMIGAN' }],
+    ground: [{ k: 'rabbit', w: 1 }, { k: 'wolf', w: 0.9 }, { k: 'fox', w: 0.8, intro: 14, name: 'FOX' }, { k: 'weasel', w: 0.7, intro: 22, name: 'WEASEL' }]
   },
   desert: {
-    sig: 'vulture', hint: 'ROADRUNNERS & COYOTES!',
-    fly: [
-      { k: 'vulture', w: 1 },
-      { k: 'hawk', w: 0.95, intro: 2, name: 'HAWK' }
-    ],
-    ground: [
-      { k: 'roadrunner', w: 1 }, { k: 'coyote', w: 0.85 },
-      { k: 'scorpion', w: 0.9, intro: 5, name: 'SCORPION' },
-      { k: 'jackrabbit', w: 0.85, intro: 8, name: 'JACKRABBIT' }
-    ]
+    sig: 'vulture', sigName: 'VULTURES', hint: 'ROADRUNNERS & COYOTES!',
+    fly: [{ k: 'vulture', w: 1 }, { k: 'hawk', w: 0.8, intro: 6, name: 'HAWK' }],
+    ground: [{ k: 'roadrunner', w: 1 }, { k: 'coyote', w: 0.85 }, { k: 'scorpion', w: 0.8, intro: 14, name: 'SCORPION' }, { k: 'jackrabbit', w: 0.75, intro: 22, name: 'JACKRABBIT' }]
   },
   night: {
-    sig: 'bat', hint: 'EYES IN THE BUSHES!',
-    fly: [
-      { k: 'bat', w: 1 }, { k: 'owl', w: 0.55 },
-      { k: 'moth', w: 0.95, intro: 2, name: 'MOTH' }
-    ],
-    ground: [
-      { k: 'eyes', w: 1 },
-      { k: 'raccoon', w: 0.9, intro: 5, name: 'RACCOON' },
-      { k: 'skunk', w: 0.8, intro: 8, name: 'SKUNK' }
-    ]
+    sig: 'bat', sigName: 'BATS', hint: 'EYES IN THE BUSHES!',
+    fly: [{ k: 'bat', w: 1 }, { k: 'owl', w: 0.55 }, { k: 'moth', w: 0.8, intro: 6, name: 'MOTH' }],
+    ground: [{ k: 'eyes', w: 1 }, { k: 'raccoon', w: 0.8, intro: 14, name: 'RACCOON' }, { k: 'skunk', w: 0.7, intro: 22, name: 'SKUNK' }]
   }
 };
 function mapRec(id) { return MAP_ANIMALS[id] || MAP_ANIMALS.meadow; }
@@ -1000,19 +968,30 @@ function debutFor(mapId, r) {
   const rec = mapRec(mapId);
   return (rec.fly || []).concat(rec.ground || []).find(e => e.intro === r) || null;
 }
+// Header line for a round that brings something new to this map (null when nothing new arrives).
+function newsFor(mapId, r) {
+  const d = debutFor(mapId, r);
+  if (d) return { kind: d.k, text: 'NEW: ' + d.name + '!' };
+  const rec = mapRec(mapId);
+  if (mapId === 'meadow' || !rec.sigName) return null;
+  if (r === 1) return { kind: rec.sig, text: 'NEW: ' + rec.sigName + '!' };
+  if (r === 4) return { kind: (rec.ground[0] || {}).k, text: 'NEW: ' + rec.hint.replace(/!$/, '') + '!' };
+  return null;
+}
 function rosterFor(mapId, r) {
   const idx = Math.max(0, ECON.mapIndex(mapId));
   const flyW = {}, groundW = {};
   for (let i = 0; i <= idx; i++) {
     const mid = ECON.MAPS[i].id, rec = mapRec(mid);
     const inherit = Math.pow(0.48, idx - i);
-    const bump = (e) => (i === idx && e.intro ? 1.2 : 1);
+    const bump = (e) => (i === idx && e.intro ? 1.1 : 1);
+    const locked = e => i === idx && (e.intro || 1) > r; // earlier maps were finished: their full roster is in
     (rec.fly || []).forEach(e => {
-      if ((e.intro || 1) > r) return;
+      if (locked(e)) return;
       flyW[e.k] = (flyW[e.k] || 0) + e.w * inherit * bump(e);
     });
     (rec.ground || []).forEach(e => {
-      if ((e.intro || 1) > r) return;
+      if (locked(e)) return;
       groundW[e.k] = (groundW[e.k] || 0) + e.w * inherit * bump(e);
     });
   }
@@ -1108,7 +1087,7 @@ let fromCkpt = 0, ckptFlash = 0, ckptRound = 0;
 const CKPT_EVERY = 5;
 let infinity = false, bossKilled = false, mapJustCleared = false, failedClear = false;
 let roundHits = 0, roundEsc = 0, roundTotal = 0, queue = [], spawnT = 0, diff = null, bossT = null, bossRound = false;
-let introT = 0, clearT = 0, dieT = 0, banner = '', banner2 = '', holdRound = false;
+let introT = 0, clearT = 0, dieT = 0, banner = '', banner2 = '', holdRound = false, news = null;
 let pendingNext = null, shiftT = 0, runMaps = [], cashSettled = 0;
 let targets = [], parts = [], floats = [], flashes = [], projs = [], zaps = [], tracers = [];
 let shake = 0, hitStop = 0, skyFlash = 0, whiteFlash = 0, cursor = null, lastTouch = 0, contTimer = null;
@@ -1261,12 +1240,15 @@ function startRound(opts) {
   focusCharges = focusMax; focusT = 0; armed = false;
   state = 'intro'; introT = bossRound ? 2.2 : 1.6;
   const inp = wpn.def.input;
+  news = null;
   if (bossRound) { const b = BOSSES[bossIdFor(round)]; banner = (infinity ? 'INF ' : '') + 'BOSS ROUND!'; banner2 = b.name + ' APPROACHES'; Sfx.boss(); }
   else {
     banner = (infinity ? 'INFINITY ' : '') + 'ROUND ' + round;
-    const debut = debutFor(M.id, round);
-    banner2 = round === 1 ? (inp === 'hold' ? 'HOLD TO SPRAY' : inp === 'draw' ? 'HOLD TO DRAW, RELEASE' : inp === 'beam' ? 'HOLD TO FIRE BEAM' : 'TAP TO SHOOT')
-      : (debut ? ('NEW: ' + debut.name) : round === 3 ? "DON'T SHOOT PINK DECOYS (-$)" : round === 4 ? mapRec(M.id).hint : round === ECON.BOSS_EVERY - 1 ? 'BOSS NEXT ROUND!' : '');
+    news = newsFor(M.id, round);
+    banner2 = news ? news.text
+      : round === 1 ? (inp === 'hold' ? 'HOLD TO SPRAY' : inp === 'draw' ? 'HOLD TO DRAW, RELEASE' : inp === 'beam' ? 'HOLD TO FIRE BEAM' : 'TAP TO SHOOT')
+      : round === 3 ? "DON'T SHOOT PINK DECOYS (-$)" : round === 4 ? mapRec(M.id).hint : round === ECON.BOSS_EVERY - 1 ? 'BOSS NEXT ROUND!' : '';
+    if (news) introT = 2.6; // give the new-animal header time to read
     Sfx.roundStart();
   }
   if (round % CKPT_EVERY === 0) reachCheckpoint({ silent: !!(opts && opts.revive) });
@@ -3448,9 +3430,16 @@ function render() {
   drawHud();
   if ((state === 'intro' || state === 'clear' || state === 'mapshift' || state === 'dying' || (state === 'bonus' && bonusIntroT > 0)) && banner) {
     const y = H * 0.4;
-    ctx.fillStyle = 'rgba(0,0,0,0.55)'; ctx.fillRect(0, y - 6, W, banner2 ? 30 : 22);
+    const isNews = state === 'intro' && news && banner2 === news.text;
+    ctx.fillStyle = 'rgba(0,0,0,0.55)'; ctx.fillRect(0, y - 6, W, isNews ? 46 : banner2 ? 30 : 22);
     text(banner, W / 2, y, 2, state === 'dying' || (bossRound && state === 'intro') ? '#ff5a5a' : '#ffe066', 'center');
-    if (banner2) text(banner2, W / 2, y + 14, 1, '#fff', 'center');
+    if (isNews) {
+      ctx.fillStyle = '#ffd23f'; ctx.fillRect(0, y - 6, W, 1); ctx.fillRect(0, y + 39, W, 1);
+      const blink = Math.floor(performance.now() / 180) % 2;
+      text(banner2, W / 2, y + 15, 1.5, blink ? '#7dff7a' : '#ffffff', 'center');
+      const k = KIND[news.kind], set = k && SPR[news.kind === 'owl' && M.id === 'snow' ? 'snowowl' : k.set];
+      if (set) { const img = set[Math.floor(performance.now() / 160) % 2] || set[0]; spr(img, W / 2, y + 31, Math.min(1, 12 / img.height)); }
+    } else if (banner2) text(banner2, W / 2, y + 14, 1, '#fff', 'center');
   }
   if (ckptFlash > 0 && (state === 'intro' || state === 'play')) { // CHECKPOINT! ribbon above the round banner
     const y = H * 0.4 - 40, a = Math.min(1, ckptFlash * 2);
@@ -3711,7 +3700,7 @@ window.PH = {
   makeCard: o => makeCard(o || {}).toDataURL('image/png'),
   rebuild() { buildBg(); }, toTitle() { toTitle(); }, showOver(rank) { showOver(rank); }, openShop(tab) { shopTab = tab || shopTab; openShop('title'); }, openInfShop() { shopInf = true; Meta.setMode('infinity'); openShop('infinity'); }, openBoard(m, from, inf) { openBoard(m, from || 'title', inf); },
   get banner() { return banner; }, get banner2() { return banner2; },
-  KIND, MAP_ANIMALS, rosterFor, debutFor, sigFly, pickFly, pickGround,
+  KIND, MAP_ANIMALS, rosterFor, debutFor, newsFor, sigFly, pickFly, pickGround, get news() { return news; },
   animalName: k => (KIND[k] && KIND[k].name) || (k || '').toUpperCase(),
 
   get browseMap() { return titleBrowseMap || Meta.save.equip.map; },

@@ -20,7 +20,7 @@ const V = (lv, id) => T(id).val[lv[id] || 0];
 // Human tap-to-reload lag is off by default so the fitted ~6 games/purchase curve stays put.
 // --perks turns it on so Auto Reload (and manual reloads) can be measured fairly.
 let HUMAN_RELOAD = 0;
-const GROUND = new Set(['deer', 'fawn', 'wolf', 'coyote', 'rabbit', 'roadrunner', 'swimgoose', 'eyes', 'squirrel', 'pheasant', 'frog', 'beaver', 'fox', 'weasel', 'scorpion', 'jackrabbit', 'raccoon', 'skunk']);
+const GROUND = new Set(['deer', 'fawn', 'wolf', 'coyote', 'rabbit', 'roadrunner', 'swimgoose', 'eyes', 'frog', 'beaver', 'fox', 'weasel', 'scorpion', 'jackrabbit', 'raccoon', 'skunk']);
 function P(lv, id) {
   const tr = T(id); if (!tr) return 0;
   const n = lv[id] | 0;
@@ -171,8 +171,8 @@ function weaponTry(w, lv, d, kind, slow, st, ammo, ctx) {
 function weaponOf(w) { return E.WEAPONS.find(x => x.id === w); }
 
 const MAP_SET = {
-  meadow: { fly: [['bird', 0.5], ['blue', 0.25], ['cardinal', 0.25]], ground: ['deer', 'squirrel', 'pheasant'] },
-  lake: { fly: [['goose', 0.4], ['kingfisher', 0.3], ['bird', 0.2], ['cardinal', 0.1]], ground: ['swimgoose', 'frog', 'beaver', 'deer'] },
+  meadow: { fly: [['bird', 0.7], ['blue', 0.3]], ground: ['deer'] },
+  lake: { fly: [['goose', 0.45], ['kingfisher', 0.25], ['bird', 0.2], ['blue', 0.1]], ground: ['swimgoose', 'frog', 'beaver', 'deer'] },
   snow: { fly: [['owl', 0.4], ['ptarmigan', 0.3], ['goose', 0.2], ['bird', 0.1]], ground: ['rabbit', 'wolf', 'fox', 'weasel', 'deer'] },
   desert: { fly: [['vulture', 0.4], ['hawk', 0.3], ['owl', 0.15], ['goose', 0.15]], ground: ['roadrunner', 'coyote', 'scorpion', 'jackrabbit'] },
   night: { fly: [['bat', 0.4], ['moth', 0.25], ['owl', 0.2], ['vulture', 0.15]], ground: ['eyes', 'raccoon', 'skunk', 'wolf'] },

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Build a sideloadable debug APK: PixelHunt-1.0.6-test.apk
+# Build a sideloadable debug APK: PixelHunt-1.0.7-test.apk
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 export JAVA_HOME="${JAVA_HOME:-/home/box/jdk21}"
@@ -27,6 +27,6 @@ cd "$ROOT/android"
 ./gradlew :app:assembleDebug --no-daemon
 mkdir -p "$ROOT/dist"
 SRC="$ROOT/android/app/build/outputs/apk/debug/app-debug.apk"
-DEST="$ROOT/dist/PixelHunt-1.0.6-test.apk"
+DEST="$ROOT/dist/PixelHunt-1.0.7-test.apk"
 cp -f "$SRC" "$DEST"
 ls -lh "$DEST"

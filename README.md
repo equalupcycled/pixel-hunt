@@ -118,13 +118,13 @@ The Android test APK (`com.cachebrands.pixelhunt`) already ships the existing si
 `window.PH` (state, targets, weapon, turrets, boss, `jumpRound(n)`, `forceClear()`, `forceDie()`, `setMoney(n)`, `grantAll()`, `makeCard(o)`) for headless tests.
 
 ## Android test APK
-The game also ships as a debug-signed Android package that bundles the web files and runs offline (no Render URL). Package id `com.cachebrands.pixelhunt`, version `1.0.6` (versionCode 7), portrait, immersive fullscreen, Pixel Hunt launcher icon. The hardware back button closes menus, pauses a run, quits to title from the pause menu, and exits the app from the title screen. The service worker is not registered in the native shell so it cannot fight the bundled assets. Audio unlocks on the first tap, same as the PWA.
+The game also ships as a debug-signed Android package that bundles the web files and runs offline (no Render URL). Package id `com.cachebrands.pixelhunt`, version `1.0.7` (versionCode 8), portrait, immersive fullscreen, Pixel Hunt launcher icon. The hardware back button closes menus, pauses a run, quits to title from the pause menu, and exits the app from the title screen. The service worker is not registered in the native shell so it cannot fight the bundled assets. Audio unlocks on the first tap, same as the PWA.
 
-Prerelease builds are attached to GitHub releases (for example `v1.0.6-test`). To rebuild a sideloadable debug APK:
+Prerelease builds are attached to GitHub releases (for example `v1.0.7-test`). To rebuild a sideloadable debug APK:
 
     export JAVA_HOME=/home/box/jdk21 ANDROID_HOME=/home/box/android-sdk
     npm install
     bash tools/build-apk.sh
 
-The APK is copied to `dist/PixelHunt-1.0.6-test.apk`. Requires JDK 21 (Capacitor 8) and an Android SDK (platforms + build-tools). JDK 17 is also installed on the build box but is not sufficient for this wrapper. `www/`, `android/app/build/`, and `android/local.properties` are generated and not committed.
+The APK is copied to `dist/PixelHunt-1.0.7-test.apk`. Requires JDK 21 (Capacitor 8) and an Android SDK (platforms + build-tools). JDK 17 is also installed on the build box but is not sufficient for this wrapper. `www/`, `android/app/build/`, and `android/local.properties` are generated and not committed.
 

@@ -1,4 +1,4 @@
-# Pixel Hunt: Google Play store listing (v1.1.1)
+# Pixel Hunt: Google Play store listing (v1.1.2)
 
 | Field | Value |
 |---|---|
@@ -8,8 +8,8 @@
 | Category | **Arcade** (Play's game categories; "Action" is the alternative) |
 | Tags (pick up to 5 in Console) | Arcade, Shooter, Pixel art, Retro, Casual / Offline |
 | Free or paid | Free |
-| Contains ads | **No** for 1.1.1 (store build ships without an ad SDK). Change to *Yes* when AdMob is added. |
-| In-app purchases | **No** for 1.1.1. Change when Play Billing "Remove Ads" is wired. |
+| Contains ads | **No** for 1.1.2 (store build ships without an ad SDK). Change to *Yes* when AdMob is added. |
+| In-app purchases | **No** for 1.1.2. Change when Play Billing "Remove Ads" is wired. |
 | Contact email | `hello@cachebrands.com` (Cache Brands company contact; shown publicly on the store listing) |
 | Website | https://pixel-hunt-o4vw.onrender.com/home.html |
 | Privacy policy URL | https://pixel-hunt-o4vw.onrender.com/privacy.html |

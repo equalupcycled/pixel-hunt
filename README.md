@@ -118,15 +118,15 @@ The Android test APK (`com.cachebrands.pixelhunt`) already ships the existing si
 `window.PH` (state, targets, weapon, turrets, boss, `jumpRound(n)`, `forceClear()`, `forceDie()`, `setMoney(n)`, `grantAll()`, `makeCard(o)`) for headless tests.
 
 ## Android app (Play Store release)
-The game ships as a Capacitor Android app that bundles the web files and runs offline (no Render URL). Package id `com.cachebrands.pixelhunt`, version `1.1.1` (versionCode 10), minSdk 24 / targetSdk 36, portrait, full-screen, adaptive Pixel Hunt icon. The hardware back button closes menus, pauses a run (BACK again resumes), and exits the app from the title screen. The service worker is not registered in the native shell so it cannot fight the bundled assets. Audio unlocks on the first tap, same as the PWA.
+The game ships as a Capacitor Android app that bundles the web files and runs offline (no Render URL). Package id `com.cachebrands.pixelhunt`, version `1.1.2` (versionCode 11), minSdk 24 / targetSdk 36, portrait, full-screen, adaptive Pixel Hunt icon. The hardware back button closes menus, pauses a run (BACK again resumes), and exits the app from the title screen. The service worker is not registered in the native shell so it cannot fight the bundled assets. Audio unlocks on the first tap, same as the PWA.
 
 **Signed release (Play Store):** `STORE=1` marks the bundled `index.html` with `data-store="1"`. In that build, if no AdMob plugin is installed (`window.ADS_OFF`), the game shows no ads at all, grants rewarded perks (continue, 2X) directly, and hides the simulated Remove Ads purchase, so nothing fake ships to Play. Once `@capacitor-community/admob` is installed, real ads switch on automatically.
 
     export JAVA_HOME=/home/box/jdk21 ANDROID_HOME=/home/box/android-sdk
     npm install
-    bash tools/build-release.sh   # -> dist/PixelHunt-1.1.1.aab + dist/PixelHunt-1.1.1.apk (signed, R8-minified, verified)
+    bash tools/build-release.sh   # -> dist/PixelHunt-1.1.2.aab + dist/PixelHunt-1.1.2.apk (signed, R8-minified, verified)
 
-The upload key is read from `/home/box/secrets/pixelhunt-upload.properties` (or `PH_UPLOAD_PROPS=/path`). It lives outside the repo and must **never** be committed. Store listing assets, policy-form answers, and the publishing checklist are in [`playstore/`](playstore/README.md). Releases are on GitHub (`v1.1.1`).
+The upload key is read from `/home/box/secrets/pixelhunt-upload.properties` (or `PH_UPLOAD_PROPS=/path`). It lives outside the repo and must **never** be committed. Store listing assets, policy-form answers, and the publishing checklist are in [`playstore/`](playstore/README.md). Releases are on GitHub (`v1.1.2`).
 
-`bash tools/build-apk.sh` still builds a debug-signed sideload APK (`dist/PixelHunt-1.1.1-test.apk`, web build with placeholder ads). Requires JDK 21 (Capacitor 8) and an Android SDK (platforms + build-tools). `www/`, `dist/`, `android/app/build/`, and `android/local.properties` are generated and not committed.
+`bash tools/build-apk.sh` still builds a debug-signed sideload APK (`dist/PixelHunt-1.1.2-test.apk`, web build with placeholder ads). Requires JDK 21 (Capacitor 8) and an Android SDK (platforms + build-tools). `www/`, `dist/`, `android/app/build/`, and `android/local.properties` are generated and not committed.
 

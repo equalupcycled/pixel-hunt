@@ -49,6 +49,7 @@ window.PH_handleBack = function PH_handleBack() {
   if (vis('ov-continue')) return tap('btn-norevive');
   if (vis('ov-pause')) return tap('btn-resume'); // BACK closes the pause menu; quitting a run stays an explicit button
   if (vis('ov-over')) return tap('btn-over-close') || tap('btn-menu');
+  if (vis('ov-infinity')) return tap('btn-inf-close');
   if (vis('ov-title')) {
     const App = window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.App;
     if (App && App.exitApp) App.exitApp();

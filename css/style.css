@@ -586,7 +586,10 @@ h2.gold, #go-title.gold { color: #ffe066; }
   white-space: nowrap;
 }
 #ov-over {
-  z-index: 8;
+  /* Must sit above #ov-title / #ov-infinity (the backdrop). Was z-index 8, but the
+     Infinity lobby was 20, so after an Infinity loss the lobby stole every tap and
+     opening shop/board left GAME OVER stuck on top of those screens. */
+  z-index: 20;
   justify-content: flex-start;
   padding-top: max(72px, calc(var(--safe-top, 0px) + 64px));
 }
@@ -627,7 +630,9 @@ h2.gold, #go-title.gold { color: #ffe066; }
 }
 #ov-adfree #btn-adfree-cancel { width: 100%; margin-top: 8px; }
 
-#ov-infinity { z-index: 20; }
+#ov-title, #ov-infinity { z-index: 5; } /* backdrop under the game-over modal */
+#ov-shop, #ov-board, #ov-how, #ov-about, #ov-missions, #ov-daily,
+#ov-pause, #ov-continue, #ov-name, #ov-adfree { z-index: 30; } /* sheets above game-over */
 #ov-infinity .x-close { position: absolute; top: 8px; right: 8px; }
 #go-bonus { margin: 4px 0 8px; font-size: 14px; text-shadow: 2px 2px 0 #000; }
 #btn-next-map { width: 100%; max-width: none; margin: 8px 0; }
